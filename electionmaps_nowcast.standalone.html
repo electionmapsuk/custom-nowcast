@@ -730,6 +730,9 @@ function runNowcast(inputs, data, cfgOverride) {
     final.MIN = cfg.blend.transition*oM + mrpOther*rMIN;
     final.OTH = cfg.blend.transition*oO + mrpOther*rOTH;
     if(final.OTH>final.MIN){ const tmp=final.MIN; final.MIN=final.OTH; final.OTH=tmp; }  // MIN >= OTH always
+    // independents/others don't surge past their 2024 level - cap the pool at the 2024 'other' total
+    const poolBase=(s.base.MIN||0)+(s.base.OTH||0), poolNow=final.MIN+final.OTH;
+    if(poolBase>0 && poolNow>poolBase){ const cf=poolBase/poolNow; final.MIN*=cf; final.OTH*=cf; }
     const tot = sum(CANON.map(p=>final[p]));
     CANON.forEach(p=> final[p] = tot>0?final[p]/tot:0);
     return { s, final };
@@ -741,8 +744,8 @@ function runNowcast(inputs, data, cfgOverride) {
     let winner = CANON.reduce((a,b)=> final[b]>final[a]?b:a, CANON[0]);
     // MIN can only win where a real local independent/other stood in 2024 (else next best);
     // but if it genuinely leads it wins (no contradiction with the displayed bars).
-    if (winner==='MIN' && (s.base.MIN||0) < cfg.minWinFloor && (final.MIN||0) < 0.45)  // ...unless it's overwhelmingly leading
-      winner = CANON.filter(p=>p!=='MIN').reduce((a,b)=> final[b]>final[a]?b:a, 'LAB');
+    if (winner==='MIN' && (s.base.MIN||0) < cfg.minWinFloor && (final.MIN||0) < 0.45)  // ...unless overwhelmingly leading
+      winner = CANON.filter(p=>p!=='MIN'&&p!=='OTH'&&p!=='WPB').reduce((a,b)=> final[b]>final[a]?b:a, 'LAB');
     if (s.incumbent2024==='SPKR') winner = 'SPKR';
     return { seatName:s.name, code:s.code, winner, minType:(s.minType||'MIN'),
              winner2024:s.w24||s.incumbent2024, winner2019:s.w19||null, mp:s.mp||null,
@@ -925,7 +928,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var w19=s.winner2019, w24=s.winner2024, wn=dispWin(s);
     var c19=(PI[w19]||PI.OTH).c, c24=(PI[w24]||PI.OTH).c, cwn=(PI[wn]||PI.OTH).c;
     var pillBg=(!s.fixed&&MARGINCOL[wn])?MARGINCOL[wn][band(maj)]:cwn;
-    var html='<div class="hd"><div class="nm">'+s.seatName+'</div>'
+    var html='<div class="hd"><div class="nm">'+s.seatName+'</div>'+((mode==='custom')?'<div style="display:inline-block;margin-top:5px;font-size:.6rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:#7c3aed;color:#fff;padding:2px 7px;border-radius:5px">Custom model</div>':'')
       +'<div class="res"><div class="sq" style="background:'+c19+';color:'+textOn(c19)+'">19</div><div class="sq" style="background:'+c24+';color:'+textOn(c24)+'">24</div>'
       +'<div class="pill" style="background:'+pillBg+';color:'+textOn(pillBg)+'">'+(s.fixed?(PI[wn]?PI[wn].n:wn):band(maj)+' '+wn)+'</div></div>'
       +'<div class="meta">'+(s.fixed?'':'<b>Projected Majority:</b> '+(maj*100).toFixed(1)+'%<br>')
@@ -933,7 +936,7 @@ document.addEventListener('DOMContentLoaded', function(){
     html+='<div class="bd">'+sorted.slice(0,7).map(function(p){ var dp=(p==='MIN'?(s.minType||'MIN'):p); var c=(PI[dp]||PI.OTH).c; var pct=sh[p]*100;
       var bk=(p==='MIN'?(s.minType||'MIN'):p); var ch=(base&&base[bk]!=null)?((sh[p]-base[bk])*100):null; var cs=ch==null?'':(ch>0?'+':'')+ch.toFixed(1);
       return '<div class="r"><span class="ab" style="background:'+c+';color:'+textOn(c)+'">'+dp+'</span><span class="bar"><i style="width:'+Math.min(100,pct/60*100)+'%;background:'+c+'"></i><span>'+pct.toFixed(1)+'%</span></span><span class="chg '+(ch>0?'up':ch<0?'down':'')+'">'+cs+'</span></div>'; }).join('')+'</div>';
-    html+='<div class="ft">'+(window.__LOGO__?'<img src="'+window.__LOGO__+'" alt="electionmapsuk" style="height:16px;vertical-align:middle">':'&#127760; electionmapsuk')+'</div>';
+    html+='<div class="ft">'+(window.__LOGO__?'<img src="'+window.__LOGO__+'" alt="electionmapsuk" style="height:20px;vertical-align:middle">':'&#127760; electionmapsuk')+'</div>';
     tip.innerHTML=html; tip.style.display='block';
     var x=e.clientX+18,y=e.clientY+18;
     if(x+258>window.innerWidth) x=e.clientX-264; if(y+tip.offsetHeight>window.innerHeight) y=window.innerHeight-tip.offsetHeight-10;
