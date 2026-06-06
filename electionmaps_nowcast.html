@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>UK Election Nowcast</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<script src="https://d3js.org/d3.v7.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  :root{
+    --bg:#f7f7f5; --panel:#fff; --ink:#15171a; --muted:#6b7280; --faint:#9ca3af;
+    --line:#e3e3df; --line2:#eeeeea; --accent:#004d4d; --purple:#7c3aed; --purple-bg:#f5f1ff; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--bg); color:var(--ink); font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased;}
+  .wrap{max-width:1120px; margin:0 auto; padding:24px 20px 80px;}
+  .masthead{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:14px;}
+  .masthead h1{font-size:1.55rem; font-weight:900; letter-spacing:-0.03em; margin:0;}
+  .modepill{font-size:.7rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; padding:6px 11px; border-radius:7px; background:#eef2f2; color:var(--accent);}
+  body.custom .modepill{background:var(--purple); color:#fff;}
+  .custombanner{display:none; background:var(--purple-bg); border:1px solid #ddd0ff; color:#5b21b6; font-weight:600; font-size:.85rem; padding:10px 14px; border-radius:12px; margin-bottom:18px;}
+  body.custom .custombanner{display:block;}
+  .grid{display:grid; grid-template-columns:340px minmax(0,1fr); gap:24px; align-items:start;}
+  @media(max-width:880px){ .grid{grid-template-columns:1fr;} }
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px; transition:border-color .2s;}
+  body.custom .panel{border-color:#cdb4ff;}
+  body.custom #map-container{border-color:#a78bfa; box-shadow:0 0 0 3px var(--purple-bg);}
+  body.custom .controls-panel{border-color:#a78bfa; box-shadow:0 0 0 3px var(--purple-bg);}
+  .panel h2{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:0 0 14px;}
+
+  .sld{margin-bottom:13px; opacity:1; transition:opacity .2s;}
+  body:not(.custom) .sld{opacity:.55;}
+  .sld .top{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
+  .sld .lab{display:flex; align-items:center; gap:8px; font-weight:600; font-size:.88rem;}
+  .dot{width:11px; height:11px; border-radius:3px; flex:none;}
+  .sld .val{display:flex; align-items:center; gap:2px;}
+  .sld .val input{width:62px; border:1px solid var(--line); border-radius:7px; padding:4px 7px; text-align:right; font-weight:700; font-size:.9rem; font-family:inherit; font-variant-numeric:tabular-nums; color:var(--ink); background:#fff;}
+  .sld .val input:disabled{border-color:transparent; background:transparent;}
+  .sld .val small{color:var(--faint); font-weight:600;}
+  input[type=range]{-webkit-appearance:none; appearance:none; width:100%; height:11px; border-radius:99px; background:var(--line); outline:none; margin:2px 0;}
+  input[type=range]:disabled{opacity:.6;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:24px; height:24px; border-radius:50%; background:var(--c,#444); border:3px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.3); cursor:grab; margin-top:0;}
+  input[type=range]:disabled::-webkit-slider-thumb{cursor:not-allowed;}
+  input[type=range]::-moz-range-thumb{width:24px; height:24px; border-radius:50%; background:var(--c,#444); border:3px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.3);}
+  input[type=range]::-moz-range-track{height:11px; border-radius:99px;}
+  .group-label{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:18px 0 12px; padding-top:14px; border-top:1px solid var(--line2);}
+  .total-line{margin-top:14px; padding-top:14px; border-top:1px solid var(--line2); font-size:.82rem; color:var(--muted); display:flex; justify-content:space-between;}
+  .total-line b{color:var(--ink); font-variant-numeric:tabular-nums;} .total-line b.warn{color:#d97706;}
+  .ctrls{display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;}
+  .btn{flex:1; min-width:90px; padding:10px; border-radius:8px; border:1px solid var(--line); background:#fff; color:var(--ink); font-weight:700; font-size:.82rem; cursor:pointer; font-family:inherit;}
+  .btn:hover{border-color:var(--accent); color:var(--accent);}
+  .btn.primary{background:var(--accent); color:#fff; border-color:var(--accent);} .btn.primary:hover{background:#003a3a; color:#fff;}
+  .btn.purple{background:var(--purple); color:#fff; border-color:var(--purple);} .btn.purple:hover{background:#6d28d9; color:#fff;}
+
+  .headline{display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; margin-bottom:4px;}
+  .headline .big{font-size:1.5rem; font-weight:900; letter-spacing:-0.02em;}
+  .headline .maj{font-size:.9rem; font-weight:600; color:var(--muted);} .headline .maj.gov{color:#16a34a;}
+  .seatbar{position:relative; height:38px; border-radius:7px; overflow:hidden; display:flex; margin:16px 0 6px; background:var(--line2);}
+  .seatbar .seg{height:100%; transition:width .35s cubic-bezier(.4,0,.2,1);}
+  .majmark{position:absolute; top:-4px; bottom:-4px; left:50%; width:2px; background:#15171a; z-index:3;}
+  .majmark::after{content:'326'; position:absolute; top:-15px; left:50%; transform:translateX(-50%); font-size:.6rem; font-weight:700; color:var(--faint);}
+  .totstrip{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; margin-top:18px;}
+  @media(max-width:600px){ .totstrip{grid-template-columns:repeat(3,minmax(0,1fr));} }
+  .tot{border-radius:8px; padding:11px 12px;}
+  .tot .nm{font-size:.7rem; font-weight:800; text-transform:uppercase; letter-spacing:.02em; opacity:.92; margin-bottom:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .tot .n{font-size:1.75rem; font-weight:900; line-height:1; font-variant-numeric:tabular-nums;}
+  .tot .ch{display:inline-block; margin-top:4px; background:rgba(0,0,0,.2); padding:1px 7px; border-radius:5px; font-size:.74rem; font-weight:800; font-variant-numeric:tabular-nums;}
+
+  .section-h{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:28px 0 12px;}
+  #map-container{position:relative; width:100%; height:560px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
+  #map-container svg{cursor:grab;} #map-container svg:active{cursor:grabbing;}
+  .cp{stroke:#fff; stroke-width:.25px; transition:fill .18s; cursor:pointer;}
+  .cp:hover{stroke:#15171a; stroke-width:1px;} .cp.pinned{stroke:#15171a; stroke-width:1.1px;}
+  .mapmodes{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;}
+  .mmb{padding:7px 13px; border-radius:7px; border:1px solid var(--line); background:#fff; font-weight:700; font-size:.78rem; color:var(--muted); cursor:pointer; font-family:inherit;}
+  .mmb:hover{border-color:var(--accent); color:var(--accent);}
+  .mmb.active{background:var(--accent); color:#fff; border-color:var(--accent);}
+  .map-hint{position:absolute; left:14px; bottom:12px; font-size:.72rem; color:var(--faint); background:rgba(255,255,255,.85); padding:4px 9px; border-radius:8px; pointer-events:none;}
+
+  /* branded tooltip card */
+  #tip{position:fixed; pointer-events:none; z-index:60; width:230px; display:none; border-radius:12px; overflow:hidden; box-shadow:0 12px 32px rgba(0,0,0,.2); background:#fff;}
+  #tip .hd{background:#0b3d3d; color:#fff; padding:11px 12px 10px;}
+  #tip .hd .nm{font-size:1.12rem; font-weight:800; line-height:1.12; letter-spacing:-0.01em;}
+  #tip .hd .res{display:flex; gap:4px; align-items:stretch; margin:8px 0 7px; height:26px;}
+  #tip .hd .sq{width:27px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.72rem;}
+  #tip .hd .pill{flex:1; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.82rem;}
+  #tip .hd .meta{font-size:.72rem; opacity:.92; line-height:1.4;}
+  #tip .hd .meta b{font-weight:700;}
+  #tip .bd{padding:9px 12px 5px;}
+  #tip .r{display:grid; grid-template-columns:32px 1fr 42px; align-items:center; gap:6px; margin-bottom:4px;}
+  #tip .r .ab{font-size:.66rem; font-weight:800; text-align:center; padding:2px 0; border-radius:4px;}
+  #tip .r .bar{position:relative; height:17px; background:#eee; border-radius:4px; overflow:hidden;}
+  #tip .r .bar i{position:absolute; left:0; top:0; height:100%; border-radius:4px;}
+  #tip .r .bar span{position:absolute; left:7px; top:0; height:100%; display:flex; align-items:center; font-size:.68rem; font-weight:800; color:#fff;}
+  #tip .r .chg{font-size:.64rem; font-weight:800; text-align:center; padding:2px 0; border-radius:4px; background:#f0f0ee; color:var(--faint); font-variant-numeric:tabular-nums;}
+  #tip .r .chg.up{color:#16a34a;} #tip .r .chg.down{color:#dc2626;}
+  #tip .ft{text-align:center; padding:6px; color:var(--accent); font-weight:800; font-size:.72rem; border-top:1px solid var(--line2);}
+
+  /* coalition */
+  #coalition{margin-top:14px;}
+  #coal-total{text-align:center; font-size:1.25rem; font-weight:800; margin:6px 0 14px; color:#dc2626;}
+  #coal-total.gov{color:#16a34a;}
+  #coal-parties{display:flex; flex-wrap:wrap; gap:7px; justify-content:center;}
+  .coalbtn{padding:7px 12px; border-radius:7px; color:#fff; font-weight:800; font-size:.78rem; cursor:pointer; border:2px solid transparent; opacity:.45; transition:all .15s;}
+  .coalbtn.on{opacity:1; border-color:#15171a; transform:translateY(-1px);}
+  .coalbar{height:26px; border-radius:8px; overflow:hidden; display:flex; margin:14px 0 4px; background:var(--line2); position:relative;}
+  .coalbar .majmark{}
+
+  .table-tools{display:flex; justify-content:space-between; align-items:center; margin:28px 0 10px;}
+  .table-wrap{display:none; border:1px solid var(--line); border-radius:var(--radius); overflow:auto; max-height:560px;}
+  table{width:100%; border-collapse:collapse; font-size:.8rem;}
+  th,td{padding:9px 11px; text-align:left; border-bottom:1px solid var(--line2); white-space:nowrap;}
+  th{position:sticky; top:0; background:#fbfbfa; font-size:.68rem; text-transform:uppercase; letter-spacing:.05em; color:var(--faint); cursor:pointer;}
+  td.win{color:#fff; font-weight:800; text-align:center;} td.sh{text-align:center; font-variant-numeric:tabular-nums; color:var(--muted);}
+  .loading{padding:60px; text-align:center; color:var(--muted); font-weight:600;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="masthead">
+    <h1>UK Election Nowcast</h1>
+    <span class="modepill" id="modepill">Central projection</span>
+  </div>
+  <div class="custombanner">You're viewing a <b>custom model</b> &mdash; this is not ElectionMapsUK's central projection.</div>
+
+  <div id="loading" class="loading">Loading model&hellip;</div>
+
+  <div class="grid" id="app" style="display:none;">
+    <div class="panel controls-panel">
+      <h2>National vote share</h2>
+      <div id="sliders"></div>
+      <div class="group-label">Nations</div>
+      <div id="sliders-nat"></div>
+      <div class="total-line"><span>GB total (excl. SNP/Plaid)</span><b id="gbtotal">100%</b></div>
+      <div class="ctrls">
+        <button class="btn purple" id="modebtn">Switch to custom model</button>
+        <button class="btn" id="share">Share</button>
+      </div>
+      <div id="copied" style="display:none; text-align:center; font-size:.78rem; color:var(--accent); margin-top:8px;">Link copied</div>
+    </div>
+
+    <div>
+      <div class="panel">
+        <div class="headline"><span class="big" id="hl-party">&mdash;</span><span class="maj" id="hl-maj"></span></div>
+        <div class="seatbar" id="seatbar"><div class="majmark"></div></div>
+        <div class="totstrip" id="totstrip"></div>
+      </div>
+
+      <div class="section-h">Constituency map</div>
+      <div class="mapmodes" id="mapmodes">
+        <button class="mmb active" data-m="proj">Projection</button>
+        <button class="mmb" data-m="actual">2024 Result</button>
+        <button class="mmb" data-m="change">Change vs 2024</button>
+        <button class="mmb" data-m="margin">Margin</button>
+      </div>
+      <div id="map-container"><div class="map-hint">Scroll to zoom &middot; drag to pan &middot; click to pin</div></div>
+
+      <div class="panel" id="coalition" style="margin-top:14px;">
+        <h2>Coalition builder &mdash; click parties to reach 326</h2>
+        <div id="coal-total">0 / 326</div>
+        <div class="coalbar" id="coalbar"><div class="majmark"></div></div>
+        <div id="coal-parties"></div>
+      </div>
+
+      <div class="table-tools">
+        <div class="section-h" style="margin:0;">All constituencies</div>
+        <button class="btn" id="toggle-table" style="flex:none; padding:7px 16px;">Show table</button>
+      </div>
+      <div class="table-wrap" id="table-wrap"></div>
+    </div>
+  </div>
+</div>
+<div id="tip"></div>
+
+<script src="build/nowcast.browser.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  var DATA_BASE='./build/data/';
+  var GEOJSON_URL='https://raw.githubusercontent.com/electionmapsuk/custom-nowcast/refs/heads/main/Westminster_Parliamentary_Constituencies_July_2024_Boundaries_UK_BUC_4872633423108313063.geojson';
+
+  var PI={ LAB:{n:'Lab',c:'#E4003B'},CON:{n:'Con',c:'#0393D3'},RFM:{n:'Reform',c:'#2BC5DB'},LDM:{n:'Lib Dem',c:'#ff6400'},
+    GRN:{n:'Green',c:'#00A85A'},RES:{n:'Restore',c:'#051e40'},SNP:{n:'SNP',c:'#e6d62e'},PLC:{n:'Plaid',c:'#075d55'},
+    MIN:{n:'Ind/Minor',c:'#ca80a8'},OTH:{n:'Other',c:'#9ca3af'},WPB:{n:'Workers',c:'#7a1f3d'},SPKR:{n:'Speaker',c:'#374151'},
+    DUP:{n:'DUP',c:'#d46a4c'},ALL:{n:'Alliance',c:'#F6CB2F'},SDLP:{n:'SDLP',c:'#3A9E84'},UUP:{n:'UUP',c:'#48A5EE'},
+    TUV:{n:'TUV',c:'#0C3A6A'},SF:{n:'Sinn Féin',c:'#326760'},IND:{n:'Independent',c:'#888'},Ind:{n:'Independent',c:'#888'} };
+  var SPECTRUM=['SF','GRN','SNP','PLC','SDLP','LAB','ALL','LDM','MIN','IND','Ind','OTH','WPB','SPKR','UUP','CON','DUP','TUV','RFM','RES'];
+  var W2024={LAB:411,CON:121,RFM:5,LDM:72,GRN:4,SNP:9,PLC:4,RES:0,MIN:6,WPB:0,DUP:5,SF:7,SDLP:2,ALL:1,UUP:1,TUV:1,IND:1,SPKR:1};
+  var ROWS=[['s_lab','LAB','GB'],['s_con','CON','GB'],['s_ref','RFM','GB'],['s_lib','LDM','GB'],['s_grn','GRN','GB'],['s_res','RES','GB']];
+  var NATS=[['s_snp','SNP','Scotland'],['s_plc','PLC','Wales']];
+  var URLP={s_lab:'lab',s_con:'con',s_ref:'ref',s_lib:'ld',s_grn:'grn',s_res:'res',s_snp:'snp',s_plc:'pc'};
+
+  var ENGINE=null, CENTRAL=null, GE2024IN=null, NIFIXED=[], SEATBASE={};
+  var results=null, byName={}, geo=null, mode='central';
+  var mapG=null, mapDrawn=false, pinned=null, raf=null, mapMode='proj';
+  var coalSel={}; var CENTRAL_GBTOTAL=0; var COLBYID={};
+  var $=function(id){return document.getElementById(id);};
+  var loading=$('loading'), app=$('app'), tip=$('tip');
+  function norm(s){ return (s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^a-z0-9]/g,''); }
+  function textOn(c){ var h=(c||'#888').replace('#',''); if(h.length===3)h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2]; var r=parseInt(h.slice(0,2),16),g=parseInt(h.slice(2,4),16),b=parseInt(h.slice(4,6),16); return (0.299*r+0.587*g+0.114*b)/255>0.62?'#15171a':'#fff'; }
+  function dispWin(r){ return (r&&r.winner==='MIN'&&r.minType)?r.minType:(r?r.winner:''); }  // show WPB vs MIN in display
+
+  function start(seats,cfg,central,ni){
+    ENGINE={seats:seats,config_data:cfg}; CENTRAL=central; NIFIXED=ni||[];
+    seats.forEach(function(s){ SEATBASE[s.code]=s; });
+    GE2024IN=buildGE2024(seats,cfg);
+    CENTRAL_GBTOTAL=100*((central.gb.LAB||0)+(central.gb.CON||0)+(central.gb.RFM||0)+(central.gb.LDM||0)+(central.gb.GRN||0)+(central.gb.RES||0));
+    buildSliders(); loading.style.display='none'; app.style.display='grid';
+    setSliders(centralSliderVals()); setMode('central');
+    var p=new URLSearchParams(location.search); var hasC=false;
+    for(var id in URLP){ if(p.has(URLP[id])){ hasC=true; var el=$(id); if(el) el.value=p.get(URLP[id]); var n=$('n_'+id); if(n)n.value=(+el.value).toFixed(1);} }
+    if(hasC) setMode('custom');
+    recompute();
+  }
+  if(window.__NOWCAST_DATA__){ var d=window.__NOWCAST_DATA__; start(d.seats,d.config_data,d.central,d.fixed); }
+  else {
+    Promise.all([fetch(DATA_BASE+'seats.json').then(r=>r.json()),fetch(DATA_BASE+'config_data.json').then(r=>r.json()),fetch(DATA_BASE+'central.json').then(r=>r.json()),fetch(DATA_BASE+'fixed_seats.json').then(r=>r.json()).catch(function(){return [];})])
+      .then(function(a){ start(a[0],a[1],a[2],a[3]); })
+      .catch(function(e){ loading.textContent='Could not load data ('+e+').'; });
+  }
+  if(window.__GEO__){ geo=window.__GEO__; maybeDrawMap(); }
+  else { d3.json(GEOJSON_URL).then(function(g){ geo=g; maybeDrawMap(); }).catch(function(e){ console.error('map boundaries unavailable (expected on file://):',e); }); }
+
+  // ---- mode ----
+  function setMode(m){ mode=m; document.body.classList.toggle('custom', m==='custom');
+    var dis=(m!=='custom');
+    document.querySelectorAll('#sliders input,#sliders-nat input').forEach(function(i){ i.disabled=dis; });
+    $('modepill').textContent = m==='custom' ? 'Custom model' : 'Central projection';
+    $('modebtn').textContent = m==='custom' ? 'Back to central' : 'Switch to custom model';
+    $('modebtn').className = m==='custom' ? 'btn' : 'btn purple';
+  }
+  $('modebtn').addEventListener('click',function(){ if(mode==='custom'){ setSliders(centralSliderVals()); setMode('central'); recompute(); } else { setMode('custom'); } });
+
+  // ---- sliders + number inputs ----
+  function setTrack(el){ if(!el)return; var c=COLBYID[el.id]||'#888'; var mx=parseFloat(el.max)||100; var pct=Math.max(0,Math.min(100,(parseFloat(el.value)||0)/mx*100)); el.style.background='linear-gradient(90deg,'+c+' '+pct+'%, var(--line) '+pct+'%)'; }
+  function buildSliders(){
+    ROWS.concat(NATS).forEach(function(r){ COLBYID[r[0]]=(PI[r[1]]||{}).c||'#888'; });
+    $('sliders').innerHTML=ROWS.map(rowHTML).join('');
+    $('sliders-nat').innerHTML=NATS.map(rowHTML).join('');
+    document.querySelectorAll('#sliders input[type=range],#sliders-nat input[type=range]').forEach(function(r){ r.addEventListener('input',function(e){ syncFromSlider(e.target.id); }); });
+    document.querySelectorAll('#sliders input.num,#sliders-nat input.num').forEach(function(n){ n.addEventListener('input',function(e){ syncFromNum(e.target.id.slice(2)); }); });
+    document.querySelectorAll('#sliders input[type=range],#sliders-nat input[type=range]').forEach(setTrack);
+  }
+  function rowHTML(s){ var id=s[0],p=s[1],sub=s[2],c=PI[p].c;
+    return '<div class="sld"><div class="top"><span class="lab"><span class="dot" style="background:'+c+'"></span>'+PI[p].n+' <small>'+sub+'</small></span>'
+      +'<span class="val"><input class="num" id="n_'+id+'" type="number" step="0.1" min="0" max="'+(p==='SNP'?60:60)+'" value="0" disabled><small>%</small></span></div>'
+      +'<input type="range" id="'+id+'" min="0" max="'+(p==='SNP'?60:55)+'" step="0.1" value="0" style="--c:'+c+'"></div>';
+  }
+  function syncFromSlider(id){ $('n_'+id).value=(parseFloat($(id).value)||0).toFixed(1); setTrack($(id)); schedule(); }
+  function syncFromNum(id){ var v=parseFloat($('n_'+id).value)||0; $(id).value=v; setTrack($(id)); schedule(); }
+  function setSliders(v){ for(var id in v){ var el=$(id); if(el){ el.value=v[id]; var n=$('n_'+id); if(n)n.value=(+v[id]).toFixed(1); setTrack(el);} } }
+  function getVal(id){ return (parseFloat($(id).value)||0)/100; }
+  function compactInputs(){ return { gb:{LAB:getVal('s_lab'),CON:getVal('s_con'),RFM:getVal('s_ref'),LDM:getVal('s_lib'),GRN:getVal('s_grn'),RES:getVal('s_res')}, snpScotland:getVal('s_snp'), plcWales:getVal('s_plc') }; }
+  function centralSliderVals(){ var g=CENTRAL.gb; return {s_lab:(100*g.LAB).toFixed(1),s_con:(100*g.CON).toFixed(1),s_ref:(100*g.RFM).toFixed(1),s_lib:(100*g.LDM).toFixed(1),s_grn:(100*g.GRN).toFixed(1),s_res:(100*g.RES).toFixed(1),s_snp:(100*((CENTRAL.scotland&&CENTRAL.scotland.SNP)||0)).toFixed(1),s_plc:(100*((CENTRAL.wales&&CENTRAL.wales.PLC)||0)).toFixed(1)}; }
+  function ge2024SliderVals(){ var g=GE2024IN.gb; return {s_lab:(100*g.LAB).toFixed(1),s_con:(100*g.CON).toFixed(1),s_ref:(100*g.RFM).toFixed(1),s_lib:(100*g.LDM).toFixed(1),s_grn:(100*g.GRN).toFixed(1),s_res:(100*g.RES).toFixed(1),s_snp:(100*GE2024IN.scotland.SNP).toFixed(1),s_plc:(100*GE2024IN.wales.PLC).toFixed(1)}; }
+  function buildGE2024(seats,cfg){ var P=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','OTH'],acc={},tot=0; P.forEach(function(p){acc[p]=0;});
+    seats.forEach(function(s){var v=s.electorate*s.turnout;tot+=v;P.forEach(function(p){acc[p]+=(s.base[p]||0)*v;});}); P.forEach(function(p){acc[p]/=tot;}); var r=cfg.region_ge2024;
+    return {gb:{LAB:acc.LAB,CON:acc.CON,RFM:acc.RFM,LDM:acc.LDM,GRN:acc.GRN,RES:acc.RES},scotland:{LAB:r.Scotland.LAB,CON:r.Scotland.CON,RFM:r.Scotland.RFM,LDM:r.Scotland.LDM,GRN:r.Scotland.GRN,RES:r.Scotland.RES,SNP:r.Scotland.SNP},wales:{LAB:r.Wales.LAB,CON:r.Wales.CON,RFM:r.Wales.RFM,LDM:r.Wales.LDM,GRN:r.Wales.GRN,RES:r.Wales.RES,PLC:r.Wales.PLC},london:{LAB:r.London.LAB,CON:r.London.CON,RFM:r.London.RFM,LDM:r.London.LDM,GRN:r.London.GRN,RES:r.London.RES}}; }
+  function updateGbTotal(){ var cur=100*(getVal('s_lab')+getVal('s_con')+getVal('s_ref')+getVal('s_lib')+getVal('s_grn')+getVal('s_res'));
+    var el=$('gbtotal'); var html=cur.toFixed(1)+'%';
+    if(mode==='custom' && Math.abs(cur-CENTRAL_GBTOTAL)>0.05) html+=' <span style="color:var(--faint);font-weight:600">(was '+CENTRAL_GBTOTAL.toFixed(1)+'%)</span>';
+    el.innerHTML=html; el.className=Math.abs(cur-100)<=2?'':'warn'; }
+
+  // ---- compute ----
+  function schedule(){ if(raf) cancelAnimationFrame(raf); raf=requestAnimationFrame(function(){ recompute(); }); }
+  function recompute(inputObj){
+    if(!ENGINE||!window.NowcastEngine) return;
+    if(!inputObj || !inputObj.gb) inputObj=compactInputs();
+    var out=window.NowcastEngine.runNowcast(inputObj, ENGINE);
+    results=out.individualSeatResults; byName={};
+    results.forEach(function(s){ byName[norm(s.seatName)]=s; });
+    NIFIXED.forEach(function(s){ byName[norm(s.name)]={seatName:s.name,winner:s.winner,winner2024:s.w24,winner2019:s.w19,mp:s.mp,shares:s.shares,fixed:true}; });
+    var t=tallies(); renderTotals(t); maybeDrawMap(); updateGbTotal(); buildCoalition(t);
+    if(tableBuilt) buildTable();
+    if(pinned) showTip(pinned._evt,pinned._d,true);
+  }
+  function tallies(){ var t={}; results.forEach(function(r){ var w=dispWin(r); t[w]=(t[w]||0)+1; });
+    NIFIXED.forEach(function(s){ t[s.winner]=(t[s.winner]||0)+1; }); return t; }
+  function band(maj){ return maj>=0.15?'Safe':maj>=0.10?'Likely':maj>=0.05?'Lean':'Tilt'; }
+
+  function renderTotals(t){
+    var order=['LAB','CON','RFM','LDM','GRN','SNP','PLC','RES','MIN','WPB'].slice().sort(function(a,b){return (t[b]||0)-(t[a]||0);});
+    $('totstrip').innerHTML=order.filter(function(p){return t[p];}).map(function(p){
+      var n=t[p]||0, ch=n-(W2024[p]||0), cs=ch>0?('+'+ch):(ch<0?String(ch):'0'); var tc=textOn(PI[p].c);
+      return '<div class="tot" style="background:'+PI[p].c+';color:'+tc+'"><div class="nm">'+PI[p].n+'</div><div class="n">'+n+'</div><div class="ch">'+cs+'</div></div>'; }).join('');
+    $('seatbar').innerHTML='<div class="majmark"></div>'+SPECTRUM.filter(function(p){return t[p];}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/650)+'%;background:'+(PI[p]?PI[p].c:'#999')+'"></div>'; }).join('');
+    var top=Object.keys(t).filter(function(p){return PI[p];}).sort(function(a,b){return t[b]-t[a];})[0]; var lead=t[top]||0;
+    $('hl-party').textContent=PI[top].n+' largest'; $('hl-party').style.color=PI[top].c;
+    var maj=$('hl-maj'); if(lead>=326){ maj.textContent='Majority of '+(2*lead-650); maj.className='maj gov'; } else { maj.textContent=(326-lead)+' short of a majority'; maj.className='maj'; }
+  }
+
+  // ---- map ----
+  function maybeDrawMap(){ if(!geo||!results||typeof d3==='undefined') return; if(!mapDrawn) drawMap(); else renderMapColors(); }
+  function drawMap(){ if(!geo||mapDrawn||typeof d3==='undefined') return;
+    var c=d3.select('#map-container'); var w=c.node().getBoundingClientRect().width||800,h=560;
+    var svg=c.append('svg').attr('width',w).attr('height',h); mapG=svg.append('g');
+    var proj=d3.geoMercator().fitSize([w,h],geo); var path=d3.geoPath().projection(proj);
+    svg.call(d3.zoom().scaleExtent([1,9]).on('zoom',function(e){ mapG.attr('transform',e.transform); tip.style.display='none'; }));
+    mapG.selectAll('path').data(geo.features).enter().append('path').attr('class','cp').attr('d',path).attr('fill','#e5e7eb')
+      .on('mousemove',function(e,d){ if(pinned) return; showTip(e,d,false); })
+      .on('mouseout',function(){ if(!pinned) tip.style.display='none'; })
+      .on('click',function(e,d){ pinned=(pinned&&pinned._d===d)?null:{_d:d,_evt:e}; mapG.selectAll('.cp').classed('pinned',false); if(pinned){ d3.select(this).classed('pinned',true); showTip(e,d,true);} else tip.style.display='none'; });
+    mapDrawn=true; renderMapColors();
+  }
+  function seatOf(d){ var p=(d&&d.properties)||{}; var nm=p.PCON24NM||p.PCON25NM||p.PCONNM||p.name||p.Name||p.NAME||(Object.keys(p).length?p[Object.keys(p)[0]]:''); return {nm:nm, s:byName[norm(nm||'')]}; }
+  var MARGINCOL={
+    WPB:{Safe:'#2853a5',Likely:'#5375b7',Lean:'#7e98c9',Tilt:'#a9badb'}, LAB:{Safe:'#e4003b',Likely:'#e93362',Lean:'#ef6689',Tilt:'#f499b1'},
+    RES:{Safe:'#051e40',Likely:'#374b66',Lean:'#69788c',Tilt:'#9ba5b3'}, CON:{Safe:'#0393d3',Likely:'#35a9dc',Lean:'#68bee5',Tilt:'#9ad4ed'},
+    RFM:{Safe:'#2bc5db',Likely:'#55d1e2',Lean:'#80dce9',Tilt:'#aae8f1'}, LDM:{Safe:'#ff6400',Likely:'#ff7633',Lean:'#ff9866',Tilt:'#ffbb99'},
+    GRN:{Safe:'#00a85a',Likely:'#33b97b',Lean:'#66cb9c',Tilt:'#99dcbd'}, SNP:{Safe:'#e6d62e',Likely:'#ebde58',Lean:'#f0e682',Tilt:'#f5efab'},
+    PLC:{Safe:'#075d55',Likely:'#397d77',Lean:'#6a9e99',Tilt:'#9cbebb'}, MIN:{Safe:'#cb87ae',Likely:'#d59fbe',Lean:'#e0b7ce',Tilt:'#eacfdf'} };
+  function bandOf(m){ return m>=0.15?'Safe':m>=0.10?'Likely':m>=0.05?'Lean':'Tilt'; }
+  function seatMaj(r){ var v=Object.keys(r.shares||{}).map(function(p){return r.shares[p];}).sort(function(a,b){return b-a;}); return (v[0]||0)-(v[1]||0); }
+  function colourFor(r){ var dw=dispWin(r);
+    if(mapMode==='actual'){ var w=r.winner2024; return (PI[w]&&PI[w].c)||'#9ca3af'; }
+    if(mapMode==='change'){ return (dw!==r.winner2024)?((PI[dw]&&PI[dw].c)||'#9ca3af'):'#e8e8e4'; }
+    if(mapMode==='margin'){ var mc=MARGINCOL[dw]; return mc?mc[bandOf(seatMaj(r))]:((PI[dw]&&PI[dw].c)||'#9ca3af'); }
+    return (PI[dw]&&PI[dw].c)||'#9ca3af'; }
+  function renderMapColors(){ if(!mapDrawn||!mapG) return; var hit=0,tot=0;
+    mapG.selectAll('.cp').attr('fill',function(d){ tot++; try{ var o=seatOf(d); if(!o.s) return '#e5e7eb'; hit++; return colourFor(o.s); }catch(e){ return '#e5e7eb'; } });
+    if(window.console&&!renderMapColors._l){ renderMapColors._l=1; console.log('[nowcast] map seats matched '+hit+'/'+tot); } }
+
+  function showTip(e,d,pin){
+    var o=seatOf(d); if(!o.s){ tip.style.display='none'; return; }
+    var s=o.s, sh=s.shares;
+    var sorted=Object.keys(sh).filter(function(p){return sh[p]>0.003;}).sort(function(a,b){return sh[b]-sh[a];});
+    var maj=(sorted.length>1)?(sh[sorted[0]]-sh[sorted[1]]):sh[sorted[0]]||0;
+    var base=SEATBASE[s.code]?SEATBASE[s.code].a24:null;
+    var w19=s.winner2019, w24=s.winner2024, wn=dispWin(s);
+    var c19=(PI[w19]||PI.OTH).c, c24=(PI[w24]||PI.OTH).c, cwn=(PI[wn]||PI.OTH).c;
+    var pillBg=(!s.fixed&&MARGINCOL[wn])?MARGINCOL[wn][band(maj)]:cwn;
+    var html='<div class="hd"><div class="nm">'+s.seatName+'</div>'+((mode==='custom')?'<div style="display:inline-block;margin-top:5px;font-size:.6rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:#7c3aed;color:#fff;padding:2px 7px;border-radius:5px">Custom model</div>':'')
+      +'<div class="res"><div class="sq" style="background:'+c19+';color:'+textOn(c19)+'">19</div><div class="sq" style="background:'+c24+';color:'+textOn(c24)+'">24</div>'
+      +'<div class="pill" style="background:'+pillBg+';color:'+textOn(pillBg)+'">'+(s.fixed?(PI[wn]?PI[wn].n:wn):band(maj)+' '+wn)+'</div></div>'
+      +'<div class="meta">'+(s.fixed?'':'<b>Projected Majority:</b> '+(maj*100).toFixed(1)+'%<br>')
+      +(s.mp?('<b>2024 MP:</b> '+s.mp):'')+'</div></div>';
+    html+='<div class="bd">'+sorted.slice(0,7).map(function(p){ var dp=(p==='MIN'?(s.minType||'MIN'):p); var c=(PI[dp]||PI.OTH).c; var pct=sh[p]*100;
+      var bk=(p==='MIN'?(s.minType||'MIN'):p); var ch=(base&&base[bk]!=null)?((sh[p]-base[bk])*100):null; var cs=ch==null?'':(ch>0?'+':'')+ch.toFixed(1);
+      return '<div class="r"><span class="ab" style="background:'+c+';color:'+textOn(c)+'">'+dp+'</span><span class="bar"><i style="width:'+Math.min(100,pct/60*100)+'%;background:'+c+'"></i><span>'+pct.toFixed(1)+'%</span></span><span class="chg '+(ch>0?'up':ch<0?'down':'')+'">'+cs+'</span></div>'; }).join('')+'</div>';
+    html+='<div class="ft">'+(window.__LOGO__?'<img src="'+window.__LOGO__+'" alt="electionmapsuk" style="height:20px;vertical-align:middle">':'&#127760; electionmapsuk')+'</div>';
+    tip.innerHTML=html; tip.style.display='block';
+    var x=e.clientX+18,y=e.clientY+18;
+    if(x+258>window.innerWidth) x=e.clientX-264; if(y+tip.offsetHeight>window.innerHeight) y=window.innerHeight-tip.offsetHeight-10;
+    tip.style.left=Math.max(8,x)+'px'; tip.style.top=Math.max(8,y)+'px';
+    if(pinned){ pinned._evt=e; pinned._d=d; }
+  }
+
+  function buildCoalition(t){
+    var order=Object.keys(t).filter(function(p){return t[p]>0&&PI[p];}).sort(function(a,b){return t[b]-t[a];});
+    var keep={}; order.forEach(function(p){ keep[p]=(coalSel[p]!==undefined)?coalSel[p]:false; }); coalSel=keep;
+    if(!order.some(function(p){return coalSel[p];}) && order.length) coalSel[order[0]]=true;
+    $('coal-parties').innerHTML=order.map(function(p){ return '<div class="coalbtn'+(coalSel[p]?' on':'')+'" data-p="'+p+'" style="background:'+PI[p].c+'">'+PI[p].n+' '+t[p]+'</div>'; }).join('');
+    $('coal-parties').querySelectorAll('.coalbtn').forEach(function(b){ b.addEventListener('click',function(){ var p=b.getAttribute('data-p'); coalSel[p]=!coalSel[p]; buildCoalition(t); }); });
+    var tot=0; order.forEach(function(p){ if(coalSel[p]) tot+=t[p]; });
+    $('coal-total').textContent=tot+' / 326'; $('coal-total').className=tot>=326?'gov':'';
+    $('coalbar').innerHTML='<div class="majmark"></div>'+order.filter(function(p){return coalSel[p];}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/650)+'%;background:'+PI[p].c+'"></div>'; }).join('');
+  }
+
+  var tableBuilt=false, sortCol=null, sortDir=1;
+  function buildTable(){ var tp=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','OTH'];
+    var h='<table><thead><tr><th data-c="name">Constituency</th><th data-c="win">Now</th><th>2024</th>'+tp.map(function(p){return '<th data-c="'+p+'">'+p+'</th>';}).join('')+'</tr></thead><tbody>';
+    results.forEach(function(s){ var dw=dispWin(s); var wc=(PI[dw]||PI.OTH).c, w2=(PI[s.winner2024]||PI.OTH).c;
+      h+='<tr><td>'+s.seatName+'</td><td class="win" style="background:'+wc+'">'+dw+'</td><td class="win" style="background:'+w2+'">'+s.winner2024+'</td>'+tp.map(function(p){var v=s.shares[p];return '<td class="sh">'+(v>0.005?(v*100).toFixed(0)+'%':'&middot;')+'</td>';}).join('')+'</tr>'; });
+    h+='</tbody></table>'; $('table-wrap').innerHTML=h;
+    $('table-wrap').querySelectorAll('th[data-c]').forEach(function(th){ th.addEventListener('click',function(){ sortTable(th.getAttribute('data-c')); }); }); tableBuilt=true; }
+  function sortTable(col){ sortDir=(sortCol===col)?-sortDir:1; sortCol=col; var tb=$('table-wrap').querySelector('tbody'); var rows=Array.prototype.slice.call(tb.querySelectorAll('tr'));
+    rows.sort(function(a,b){ if(col==='name'){return a.cells[0].textContent.localeCompare(b.cells[0].textContent)*sortDir;} if(col==='win'){return a.cells[1].textContent.localeCompare(b.cells[1].textContent)*sortDir;}
+      var tp=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','OTH']; var i=3+tp.indexOf(col); var av=parseFloat(a.cells[i].textContent)||-1, bv=parseFloat(b.cells[i].textContent)||-1; return (av-bv)*sortDir; });
+    tb.innerHTML=''; rows.forEach(function(r){tb.appendChild(r);}); }
+  $('toggle-table').addEventListener('click',function(){ var w=$('table-wrap'); if(w.style.display==='block'){ w.style.display='none'; this.textContent='Show table'; } else { if(!tableBuilt) buildTable(); w.style.display='block'; this.textContent='Hide table'; } });
+
+  document.querySelectorAll('.mmb').forEach(function(b){ b.addEventListener('click',function(){ mapMode=b.getAttribute('data-m'); document.querySelectorAll('.mmb').forEach(function(x){x.classList.remove('active');}); b.classList.add('active'); renderMapColors(); }); });
+  $('share').addEventListener('click',function(){ var p=new URLSearchParams(); for(var id in URLP){ p.set(URLP[id],$(id).value); } var url=location.href.split('?')[0]+'?'+p.toString();
+    var ta=document.createElement('textarea'); ta.value=url; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); $('copied').style.display='block'; setTimeout(function(){$('copied').style.display='none';},1800);}catch(e){ prompt('Copy link:',url);} document.body.removeChild(ta); });
+});
+</script>
+</body>
+</html>
