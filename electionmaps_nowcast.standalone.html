@@ -722,11 +722,13 @@ function runNowcast(inputs, data, cfgOverride) {
     // 'Other' pool from the STM only (MRPs fold the independent vote into their OTH, so including
     // it would inflate independents - we ignore MRP non-majors). MRP's OTH is added only if the
     // STM has essentially no 'other' in the seat. Split MIN (largest) / OTH (rest) by STM ratio.
+    // each MRP's single 'Others' value is split MIN/OTH by the STM ratio (e.g. STM 15/5 -> MIN 75%,
+    // OTH 25%), then blended 0.67 STM / 0.165 each MRP - exactly like the Add MRP Data cell.
     const oM=tv.MIN||0, oO=tv.OTH||0, oSum=oM+oO;
-    const mrpMinor = oSum<0.005 ? (cfg.blend.yougov*k*((y&&y.OTH)||0) + cfg.blend.mic*k*((m&&m.OTH)||0)) : 0;
-    const oTot = oSum + mrpMinor;
-    const rMIN = oSum>0 ? oM/oSum : 1;
-    final.MIN = oTot*rMIN; final.OTH = oTot*(1-rMIN);
+    const rMIN = oSum>0 ? oM/oSum : 1, rOTH = 1-rMIN;
+    const mrpOther = cfg.blend.yougov*k*((y&&y.OTH)||0) + cfg.blend.mic*k*((m&&m.OTH)||0);
+    final.MIN = cfg.blend.transition*oM + mrpOther*rMIN;
+    final.OTH = cfg.blend.transition*oO + mrpOther*rOTH;
     if(final.OTH>final.MIN){ const tmp=final.MIN; final.MIN=final.OTH; final.OTH=tmp; }  // MIN >= OTH always
     const tot = sum(CANON.map(p=>final[p]));
     CANON.forEach(p=> final[p] = tot>0?final[p]/tot:0);
