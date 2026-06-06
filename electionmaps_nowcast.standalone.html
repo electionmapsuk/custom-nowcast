@@ -1257,8 +1257,10 @@ document.addEventListener('DOMContentLoaded', function(){
       .on('click',function(e,d){ pinned=(pinned&&pinned._d===d)?null:{_d:d,_evt:e}; mapG.selectAll('.cp').classed('pinned',false); if(pinned){ d3.select(this).classed('pinned',true); showTip(e,d,true);} else tip.style.display='none'; });
     mapDrawn=true; renderMapColors();
   }
-  function renderMapColors(){ if(!mapDrawn||!mapG) return;
-    mapG.selectAll('.cp').attr('fill',function(d){ var o=seatOf(d); if(!o.s) return '#e5e7eb'; var w=o.s.winner; return (PI[w]&&PI[w].c)||'#9ca3af'; }); }
+  function seatOf(d){ var p=(d&&d.properties)||{}; var nm=p.PCON24NM||p.PCON25NM||p.PCONNM||p.name||p.Name||p.NAME||(Object.keys(p).length?p[Object.keys(p)[0]]:''); return {nm:nm, s:byName[norm(nm||'')]}; }
+  function renderMapColors(){ if(!mapDrawn||!mapG) return; var hit=0,tot=0;
+    mapG.selectAll('.cp').attr('fill',function(d){ tot++; try{ var o=seatOf(d); if(!o.s) return '#e5e7eb'; hit++; var w=o.s.winner; return (PI[w]&&PI[w].c)||'#9ca3af'; }catch(e){ return '#e5e7eb'; } });
+    if(window.console&&!renderMapColors._l){ renderMapColors._l=1; console.log('[nowcast] map seats matched '+hit+'/'+tot); } }
 
   function showTip(e,d,pin){
     var o=seatOf(d); if(!o.s){ tip.style.display='none'; return; }
