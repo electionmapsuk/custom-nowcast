@@ -25,6 +25,7 @@
   @media(max-width:880px){ .grid{grid-template-columns:1fr;} }
   .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px; transition:border-color .2s;}
   body.custom .panel{border-color:#cdb4ff;}
+  body.custom #map-container{border-color:#a78bfa; box-shadow:0 0 0 3px var(--purple-bg);}
   body.custom .controls-panel{border-color:#a78bfa; box-shadow:0 0 0 3px var(--purple-bg);}
   .panel h2{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:0 0 14px;}
 
@@ -71,10 +72,14 @@
   #map-container svg{cursor:grab;} #map-container svg:active{cursor:grabbing;}
   .cp{stroke:#fff; stroke-width:.25px; transition:fill .18s; cursor:pointer;}
   .cp:hover{stroke:#15171a; stroke-width:1px;} .cp.pinned{stroke:#15171a; stroke-width:1.1px;}
+  .mapmodes{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;}
+  .mmb{padding:7px 13px; border-radius:7px; border:1px solid var(--line); background:#fff; font-weight:700; font-size:.78rem; color:var(--muted); cursor:pointer; font-family:inherit;}
+  .mmb:hover{border-color:var(--accent); color:var(--accent);}
+  .mmb.active{background:var(--accent); color:#fff; border-color:var(--accent);}
   .map-hint{position:absolute; left:14px; bottom:12px; font-size:.72rem; color:var(--faint); background:rgba(255,255,255,.85); padding:4px 9px; border-radius:8px; pointer-events:none;}
 
   /* branded tooltip card */
-  #tip{position:fixed; pointer-events:none; z-index:60; width:248px; display:none; border-radius:12px; overflow:hidden; box-shadow:0 12px 32px rgba(0,0,0,.2); background:#fff;}
+  #tip{position:fixed; pointer-events:none; z-index:60; width:230px; display:none; border-radius:12px; overflow:hidden; box-shadow:0 12px 32px rgba(0,0,0,.2); background:#fff;}
   #tip .hd{background:#0b3d3d; color:#fff; padding:11px 12px 10px;}
   #tip .hd .nm{font-size:.98rem; font-weight:800; line-height:1.1; letter-spacing:-0.01em;}
   #tip .hd .res{display:flex; gap:4px; align-items:stretch; margin:8px 0 7px; height:26px;}
@@ -83,12 +88,13 @@
   #tip .hd .meta{font-size:.72rem; opacity:.92; line-height:1.4;}
   #tip .hd .meta b{font-weight:700;}
   #tip .bd{padding:9px 12px 5px;}
-  #tip .r{display:grid; grid-template-columns:34px 1fr 38px; align-items:center; gap:6px; margin-bottom:4px;}
+  #tip .r{display:grid; grid-template-columns:32px 1fr 42px; align-items:center; gap:6px; margin-bottom:4px;}
   #tip .r .ab{font-size:.66rem; font-weight:800; text-align:center; padding:2px 0; border-radius:4px;}
   #tip .r .bar{position:relative; height:17px; background:#eee; border-radius:4px; overflow:hidden;}
   #tip .r .bar i{position:absolute; left:0; top:0; height:100%; border-radius:4px;}
-  #tip .r .bar span{position:absolute; left:6px; top:0; height:100%; display:flex; align-items:center; font-size:.68rem; font-weight:800; color:#15171a;}
-  #tip .r .chg{font-size:.66rem; font-weight:600; color:var(--muted); text-align:right; font-variant-numeric:tabular-nums;}
+  #tip .r .bar span{position:absolute; left:7px; top:0; height:100%; display:flex; align-items:center; font-size:.68rem; font-weight:800; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.55);}
+  #tip .r .chg{font-size:.64rem; font-weight:800; text-align:center; padding:2px 0; border-radius:4px; background:#f0f0ee; color:var(--faint); font-variant-numeric:tabular-nums;}
+  #tip .r .chg.up{color:#16a34a;} #tip .r .chg.down{color:#dc2626;}
   #tip .ft{text-align:center; padding:6px; color:var(--accent); font-weight:800; font-size:.72rem; border-top:1px solid var(--line2);}
 
   /* coalition */
@@ -129,7 +135,6 @@
       <div class="total-line"><span>GB total (excl. SNP/Plaid)</span><b id="gbtotal">100%</b></div>
       <div class="ctrls">
         <button class="btn purple" id="modebtn">Switch to custom model</button>
-        <button class="btn" id="ge2024">GE2024</button>
         <button class="btn" id="share">Share</button>
       </div>
       <div id="copied" style="display:none; text-align:center; font-size:.78rem; color:var(--accent); margin-top:8px;">Link copied</div>
@@ -142,7 +147,13 @@
         <div class="totstrip" id="totstrip"></div>
       </div>
 
-      <div class="section-h">Constituency map &mdash; hover for detail</div>
+      <div class="section-h">Constituency map</div>
+      <div class="mapmodes" id="mapmodes">
+        <button class="mmb active" data-m="proj">Projection</button>
+        <button class="mmb" data-m="actual">2024 Result</button>
+        <button class="mmb" data-m="change">Change vs 2024</button>
+        <button class="mmb" data-m="margin">Margin</button>
+      </div>
       <div id="map-container"><div class="map-hint">Scroll to zoom &middot; drag to pan &middot; click to pin</div></div>
 
       <div class="panel" id="coalition" style="margin-top:14px;">
@@ -430,7 +441,7 @@ const CONFIG = {
   },
   regionalSwingMix: 0.5,   // 0 = pure proportional, 1 = pure additive/uniform
   minElasticity: 0.4,      // how much independents/MIN shares move with the swing (display dynamics)
-  minWinFloor: 0.30,       // MIN only WINS a seat where its 2024 base is a genuine stronghold
+  minWinFloor: 0.12,       // MIN can win only where a real independent/other stood in 2024
   // ----------------------------------------------------------------------
   blocs: { left:['LAB','GRN','LDM'], right:['CON','RFM','RES'], nationalist:['SNP','PLC'], neutral:['MIN','OTH','WPB'] },
   blocProtection: { strength: 0.4, deadband: 0.03 },   // soft bumpers (B2)
@@ -725,7 +736,9 @@ function runNowcast(inputs, data, cfgOverride) {
 
   const results = seatShares.map(({s, final})=>{
     let winner = CANON.reduce((a,b)=> final[b]>final[a]?b:a, CANON[0]);
-    if (winner==='MIN' && (s.base.MIN||0) < cfg.minWinFloor && (final.MIN||0) < 0.40)  // not a stronghold & not dominant
+    // MIN can only win where a real local independent/other stood in 2024 (else next best);
+    // but if it genuinely leads it wins (no contradiction with the displayed bars).
+    if (winner==='MIN' && (s.base.MIN||0) < cfg.minWinFloor)
       winner = CANON.filter(p=>p!=='MIN').reduce((a,b)=> final[b]>final[a]?b:a, 'LAB');
     if (s.incumbent2024==='SPKR') winner = 'SPKR';
     return { seatName:s.name, code:s.code, winner, minType:(s.minType||'MIN'),
@@ -772,7 +785,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
   var ENGINE=null, CENTRAL=null, GE2024IN=null, NIFIXED=[], SEATBASE={};
   var results=null, byName={}, geo=null, mode='central';
-  var mapG=null, mapDrawn=false, pinned=null, raf=null;
+  var mapG=null, mapDrawn=false, pinned=null, raf=null, mapMode='proj';
   var coalSel={}; var CENTRAL_GBTOTAL=0; var COLBYID={};
   var $=function(id){return document.getElementById(id);};
   var loading=$('loading'), app=$('app'), tip=$('tip');
@@ -877,14 +890,27 @@ document.addEventListener('DOMContentLoaded', function(){
     var proj=d3.geoMercator().fitSize([w,h],geo); var path=d3.geoPath().projection(proj);
     svg.call(d3.zoom().scaleExtent([1,9]).on('zoom',function(e){ mapG.attr('transform',e.transform); tip.style.display='none'; }));
     mapG.selectAll('path').data(geo.features).enter().append('path').attr('class','cp').attr('d',path).attr('fill','#e5e7eb')
-      .on('mousemove',function(e,d){ showTip(e,d,false); })
+      .on('mousemove',function(e,d){ if(pinned) return; showTip(e,d,false); })
       .on('mouseout',function(){ if(!pinned) tip.style.display='none'; })
       .on('click',function(e,d){ pinned=(pinned&&pinned._d===d)?null:{_d:d,_evt:e}; mapG.selectAll('.cp').classed('pinned',false); if(pinned){ d3.select(this).classed('pinned',true); showTip(e,d,true);} else tip.style.display='none'; });
     mapDrawn=true; renderMapColors();
   }
   function seatOf(d){ var p=(d&&d.properties)||{}; var nm=p.PCON24NM||p.PCON25NM||p.PCONNM||p.name||p.Name||p.NAME||(Object.keys(p).length?p[Object.keys(p)[0]]:''); return {nm:nm, s:byName[norm(nm||'')]}; }
+  var MARGINCOL={
+    WPB:{Safe:'#2853a5',Likely:'#5375b7',Lean:'#7e98c9',Tilt:'#a9badb'}, LAB:{Safe:'#e4003b',Likely:'#e93362',Lean:'#ef6689',Tilt:'#f499b1'},
+    RES:{Safe:'#051e40',Likely:'#374b66',Lean:'#69788c',Tilt:'#9ba5b3'}, CON:{Safe:'#0393d3',Likely:'#35a9dc',Lean:'#68bee5',Tilt:'#9ad4ed'},
+    RFM:{Safe:'#2bc5db',Likely:'#55d1e2',Lean:'#80dce9',Tilt:'#aae8f1'}, LDM:{Safe:'#ff6400',Likely:'#ff7633',Lean:'#ff9866',Tilt:'#ffbb99'},
+    GRN:{Safe:'#00a85a',Likely:'#33b97b',Lean:'#66cb9c',Tilt:'#99dcbd'}, SNP:{Safe:'#e6d62e',Likely:'#ebde58',Lean:'#f0e682',Tilt:'#f5efab'},
+    PLC:{Safe:'#075d55',Likely:'#397d77',Lean:'#6a9e99',Tilt:'#9cbebb'}, MIN:{Safe:'#cb87ae',Likely:'#d59fbe',Lean:'#e0b7ce',Tilt:'#eacfdf'} };
+  function bandOf(m){ return m>=0.15?'Safe':m>=0.10?'Likely':m>=0.05?'Lean':'Tilt'; }
+  function seatMaj(r){ var v=Object.keys(r.shares||{}).map(function(p){return r.shares[p];}).sort(function(a,b){return b-a;}); return (v[0]||0)-(v[1]||0); }
+  function colourFor(r){ var dw=dispWin(r);
+    if(mapMode==='actual'){ var w=r.winner2024; return (PI[w]&&PI[w].c)||'#9ca3af'; }
+    if(mapMode==='change'){ return (dw!==r.winner2024)?((PI[dw]&&PI[dw].c)||'#9ca3af'):'#e8e8e4'; }
+    if(mapMode==='margin'){ var mc=MARGINCOL[dw]; return mc?mc[bandOf(seatMaj(r))]:((PI[dw]&&PI[dw].c)||'#9ca3af'); }
+    return (PI[dw]&&PI[dw].c)||'#9ca3af'; }
   function renderMapColors(){ if(!mapDrawn||!mapG) return; var hit=0,tot=0;
-    mapG.selectAll('.cp').attr('fill',function(d){ tot++; try{ var o=seatOf(d); if(!o.s) return '#e5e7eb'; hit++; var w=dispWin(o.s); return (PI[w]&&PI[w].c)||'#9ca3af'; }catch(e){ return '#e5e7eb'; } });
+    mapG.selectAll('.cp').attr('fill',function(d){ tot++; try{ var o=seatOf(d); if(!o.s) return '#e5e7eb'; hit++; return colourFor(o.s); }catch(e){ return '#e5e7eb'; } });
     if(window.console&&!renderMapColors._l){ renderMapColors._l=1; console.log('[nowcast] map seats matched '+hit+'/'+tot); } }
 
   function showTip(e,d,pin){
@@ -902,7 +928,7 @@ document.addEventListener('DOMContentLoaded', function(){
       +(s.mp?('<b>2024 MP:</b> '+s.mp):'')+'</div></div>';
     html+='<div class="bd">'+sorted.slice(0,7).map(function(p){ var dp=(p==='MIN'?(s.minType||'MIN'):p); var c=(PI[dp]||PI.OTH).c; var pct=sh[p]*100;
       var bk=(p==='MIN'?(s.minType||'MIN'):p); var ch=(base&&base[bk]!=null)?((sh[p]-base[bk])*100):null; var cs=ch==null?'':(ch>0?'+':'')+ch.toFixed(1);
-      return '<div class="r"><span class="ab" style="background:'+c+';color:'+textOn(c)+'">'+dp+'</span><span class="bar"><i style="width:'+Math.min(100,pct/60*100)+'%;background:'+c+'"></i><span>'+pct.toFixed(1)+'%</span></span><span class="chg">'+cs+'</span></div>'; }).join('')+'</div>';
+      return '<div class="r"><span class="ab" style="background:'+c+';color:'+textOn(c)+'">'+dp+'</span><span class="bar"><i style="width:'+Math.min(100,pct/60*100)+'%;background:'+c+'"></i><span>'+pct.toFixed(1)+'%</span></span><span class="chg '+(ch>0?'up':ch<0?'down':'')+'">'+cs+'</span></div>'; }).join('')+'</div>';
     html+='<div class="ft">&#127760; electionmapsuk</div>';
     tip.innerHTML=html; tip.style.display='block';
     var x=e.clientX+18,y=e.clientY+18;
@@ -935,7 +961,7 @@ document.addEventListener('DOMContentLoaded', function(){
     tb.innerHTML=''; rows.forEach(function(r){tb.appendChild(r);}); }
   $('toggle-table').addEventListener('click',function(){ var w=$('table-wrap'); if(w.style.display==='block'){ w.style.display='none'; this.textContent='Show table'; } else { if(!tableBuilt) buildTable(); w.style.display='block'; this.textContent='Hide table'; } });
 
-  $('ge2024').addEventListener('click',function(){ setMode('custom'); setSliders(ge2024SliderVals()); recompute(GE2024IN); });
+  document.querySelectorAll('.mmb').forEach(function(b){ b.addEventListener('click',function(){ mapMode=b.getAttribute('data-m'); document.querySelectorAll('.mmb').forEach(function(x){x.classList.remove('active');}); b.classList.add('active'); renderMapColors(); }); });
   $('share').addEventListener('click',function(){ var p=new URLSearchParams(); for(var id in URLP){ p.set(URLP[id],$(id).value); } var url=location.href.split('?')[0]+'?'+p.toString();
     var ta=document.createElement('textarea'); ta.value=url; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); $('copied').style.display='block'; setTimeout(function(){$('copied').style.display='none';},1800);}catch(e){ prompt('Copy link:',url);} document.body.removeChild(ta); });
 });
