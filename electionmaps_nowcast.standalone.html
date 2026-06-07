@@ -130,7 +130,7 @@
 
   /* coalition */
   #coalition{margin-top:14px;}
-  #coal-total{text-align:center; font-size:1.25rem; font-weight:800; margin:6px 0 14px; color:#dc2626;}
+  #coal-total{text-align:center; font-size:1.05rem; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.3; margin:6px 0 14px; color:#dc2626;}
   #coal-total.gov{color:#16a34a;}
   #coal-parties{display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin-top:16px;}
   .coalbtn{display:flex; flex-direction:column; align-items:center; gap:1px; min-width:44px; padding:5px 9px 6px; border-radius:8px; color:#fff; cursor:pointer; border:1.5px solid transparent; opacity:.38; filter:saturate(.85); transition:all .16s ease;}
@@ -205,7 +205,7 @@
           <div class="maptype" role="group" aria-label="Map layout">
             <button class="mtb active" data-t="geo">Geographic</button><button class="mtb" data-t="hex">Hex</button>
           </div>
-          <button class="btn" id="dlmap" style="flex:none; padding:7px 12px;" title="Download a high-resolution PNG of the current map">Download PNG</button>
+          <button class="mtb" id="dlmap" title="Download a high-resolution PNG of the current map">Download PNG</button>
         </div></div>
       <div class="mapmodes" id="mapmodes">
         <button class="mmb active" data-m="proj">Projection</button>
@@ -945,6 +945,8 @@ document.addEventListener('DOMContentLoaded', function(){
     MIN:{n:'Ind/Minor',c:'#ca80a8'},OTH:{n:'Other',c:'#9ca3af'},WPB:{n:'Workers',c:'#2853a5'},SPKR:{n:'Speaker',c:'#374151'},
     DUP:{n:'DUP',c:'#d46a4c'},ALL:{n:'Alliance',c:'#F6CB2F'},SDLP:{n:'SDLP',c:'#3A9E84'},UUP:{n:'UUP',c:'#48A5EE'},
     TUV:{n:'TUV',c:'#0C3A6A'},SF:{n:'Sinn Féin',c:'#326760'},IND:{n:'Independent',c:'#888'},Ind:{n:'Independent',c:'#888'} };
+  var FULL={LAB:'Labour',CON:'Conservatives',RFM:'Reform',LDM:'Lib Dems',GRN:'Greens',RES:'Restore',SNP:'SNP',PLC:'Plaid Cymru',MIN:'Independent',OTH:'Other',WPB:'Workers Party',SPKR:'Speaker',DUP:'DUP',ALL:'Alliance',SDLP:'SDLP',UUP:'UUP',TUV:'TUV',SF:'Sinn Féin',IND:'Independent',Ind:'Independent'};
+  var fullName=function(p){ return FULL[p]||(PI[p]&&PI[p].n)||p; };
   var SPECTRUM=['SF','GRN','SNP','PLC','SDLP','LAB','ALL','LDM','MIN','IND','Ind','OTH','WPB','SPKR','UUP','CON','DUP','TUV','RFM','RES'];
   var W2024={LAB:411,CON:121,RFM:5,LDM:72,GRN:4,SNP:9,PLC:4,RES:0,MIN:5,WPB:0,DUP:5,SF:7,SDLP:2,ALL:1,UUP:1,TUV:1,IND:1,SPKR:1};
   var ROWS=[['s_lab','LAB','GB'],['s_con','CON','GB'],['s_ref','RFM','GB'],['s_lib','LDM','GB'],['s_grn','GRN','GB'],['s_res','RES','GB']];
@@ -1120,7 +1122,7 @@ document.addEventListener('DOMContentLoaded', function(){
     $('totstrip').innerHTML=order.filter(function(p){return t[p];}).map(function(p){
       var n=t[p]||0, ch=n-(W2024[p]||0), cs=ch>0?('+'+ch):(ch<0?String(ch):'0'); var tc=textOn(PI[p].c);
       var rng=''; if(mcRanges&&mcRanges[p]&&mcRanges[p][1]>=mcRanges[p][0]) rng='<div class="rng">'+mcRanges[p][0]+'\u2013'+mcRanges[p][1]+'</div>';
-      return '<div class="tot" style="background:'+PI[p].c+';color:'+tc+'"><div class="nm">'+p+'</div><div class="n">'+n+'</div>'+rng+'<div class="ch">'+cs+'</div></div>'; }).join('');
+      return '<div class="tot" style="background:'+PI[p].c+';color:'+tc+'"><div class="nm">'+fullName(p)+'</div><div class="n">'+n+'</div>'+rng+'<div class="ch">'+cs+'</div></div>'; }).join('');
     $('seatbar').innerHTML='<div class="majmark"></div>'+SPECTRUM.filter(function(p){return t[p];}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/650)+'%;background:'+(PI[p]?PI[p].c:'#999')+'"></div>'; }).join('');
     var top=Object.keys(t).filter(function(p){return PI[p];}).sort(function(a,b){return t[b]-t[a];})[0]; var lead=t[top]||0;
     $('hl-party').textContent=PI[top].n+(lead>=326?' Majority':' Largest Party'); $('hl-party').style.color=PI[top].c;
@@ -1172,12 +1174,12 @@ document.addEventListener('DOMContentLoaded', function(){
     var g=activeGeo(); if(!g||typeof d3==='undefined'){ return; }
     var btn=$("dlmap"), label=btn?btn.textContent:""; if(btn){ btn.textContent="Rendering\u2026"; btn.disabled=true; }
     try{
-      var EXPW=2400, pad=70;
+      var EXPW=3000, pad=85;
       var mk=function(){ return mapType==='hex'?d3.geoIdentity().reflectY(true):d3.geoMercator(); };
       var test=mk().fitWidth(EXPW-pad*2, g); var bb=d3.geoPath().projection(test).bounds(g);
       var aspect=(bb[1][1]-bb[0][1])/(bb[1][0]-bb[0][0]); var EXPH=Math.round((EXPW-pad*2)*aspect)+pad*2+90;
       var proj=mk().fitExtent([[pad,pad],[EXPW-pad,EXPH-pad-90]], g); var path=d3.geoPath().projection(proj);
-      var paths=g.features.map(function(ft){ var fill="#e5e7eb"; try{ var o=seatOf(ft); if(o.s) fill=colourFor(o.s); }catch(e){} var d=path(ft)||""; return d?('<path d="'+d+'" fill="'+fill+'" stroke="#ffffff" stroke-width="0.6" stroke-linejoin="round"/>'):""; }).join("");
+      var paths=g.features.map(function(ft){ var fill="#e5e7eb"; try{ var o=seatOf(ft); if(o.s) fill=colourFor(o.s); }catch(e){} var d=path(ft)||""; return d?('<path d="'+d+'" fill="'+fill+'" stroke="#ffffff" stroke-width="0.95" stroke-linejoin="round"/>'):""; }).join("");
       var when=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
       var cap=(mapType==="hex"?"Hex cartogram (layout: Automatic Knowledge, CC BY 4.0)":"Constituency projection");
       var title=(mode==="custom"?"User Input projection":"Central projection")+" \u00b7 "+when;
@@ -1257,7 +1259,11 @@ document.addEventListener('DOMContentLoaded', function(){
     $('coal-parties').innerHTML=order.map(function(p){ return '<div class="coalbtn'+(coalSel[p]?' on':'')+'" data-p="'+p+'" style="background:'+PI[p].c+';color:'+textOn(PI[p].c)+'"><span class="cab">'+p+'</span><span class="cn">'+t[p]+'</span></div>'; }).join('');
     $('coal-parties').querySelectorAll('.coalbtn').forEach(function(b){ b.addEventListener('click',function(){ var p=b.getAttribute('data-p'); coalSel[p]=!coalSel[p]; buildCoalition(t); }); });
     var tot=0; order.forEach(function(p){ if(coalSel[p]) tot+=t[p]; });
-    $('coal-total').textContent = tot>=326 ? (tot+' / 326 \u00b7 majority of '+(2*tot-650)) : (tot+' / 326'); $('coal-total').className=tot>=326?'gov':'';
+    var sel=order.filter(function(p){return coalSel[p];}); var label=sel.join('+');
+    var ct=$('coal-total');
+    if(!sel.length){ ct.textContent='Select parties'; ct.className=''; }
+    else if(tot>=326){ ct.textContent=label+' \u00b7 Majority of '+(2*tot-650); ct.className='gov'; }
+    else { ct.textContent=label+' \u00b7 '+(326-tot)+' short'; ct.className=''; }
     $('coalbar').innerHTML='<div class="majmark"></div>'+order.filter(function(p){return coalSel[p];}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/650)+'%;background:'+PI[p].c+'"></div>'; }).join('');
   }
 
