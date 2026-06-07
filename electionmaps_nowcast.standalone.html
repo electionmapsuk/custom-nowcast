@@ -915,7 +915,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // ---- map ----
   function maybeDrawMap(){ if(!geo||!results||typeof d3==='undefined') return; if(!mapDrawn) drawMap(); else renderMapColors(); }
   function drawMap(){ if(!geo||mapDrawn||typeof d3==='undefined') return;
-    var rect=c.node().getBoundingClientRect(); var w=Math.round(rect.width)||800; var h=(rect.height>300?Math.round(rect.height):720);
+    var c=d3.select('#map-container'); var rect=c.node().getBoundingClientRect(); var w=Math.round(rect.width)||800; var h=(rect.height>300?Math.round(rect.height):720);
     var svg=c.append('svg').attr('width','100%').attr('height',h).attr('viewBox','0 0 '+w+' '+h); mapG=svg.append('g');
     var proj=d3.geoMercator().fitSize([w,h],geo); var path=d3.geoPath().projection(proj);
     svg.call(d3.zoom().scaleExtent([1,9]).on('zoom',function(e){ mapG.attr('transform',e.transform); tip.style.display='none'; }));
