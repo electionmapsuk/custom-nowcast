@@ -485,7 +485,11 @@ function regionalTargets(inp, cfg) {
   const P = cfg.pools;
   const main = ['LAB','CON','RFM','LDM','GRN','RES'];
   const gbV = {}; main.forEach(p => gbV[p] = (inp.gb[p]||0)*P.gb);
-  gbV.OTH = P.gb - sum(main.map(p=>gbV[p]));
+  // SNP/Plaid exist only in their nations - keep their GB-equivalent vote OUT of GB 'OTH'
+  // (otherwise unallocated nationalist vote inflates OTH and trips the ^10 minor-suppression).
+  const snpGB = (inp.scotland&&inp.scotland.SNP||0)*P.scotland;
+  const plcGB = (inp.wales&&inp.wales.PLC||0)*P.wales;
+  gbV.OTH = Math.max(0, P.gb - sum(main.map(p=>gbV[p])) - snpGB - plcGB);
 
   const regionVotes = (share, pool, extra) => {
     const v = {}; main.forEach(p => v[p] = (share[p]||0)*pool);
@@ -719,20 +723,22 @@ function runNowcast(inputs, data, cfgOverride) {
     // mains: STM blended with the MRPs
     MAINP.forEach(p=>{ final[p] = cfg.blend.transition*(tv[p]||0) + cfg.blend.yougov*k*((y&&y[p])||0) + cfg.blend.mic*k*((m&&m[p])||0); });
     final.RES = tv.RES||0;   // Restore: STM only
-    // 'Other' pool from the STM only (MRPs fold the independent vote into their OTH, so including
-    // it would inflate independents - we ignore MRP non-majors). MRP's OTH is added only if the
-    // STM has essentially no 'other' in the seat. Split MIN (largest) / OTH (rest) by STM ratio.
-    // each MRP's single 'Others' value is split MIN/OTH by the STM ratio (e.g. STM 15/5 -> MIN 75%,
-    // OTH 25%), then blended 0.67 STM / 0.165 each MRP - exactly like the Add MRP Data cell.
+    // 'Other' pool: blended exactly like the 'Add MRP Data' cell. Each MRP reports a SINGLE
+    // 'Others' value per seat; we blend 0.67 STM + 0.165 YouGov + 0.165 MiC to get one combined
+    // 'Other' total, then split it MIN (largest) / OTH (rest) using the STM's own MIN:OTH ratio
+    // (e.g. STM 15/5 -> 75% MIN, 25% OTH). The MRP 'Other' targets are now correctly scaled
+    // (withMRPMinor), so this no longer balloons in independent-strong seats - and no caps.
     const oM=tv.MIN||0, oO=tv.OTH||0, oSum=oM+oO;
-    const rMIN = oSum>0 ? oM/oSum : 1, rOTH = 1-rMIN;
-    const mrpOther = cfg.blend.yougov*k*((y&&y.OTH)||0) + cfg.blend.mic*k*((m&&m.OTH)||0);
-    final.MIN = cfg.blend.transition*oM + mrpOther*rMIN;
-    final.OTH = cfg.blend.transition*oO + mrpOther*rOTH;
+    // Split the combined 'Other' total MIN/OTH using the seat's NOTIONAL 2024 ratio, so the
+    // proportion of MIN to OTH stays fixed at its 2024 level (fall back to STM, then 50/50).
+    const bM=s.base.MIN||0, bO=s.base.OTH||0, bSum=bM+bO;
+    const rMIN = bSum>0 ? bM/bSum : (oSum>0 ? oM/oSum : 0.5), rOTH = 1-rMIN;
+    const otherTotal = cfg.blend.transition*oSum
+                     + cfg.blend.yougov*k*((y&&y.OTH)||0)
+                     + cfg.blend.mic*k*((m&&m.OTH)||0);
+    final.MIN = otherTotal*rMIN;
+    final.OTH = otherTotal*rOTH;
     if(final.OTH>final.MIN){ const tmp=final.MIN; final.MIN=final.OTH; final.OTH=tmp; }  // MIN >= OTH always
-    // independents/others don't surge past their 2024 level - cap the pool at the 2024 'other' total
-    const poolBase=(s.base.MIN||0)+(s.base.OTH||0), poolNow=final.MIN+final.OTH;
-    if(poolBase>0 && poolNow>poolBase){ const cf=poolBase/poolNow; final.MIN*=cf; final.OTH*=cf; }
     const tot = sum(CANON.map(p=>final[p]));
     CANON.forEach(p=> final[p] = tot>0?final[p]/tot:0);
     return { s, final };
@@ -761,12 +767,17 @@ function runNowcast(inputs, data, cfgOverride) {
 
 /* CANON shared from tactical */
 function withMRPMinor(mainTarget, baseline, cfg){
-  const mainKeys=['LAB','CON','RFM','LDM','GRN','SNP','PLC'];
-  const ratio = sum(mainKeys.map(p=>mainTarget[p]||0)) / sum(mainKeys.map(p=>baseline[p]||0));
+  // Only count parties that actually stand in this nation's target. The MRP baseline stores
+  // SNP/Plaid at their WITHIN-NATION share (~29%/20%); including those in England's ratio
+  // (where SNP=PLC=0) collapses the denominator and the ^exp blows the OTH target past 100%.
+  const mainKeys=['LAB','CON','RFM','LDM','GRN','SNP','PLC'].filter(p=>(mainTarget[p]||0)>0);
+  const den = sum(mainKeys.map(p=>baseline[p]||0));
+    const ratio = den>0 ? sum(mainKeys.map(p=>mainTarget[p]||0)) / den : 1;
   const t=Object.assign({}, mainTarget);
   t.OTH = (baseline.OTH||0)/Math.pow(ratio, cfg.othersExponent.mrp);
   return t;
 }
+
 
 
 window.NowcastEngine = { runNowcast: runNowcast, CONFIG: CONFIG, regionalTargets: regionalTargets, expandInputs: expandInputs };
