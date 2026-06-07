@@ -28,13 +28,18 @@
   .leftcol{display:flex; flex-direction:column;}
   .leftcol #map-container{flex:1;}
   .fullspan{grid-column:1 / -1;}
-  .r2grid{display:grid; grid-template-columns:minmax(0,1fr) 296px; gap:24px 24px; align-items:stretch; grid-template-rows:auto 1fr auto;}
-  .r2grid #map-container{grid-column:1; grid-row:2;} .r2grid .slidersbox{grid-column:2; grid-row:2;}
-  .r2grid .mapcontrols{grid-column:1; grid-row:1; min-width:0;} .r2grid .rtop{grid-column:2; grid-row:1; min-width:0; display:flex; flex-direction:column;}
-  .r2grid .rtop .ctrls{flex:1; align-items:stretch; margin-top:0;}
-  .r2grid .rtop .ctrls .btn{display:flex; align-items:center; justify-content:center; text-align:center;}
-  .r2grid .mapcredit{grid-column:1; grid-row:3;}
-  @media(max-width:880px){ .r2grid{grid-template-columns:1fr; grid-template-rows:none;} .r2grid>*{grid-column:1 !important;} .r2grid #map-container,.r2grid .slidersbox,.r2grid .mapcontrols,.r2grid .rtop,.r2grid .mapcredit{grid-row:auto;} }
+  .r2grid{display:grid; grid-template-columns:minmax(0,1fr) 296px; gap:24px; align-items:stretch;}
+  .r2grid #map-container{grid-column:1;} .r2grid .slidersbox{grid-column:2;} .r2grid .mapcredit{grid-column:1;}
+  .topctrls{grid-column:1 / -1; display:grid; grid-template-columns:minmax(0,1fr) 296px; column-gap:24px; row-gap:10px; align-items:start;}
+  .topctrls > *{margin:0; min-width:0;}
+  .topctrls .section-h{grid-column:1; grid-row:1;}
+  .topctrls .mapmodes{grid-column:1; grid-row:2;}
+  .topctrls .mapsearch{grid-column:1; grid-row:3;}
+  .topctrls .maplayout{grid-column:1; grid-row:4;}
+  .topctrls .topbtns{grid-column:2; grid-row:2 / 5; align-self:stretch; display:flex; flex-direction:column;}
+  .topctrls .topbtns .btnrow{display:flex; gap:8px; flex:1;}
+  .topctrls .topbtns .btnrow .btn{flex:1; display:flex; align-items:center; justify-content:center; text-align:center;}
+  @media(max-width:880px){ .r2grid{grid-template-columns:1fr;} .r2grid>*{grid-column:1 !important;} .topctrls{grid-template-columns:1fr;} .topctrls>*{grid-column:1 !important; grid-row:auto !important;} .topctrls .topbtns{grid-row:auto !important;} }
   .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px; transition:border-color .2s, box-shadow .2s;}
   body.custom .panel, body.custom #map-container{border-color:#a78bfa; box-shadow:0 0 0 3px var(--purple-bg);}
   .panel h2{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:0 0 14px;}
@@ -57,7 +62,7 @@
   .group-label{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:18px 0 12px; padding-top:14px; border-top:1px solid var(--line2);}
   .total-line{margin-top:14px; padding-top:14px; border-top:1px solid var(--line2); font-size:.82rem; color:var(--muted); display:flex; justify-content:space-between;}
   .total-line b{color:var(--ink); font-variant-numeric:tabular-nums;} .total-line b.warn{color:#d97706;}
-  .mc{display:flex; flex-direction:column; min-height:385px;}
+  .mc{display:flex; flex-direction:column;}
   .mapcol{min-width:0;}
   .mc h3{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:0 0 12px; display:flex; justify-content:space-between; align-items:baseline; gap:8px;}
   .mc h3 .sims{font-weight:600; text-transform:none; letter-spacing:0; color:var(--faint); font-size:.7rem;}
@@ -217,8 +222,8 @@
     </div>
 
     <div class="fullspan r2grid">
-      <div class="mapcontrols">
-        <div class="section-h" style="margin-top:0;">Constituency map</div>
+      <div class="topctrls">
+        <div class="section-h">Constituency map</div>
         <div class="mapmodes" id="mapmodes">
           <button class="mmb active" data-m="proj">Projection</button>
           <button class="mmb" data-m="actual">2024 Result</button>
@@ -231,15 +236,13 @@
           <button class="mtb" data-t="hex">Hex</button>
           <button class="mtb" id="dlmap" title="Download a high-resolution PNG of the current map">Download PNG</button>
         </div>
-      </div>
-
-      <div class="rtop">
-        <div class="section-h" style="margin-top:0;" aria-hidden="true">&nbsp;</div>
-        <div class="ctrls" style="margin-top:0;">
-          <button class="btn purple" id="modebtn">Switch to User Input</button>
-          <button class="btn" id="share">Share</button>
+        <div class="ctrls topbtns">
+          <div class="btnrow">
+            <button class="btn purple" id="modebtn">Switch to User Input</button>
+            <button class="btn" id="share">Share</button>
+          </div>
+          <div id="copied" style="display:none; text-align:center; font-size:.78rem; color:var(--accent); margin:8px 0 0;">Link copied</div>
         </div>
-        <div id="copied" style="display:none; text-align:center; font-size:.78rem; color:var(--accent); margin:8px 0 0;">Link copied</div>
       </div>
 
       <div id="map-container"><div class="map-hint">Scroll to zoom &middot; drag to pan &middot; click to pin</div></div>
