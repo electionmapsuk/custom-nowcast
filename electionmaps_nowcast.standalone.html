@@ -21,12 +21,13 @@
   body.custom .modepill{background:var(--purple); color:#fff;}
   .custombanner{display:none; background:var(--purple-bg); border:1px solid #ddd0ff; color:#5b21b6; font-weight:600; font-size:.85rem; padding:10px 14px; border-radius:12px; margin-bottom:18px;}
   body.custom .custombanner{display:block;}
-  .grid{display:grid; grid-template-columns:340px minmax(0,1fr); gap:24px; align-items:start;}
+  .grid{display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:24px; align-items:stretch;}
   @media(max-width:880px){ .grid{grid-template-columns:1fr;} }
-  .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px; transition:border-color .2s;}
-  body.custom .panel{border-color:#cdb4ff;}
-  body.custom #map-container{border-color:#a78bfa; box-shadow:0 0 0 3px var(--purple-bg);}
-  body.custom .controls-panel{border-color:#a78bfa; box-shadow:0 0 0 3px var(--purple-bg);}
+  .leftcol{display:flex; flex-direction:column;}
+  .leftcol #map-container{flex:1;}
+  .fullspan{grid-column:1 / -1;}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px; transition:border-color .2s, box-shadow .2s;}
+  body.custom .panel, body.custom #map-container{border-color:#a78bfa; box-shadow:0 0 0 3px var(--purple-bg);}
   .panel h2{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:0 0 14px;}
 
   .sld{margin-bottom:13px; opacity:1; transition:opacity .2s;}
@@ -40,9 +41,9 @@
   .sld .val small{color:var(--faint); font-weight:600;}
   input[type=range]{-webkit-appearance:none; appearance:none; width:100%; height:11px; border-radius:99px; background:var(--line); outline:none; margin:2px 0;}
   input[type=range]:disabled{opacity:.6;}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:24px; height:24px; border-radius:50%; background:var(--c,#444); border:3px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.3); cursor:grab; margin-top:0;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:15px; height:28px; border-radius:6px; background:var(--c,#444); border:2.5px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.3); cursor:grab; margin-top:-9px;}
   input[type=range]:disabled::-webkit-slider-thumb{cursor:not-allowed;}
-  input[type=range]::-moz-range-thumb{width:24px; height:24px; border-radius:50%; background:var(--c,#444); border:3px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.3);}
+  input[type=range]::-moz-range-thumb{width:15px; height:28px; border-radius:6px; background:var(--c,#444); border:2.5px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.3);}
   input[type=range]::-moz-range-track{height:11px; border-radius:99px;}
   .group-label{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:18px 0 12px; padding-top:14px; border-top:1px solid var(--line2);}
   .total-line{margin-top:14px; padding-top:14px; border-top:1px solid var(--line2); font-size:.82rem; color:var(--muted); display:flex; justify-content:space-between;}
@@ -101,18 +102,29 @@
   #coalition{margin-top:14px;}
   #coal-total{text-align:center; font-size:1.25rem; font-weight:800; margin:6px 0 14px; color:#dc2626;}
   #coal-total.gov{color:#16a34a;}
-  #coal-parties{display:flex; flex-wrap:wrap; gap:7px; justify-content:center;}
-  .coalbtn{padding:7px 12px; border-radius:7px; color:#fff; font-weight:800; font-size:.78rem; cursor:pointer; border:2px solid transparent; opacity:.45; transition:all .15s;}
-  .coalbtn.on{opacity:1; border-color:#15171a; transform:translateY(-1px);}
+  #coal-parties{display:flex; flex-wrap:wrap; gap:9px; justify-content:center;}
+  .coalbtn{display:flex; flex-direction:column; align-items:center; gap:2px; min-width:58px; padding:8px 12px 9px; border-radius:10px; color:#fff; cursor:pointer; border:1.5px solid transparent; opacity:.38; filter:saturate(.85); transition:all .16s ease;}
+  .coalbtn .cab{font-size:.66rem; font-weight:800; letter-spacing:.07em; text-transform:uppercase; opacity:.92;}
+  .coalbtn .cn{font-size:1.15rem; font-weight:900; line-height:1; font-variant-numeric:tabular-nums;}
+  .coalbtn:hover{opacity:.7;}
+  .coalbtn.on{opacity:1; filter:none; box-shadow:0 3px 10px rgba(0,0,0,.18); transform:translateY(-2px);}
   .coalbar{height:26px; border-radius:8px; overflow:hidden; display:flex; margin:14px 0 4px; background:var(--line2); position:relative;}
   .coalbar .majmark{}
 
-  .table-tools{display:flex; justify-content:space-between; align-items:center; margin:28px 0 10px;}
-  .table-wrap{display:none; border:1px solid var(--line); border-radius:var(--radius); overflow:auto; max-height:560px;}
-  table{width:100%; border-collapse:collapse; font-size:.8rem;}
-  th,td{padding:9px 11px; text-align:left; border-bottom:1px solid var(--line2); white-space:nowrap;}
-  th{position:sticky; top:0; background:#fbfbfa; font-size:.68rem; text-transform:uppercase; letter-spacing:.05em; color:var(--faint); cursor:pointer;}
-  td.win{color:#fff; font-weight:800; text-align:center;} td.sh{text-align:center; font-variant-numeric:tabular-nums; color:var(--muted);}
+  .table-tools{display:flex; justify-content:space-between; align-items:center; margin:0 0 12px;}
+  .table-wrap{display:none; border:1px solid var(--line); border-radius:var(--radius); overflow:auto; max-height:620px;}
+  table{width:100%; border-collapse:separate; border-spacing:0; font-size:.78rem;}
+  th,td{padding:8px 10px; text-align:center; border-bottom:1px solid var(--line2); white-space:nowrap;}
+  th:first-child,td:first-child{text-align:left; position:sticky; left:0; background:var(--panel); z-index:1;}
+  th{position:sticky; top:0; z-index:2; background:#fbfbfa; font-size:.65rem; text-transform:uppercase; letter-spacing:.05em; color:var(--faint); font-weight:700; cursor:pointer; border-bottom:2px solid var(--line);}
+  th:first-child{z-index:3;}
+  th:hover{color:var(--accent);}
+  tbody tr:hover td{background:#faf9f6;}
+  td{color:var(--muted); font-variant-numeric:tabular-nums;}
+  td:first-child{color:var(--ink); font-weight:600;}
+  td.win{font-weight:800; text-align:center; font-size:.7rem; padding:6px 8px;}
+  td.win span{display:inline-block; min-width:38px; padding:3px 0; border-radius:5px; color:#fff;}
+  td.sh{text-align:center; font-variant-numeric:tabular-nums; color:var(--muted);}
   .loading{padding:60px; text-align:center; color:var(--muted); font-weight:600;}
 </style>
 </head>
@@ -127,20 +139,7 @@
   <div id="loading" class="loading">Loading model&hellip;</div>
 
   <div class="grid" id="app" style="display:none;">
-    <div class="panel controls-panel">
-      <h2>National vote share</h2>
-      <div id="sliders"></div>
-      <div class="group-label">Nations</div>
-      <div id="sliders-nat"></div>
-      <div class="total-line"><span>GB total (excl. SNP/Plaid)</span><b id="gbtotal">100%</b></div>
-      <div class="ctrls">
-        <button class="btn purple" id="modebtn">Switch to custom model</button>
-        <button class="btn" id="share">Share</button>
-      </div>
-      <div id="copied" style="display:none; text-align:center; font-size:.78rem; color:var(--accent); margin-top:8px;">Link copied</div>
-    </div>
-
-    <div>
+    <div class="leftcol">
       <div class="panel">
         <div class="headline"><span class="big" id="hl-party">&mdash;</span><span class="maj" id="hl-maj"></span></div>
         <div class="seatbar" id="seatbar"><div class="majmark"></div></div>
@@ -155,15 +154,30 @@
         <button class="mmb" data-m="margin">Margin</button>
       </div>
       <div id="map-container"><div class="map-hint">Scroll to zoom &middot; drag to pan &middot; click to pin</div></div>
+    </div>
 
-      <div class="panel" id="coalition" style="margin-top:14px;">
+    <div class="panel controls-panel">
+      <h2>National vote share</h2>
+      <div id="sliders"></div>
+      <div class="group-label">Nations</div>
+      <div id="sliders-nat"></div>
+      <div class="total-line"><span>GB total (excl. SNP/Plaid)</span><b id="gbtotal">100%</b></div>
+      <div class="ctrls">
+        <button class="btn purple" id="modebtn">Switch to custom model</button>
+        <button class="btn" id="share">Share</button>
+      </div>
+      <div id="copied" style="display:none; text-align:center; font-size:.78rem; color:var(--accent); margin-top:8px;">Link copied</div>
+    </div>
+
+    <div class="fullspan">
+      <div class="panel" id="coalition" style="margin-top:24px;">
         <h2>Coalition builder &mdash; click parties to reach 326</h2>
         <div id="coal-total">0 / 326</div>
         <div class="coalbar" id="coalbar"><div class="majmark"></div></div>
         <div id="coal-parties"></div>
       </div>
 
-      <div class="table-tools">
+      <div class="table-tools" style="margin-top:24px;">
         <div class="section-h" style="margin:0;">All constituencies</div>
         <button class="btn" id="toggle-table" style="flex:none; padding:7px 16px;">Show table</button>
       </div>
@@ -959,7 +973,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var order=Object.keys(t).filter(function(p){return t[p]>0&&PI[p];}).sort(function(a,b){return t[b]-t[a];});
     var keep={}; order.forEach(function(p){ keep[p]=(coalSel[p]!==undefined)?coalSel[p]:false; }); coalSel=keep;
     if(!order.some(function(p){return coalSel[p];}) && order.length) coalSel[order[0]]=true;
-    $('coal-parties').innerHTML=order.map(function(p){ return '<div class="coalbtn'+(coalSel[p]?' on':'')+'" data-p="'+p+'" style="background:'+PI[p].c+'">'+PI[p].n+' '+t[p]+'</div>'; }).join('');
+    $('coal-parties').innerHTML=order.map(function(p){ return '<div class="coalbtn'+(coalSel[p]?' on':'')+'" data-p="'+p+'" style="background:'+PI[p].c+';color:'+textOn(PI[p].c)+'"><span class="cab">'+p+'</span><span class="cn">'+t[p]+'</span></div>'; }).join('');
     $('coal-parties').querySelectorAll('.coalbtn').forEach(function(b){ b.addEventListener('click',function(){ var p=b.getAttribute('data-p'); coalSel[p]=!coalSel[p]; buildCoalition(t); }); });
     var tot=0; order.forEach(function(p){ if(coalSel[p]) tot+=t[p]; });
     $('coal-total').textContent=tot+' / 326'; $('coal-total').className=tot>=326?'gov':'';
@@ -970,7 +984,7 @@ document.addEventListener('DOMContentLoaded', function(){
   function buildTable(){ var tp=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','OTH'];
     var h='<table><thead><tr><th data-c="name">Constituency</th><th data-c="win">Now</th><th>2024</th>'+tp.map(function(p){return '<th data-c="'+p+'">'+p+'</th>';}).join('')+'</tr></thead><tbody>';
     results.forEach(function(s){ var dw=dispWin(s); var wc=(PI[dw]||PI.OTH).c, w2=(PI[s.winner2024]||PI.OTH).c;
-      h+='<tr><td>'+s.seatName+'</td><td class="win" style="background:'+wc+'">'+dw+'</td><td class="win" style="background:'+w2+'">'+s.winner2024+'</td>'+tp.map(function(p){var v=s.shares[p];return '<td class="sh">'+(v>0.005?(v*100).toFixed(0)+'%':'&middot;')+'</td>';}).join('')+'</tr>'; });
+      h+='<tr><td>'+s.seatName+'</td><td class="win"><span style="background:'+wc+';color:'+textOn(wc)+'">'+dw+'</span></td><td class="win"><span style="background:'+w2+';color:'+textOn(w2)+'">'+s.winner2024+'</span></td>'+tp.map(function(p){var v=s.shares[p];return '<td class="sh">'+(v>0.005?(v*100).toFixed(0)+'%':'&middot;')+'</td>';}).join('')+'</tr>'; });
     h+='</tbody></table>'; $('table-wrap').innerHTML=h;
     $('table-wrap').querySelectorAll('th[data-c]').forEach(function(th){ th.addEventListener('click',function(){ sortTable(th.getAttribute('data-c')); }); }); tableBuilt=true; }
   function sortTable(col){ sortDir=(sortCol===col)?-sortDir:1; sortCol=col; var tb=$('table-wrap').querySelector('tbody'); var rows=Array.prototype.slice.call(tb.querySelectorAll('tr'));
@@ -986,3 +1000,4 @@ document.addEventListener('DOMContentLoaded', function(){
 </script>
 </body>
 </html>
+    
