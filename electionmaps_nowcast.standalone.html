@@ -871,7 +871,7 @@ document.addEventListener('DOMContentLoaded', function(){
     $('modebtn').textContent = m==='custom' ? 'Back to central' : 'Switch to custom model';
     $('modebtn').className = m==='custom' ? 'btn' : 'btn purple';
   }
-  $('modebtn').addEventListener('click',function(){ if(mode==='custom'){ setSliders(centralSliderVals()); setMode('central'); recompute(); } else { setMode('custom'); } });
+  $('modebtn').addEventListener('click',function(){ if(mode==='custom'){ setSliders(centralSliderVals()); setMode('central'); recompute(); } else { setMode('custom'); refreshMC(); } });
 
   // ---- sliders + number inputs ----
   function setTrack(el){ if(!el)return; var c=COLBYID[el.id]||'#888'; var mx=parseFloat(el.max)||100; var pct=Math.max(0,Math.min(100,(parseFloat(el.value)||0)/mx*100)); el.style.background='linear-gradient(90deg,'+c+' '+pct+'%, var(--line) '+pct+'%)'; }
@@ -915,20 +915,25 @@ document.addEventListener('DOMContentLoaded', function(){
     var t=tallies(); renderTotals(t); maybeDrawMap(); updateGbTotal(); buildCoalition(t);
     if(tableBuilt) buildTable();
     if(pinned) showTip(pinned._evt,pinned._d,true);
-    scheduleMC();
+    refreshMC();
   }
-  // ---- Monte Carlo majority odds (runs in a background Web Worker) ----
-  var MC={sims:300, sigma:0.015};   // EDIT: sigma = std dev of vote-share error (0.015 = 1.5pp; ~2.5pp for fuller forecast error)
-  var mcWorker=null, mcSeq=0, mcTimer=null;
+  // ---- Monte Carlo majority odds (correlated swing model, runs in a background Web Worker) ----
+  // sigma = std dev of each party's vote-share error (0.015 = 1.5pp). rho = how much of that error
+  // is a shared left/right national swing vs party-specific (0 = independent, 1 = pure bloc swing).
+  var MC={ simsCentral:500, simsCustom:300, sigma:0.015, rho:0.5,
+           sign:{LAB:-1,GRN:-1,LDM:-1,CON:1,RFM:1,RES:1,SNP:0,PLC:0} };  // +1 right bloc, -1 left bloc
+  var mcWorker=null, mcSeq=0, mcCache={};
   function engineSrc(){ if(window.__ENGINE_SRC__) return Promise.resolve(window.__ENGINE_SRC__);
     var u=[].slice.call(document.scripts).map(function(x){return x.src;}).filter(function(v){return v&&/nowcast\.browser\.js/.test(v);})[0];
     return u?fetch(u).then(function(r){return r.text();}):Promise.reject('no engine src'); }
   function buildMCWorker(src){
     var h="self.window=self;\n"+src+"\n"+
-    "self.onmessage=function(ev){var d=ev.data,E=self.NowcastEngine,I=d.inputs,DATA=d.data,N=d.N,sg=d.sigma,NI=d.ni;"+
+    "self.onmessage=function(ev){var d=ev.data,E=self.NowcastEngine,I=d.inputs,DATA=d.data,N=d.N,sg=d.sigma,rho=d.rho||0,SG=d.sign||{},NI=d.ni;"+
+    "var kk=Math.sqrt(1-rho*rho);"+
     "function g(){var u=0,v=0;while(!u)u=Math.random();while(!v)v=Math.random();return Math.sqrt(-2*Math.log(u))*Math.cos(6.283185307*v);}"+
-    "var large={},maj={},hung=0;for(var i=0;i<N;i++){var gb={};for(var p in I.gb)gb[p]=Math.max(0,I.gb[p]+g()*sg);"+
-    "var snp=Math.max(0,I.snp+g()*sg),plc=Math.max(0,I.plc+g()*sg);"+
+    "var large={},maj={},hung=0;for(var i=0;i<N;i++){var Z=g();"+              // one shared left/right swing per sim
+    "var gb={};for(var p in I.gb){var sgn=SG[p]||0;gb[p]=Math.max(0,I.gb[p]+(sgn?sg*(rho*sgn*Z+kk*g()):sg*g()));}"+
+    "var snp=Math.max(0,I.snp+sg*g()),plc=Math.max(0,I.plc+sg*g());"+
     "var o=E.runNowcast({gb:gb,snpScotland:snp,plcWales:plc},DATA);var t={};"+
     "o.individualSeatResults.forEach(function(r){var w=(r.winner==='MIN'&&r.minType)?r.minType:r.winner;t[w]=(t[w]||0)+1;});"+
     "for(var k in NI)t[k]=(t[k]||0)+NI[k];"+
@@ -940,16 +945,28 @@ document.addEventListener('DOMContentLoaded', function(){
   }
   function niWinCounts(){ var c={}; NIFIXED.forEach(function(s){ c[s.winner]=(c[s.winner]||0)+1; }); return c; }
   function mcUnavailable(){ var m=$('mc'); if(m) m.style.display='none'; }
-  function runMC(){
+  // central model: auto-run (cached). custom model: show a button so it only runs on demand.
+  function refreshMC(){ if(!$('mc')) return;
+    if(mode==='central'){ runMC(MC.simsCentral); } else { mcShowButton(); } }
+  function mcShowButton(){ mcSeq++; var hd=$('mc-headline'); if(!hd) return;
+    hd.innerHTML='<button class="btn purple" id="mc-run" style="width:100%; flex:none;">Run simulations</button>'+
+      '<div class="mc-sub" style="margin-top:10px;">Estimate this custom model\'s majority odds &mdash; '+MC.simsCustom+' simulated elections with correlated polling error.</div>';
+    $('mc-list').innerHTML=''; $('mc-sims').textContent='';
+    var rb=$('mc-run'); if(rb) rb.addEventListener('click',function(){ runMC(MC.simsCustom); });
+  }
+  function runMC(n){
     if(!ENGINE||typeof Worker==='undefined'){ mcUnavailable(); return; }
-    var seq=++mcSeq;
-    $('mc-headline').innerHTML='<div class="mc-sub">Simulating '+MC.sims+' elections…</div><div class="mc-prog"><i id="mc-progbar"></i></div>';
-    $('mc-list').innerHTML='';
+    n=n||MC.simsCentral;
     var inp=compactInputs();
-    var payload={inputs:{gb:inp.gb,snp:inp.snpScotland,plc:inp.plcWales},data:ENGINE,N:MC.sims,sigma:MC.sigma,ni:niWinCounts()};
+    var key=JSON.stringify([inp,n,MC.sigma,MC.rho]);
+    if(mcCache[key]){ renderMC(mcCache[key]); return; }
+    var seq=++mcSeq;
+    $('mc-headline').innerHTML='<div class="mc-sub">Simulating '+n+' elections…</div><div class="mc-prog"><i id="mc-progbar"></i></div>';
+    $('mc-list').innerHTML='';
+    var payload={inputs:{gb:inp.gb,snp:inp.snpScotland,plc:inp.plcWales},data:ENGINE,N:n,sigma:MC.sigma,rho:MC.rho,sign:MC.sign,ni:niWinCounts()};
     function go(){ mcWorker.onmessage=function(e){ if(seq!==mcSeq) return;
-      if(e.data.progress!=null){ var b=$('mc-progbar'); if(b) b.style.width=(e.data.progress*100)+'%'; return; }
-      if(e.data.done) renderMC(e.data); };
+        if(e.data.progress!=null){ var b=$('mc-progbar'); if(b) b.style.width=(e.data.progress*100)+'%'; return; }
+        if(e.data.done){ mcCache[key]=e.data; renderMC(e.data); } };
       mcWorker.onerror=function(){ mcUnavailable(); };
       mcWorker.postMessage(payload); }
     if(!mcWorker){ engineSrc().then(function(src){ try{ mcWorker=buildMCWorker(src); go(); }catch(err){ mcUnavailable(); } }).catch(mcUnavailable); }
@@ -967,7 +984,6 @@ document.addEventListener('DOMContentLoaded', function(){
       return '<div class="mc-row"><span class="mcab" style="background:'+c+';color:'+textOn(c)+'">'+p+'</span><span class="mcbar"><i style="width:'+pc+'%;background:'+c+'"></i></span><span class="mcpct">'+pc+'%</span></div>'; }).join('');
     $('mc-sims').textContent=N+' sims';
   }
-  function scheduleMC(){ if(mcTimer) clearTimeout(mcTimer); mcTimer=setTimeout(runMC, 650); }
 
   function tallies(){ var t={}; results.forEach(function(r){ var w=dispWin(r); t[w]=(t[w]||0)+1; });
     NIFIXED.forEach(function(s){ t[s.winner]=(t[s.winner]||0)+1; }); return t; }
