@@ -92,14 +92,16 @@
   .cp:hover{stroke:#15171a; stroke-width:1.2px;} .cp.pinned{stroke:#15171a; stroke-width:1.4px;}
   .mapmodes{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;}
   .maprow{display:flex; justify-content:space-between; align-items:center; gap:10px; margin:28px 0 12px; flex-wrap:wrap;}
-  .maptype{display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#fff;}
-  .mtb{padding:6px 14px; border:0; background:#fff; font-weight:700; font-size:.76rem; color:var(--muted); cursor:pointer; font-family:inherit;}
-  .mtb+.mtb{border-left:1px solid var(--line);}
-  .mtb.active{background:var(--accent); color:#fff;}
+  .maptype{display:flex; gap:6px;}
+  .mtb{padding:7px 13px; border-radius:7px; border:1px solid var(--line); background:#fff; font-weight:700; font-size:.78rem; color:var(--muted); cursor:pointer; font-family:inherit;}
+  .mtb:hover{border-color:var(--accent); color:var(--accent);}
+  .mtb.active{background:var(--accent); color:#fff; border-color:var(--accent);}
   .mmb{padding:7px 13px; border-radius:7px; border:1px solid var(--line); background:#fff; font-weight:700; font-size:.78rem; color:var(--muted); cursor:pointer; font-family:inherit;}
   .mmb:hover{border-color:var(--accent); color:var(--accent);}
   .mmb.active{background:var(--accent); color:#fff; border-color:var(--accent);}
   .map-hint{position:absolute; left:14px; bottom:12px; font-size:.72rem; color:var(--faint); background:rgba(255,255,255,.85); padding:4px 9px; border-radius:8px; pointer-events:none;}
+  .mapcredit{font-size:.68rem; color:var(--faint); margin-top:8px; line-height:1.4;}
+  .mapcredit a{color:var(--faint);}
   .mapsearch{margin-bottom:10px;}
   .mapsearch input{width:100%; padding:10px 13px; border:1px solid var(--line); border-radius:8px; font-family:inherit; font-size:.85rem; font-weight:600; color:var(--ink); background:#fff;}
   .mapsearch input::placeholder{color:var(--faint); font-weight:500;}
@@ -157,6 +159,23 @@
   td.win span{display:inline-block; min-width:38px; padding:3px 0; border-radius:5px; color:#fff;}
   td.sh{text-align:center; font-variant-numeric:tabular-nums; color:var(--muted);}
   .loading{padding:60px; text-align:center; color:var(--muted); font-weight:600;}
+  /* ---- mobile ---- */
+  @media(max-width:880px){ .grid{gap:16px;} #map-container{height:560px; min-height:560px;} }
+  @media(max-width:600px){
+    .wrap{padding:16px 12px 56px;}
+    .panel{padding:15px;}
+    .masthead{margin-bottom:10px;}
+    #map-container{height:430px; min-height:430px;}
+    .headline .big{font-size:1.2rem;} .headline .maj{font-size:.8rem;}
+    .tot{padding:9px 9px;} .tot .n{font-size:1.4rem;} .tot .nm{font-size:.62rem;}
+    .seatbar{height:30px;}
+    .mc-big{font-size:1.8rem;}
+    .maprow{margin:20px 0 10px;} .section-h{margin:20px 0 10px;}
+    .mapmodes{gap:5px;} .mmb{padding:6px 10px; font-size:.72rem;}
+    .mtb{padding:6px 11px; font-size:.72rem;}
+    table{font-size:.72rem;} th,td{padding:6px 7px;}
+  }
+  html,body{overflow-x:hidden;}
 </style>
 </head>
 <body>
@@ -164,7 +183,7 @@
   <div class="masthead" style="justify-content:flex-end;">
     <span class="modepill" id="modepill">Central projection</span>
   </div>
-  <div class="custombanner">You're viewing a <b>custom model</b> &mdash; this is not ElectionMapsUK's central projection.</div>
+  <div class="custombanner">You're viewing <b>User Input</b> &mdash; this is not Election Maps UK's central projection.</div>
 
   <div id="loading" class="loading">Loading model&hellip;</div>
 
@@ -188,11 +207,12 @@
       </div>
       <div class="mapsearch"><input id="seatsearch" list="seatlist" placeholder="Search for a constituency…" autocomplete="off" aria-label="Search for a constituency"><datalist id="seatlist"></datalist></div>
       <div id="map-container"><div class="map-hint">Scroll to zoom &middot; drag to pan &middot; click to pin</div></div>
+      <div class="mapcredit" id="mapcredit"></div>
     </div>
 
     <div class="panel controls-panel">
       <div class="ctrls" style="margin-top:0; margin-bottom:18px;">
-        <button class="btn purple" id="modebtn">Switch to custom model</button>
+        <button class="btn purple" id="modebtn">Switch to User Input</button>
         <button class="btn" id="share">Share</button>
       </div>
       <div id="copied" style="display:none; text-align:center; font-size:.78rem; color:var(--accent); margin:-10px 0 14px;">Link copied</div>
@@ -307,35 +327,35 @@
   }
 },central:{
   "gb": {
-    "LAB": 0.193,
-    "CON": 0.182,
-    "RFM": 0.277,
+    "LAB": 0.194,
+    "CON": 0.181,
+    "RFM": 0.279,
     "LDM": 0.123,
-    "GRN": 0.138,
+    "GRN": 0.137,
     "RES": 0.029
   },
   "scotland": {
-    "LAB": 0.1571,
-    "CON": 0.1027,
-    "RFM": 0.1845,
+    "LAB": 0.1578,
+    "CON": 0.1022,
+    "RFM": 0.1857,
     "LDM": 0.0929,
     "GRN": 0.0915,
     "SNP": 0.3358,
     "RES": 0.01131
   },
   "wales": {
-    "LAB": 0.1326,
-    "CON": 0.1234,
-    "RFM": 0.2515,
+    "LAB": 0.1332,
+    "CON": 0.1229,
+    "RFM": 0.2528,
     "LDM": 0.0551,
     "GRN": 0.114,
     "PLC": 0.2791,
     "RES": 0.0145
   },
   "london": {
-    "LAB": 0.2898,
-    "CON": 0.1877,
-    "RFM": 0.1797,
+    "LAB": 0.2902,
+    "CON": 0.1874,
+    "RFM": 0.1802,
     "LDM": 0.1219,
     "GRN": 0.1792,
     "RES": 0.01624
@@ -488,12 +508,12 @@ const CONFIG = {
   regionalAnchor: {
     // national = GB-wide at the central projection; regional = that nation at the central projection.
     // With these defaults the central projection reproduces exactly; edit to taste.
-    Scotland: { national:{LAB:0.193,CON:0.182,RFM:0.277,LDM:0.123,GRN:0.138},
-                regional:{LAB:0.1571,CON:0.1027,RFM:0.1845,LDM:0.0929,GRN:0.0915} },
-    Wales:    { national:{LAB:0.193,CON:0.182,RFM:0.277,LDM:0.123,GRN:0.138},
-                regional:{LAB:0.1326,CON:0.1234,RFM:0.2515,LDM:0.0551,GRN:0.1140} },
-    London:   { national:{LAB:0.193,CON:0.182,RFM:0.277,LDM:0.123,GRN:0.138},
-                regional:{LAB:0.2898,CON:0.1877,RFM:0.1797,LDM:0.1219,GRN:0.1792} },
+    Scotland: { national:{LAB:0.194,CON:0.181,RFM:0.279,LDM:0.123,GRN:0.137},
+                regional:{LAB:0.1578,CON:0.1022,RFM:0.1857,LDM:0.0929,GRN:0.0915} },
+    Wales:    { national:{LAB:0.194,CON:0.181,RFM:0.279,LDM:0.123,GRN:0.137},
+                regional:{LAB:0.1332,CON:0.1229,RFM:0.2528,LDM:0.0551,GRN:0.1140} },
+    London:   { national:{LAB:0.194,CON:0.181,RFM:0.279,LDM:0.123,GRN:0.137},
+                regional:{LAB:0.2902,CON:0.1874,RFM:0.1802,LDM:0.1219,GRN:0.1792} },
   },
   regionalSwingMix: 0.5,   // 0 = pure proportional, 1 = pure additive/uniform
   minElasticity: 0.4,      // how much independents/MIN shares move with the swing (display dynamics)
@@ -933,8 +953,8 @@ document.addEventListener('DOMContentLoaded', function(){
   function setMode(m){ mode=m; document.body.classList.toggle('custom', m==='custom');
     var dis=(m!=='custom');
     document.querySelectorAll('#sliders input,#sliders-nat input').forEach(function(i){ i.disabled=dis; });
-    $('modepill').textContent = m==='custom' ? 'Custom model' : 'Central projection';
-    $('modebtn').textContent = m==='custom' ? 'Back to central' : 'Switch to custom model';
+    $('modepill').textContent = m==='custom' ? 'User Input' : 'Central projection';
+    $('modebtn').textContent = m==='custom' ? 'Back to central' : 'Switch to User Input';
     $('modebtn').className = m==='custom' ? 'btn' : 'btn purple';
   }
   $('modebtn').addEventListener('click',function(){ if(mode==='custom'){ setSliders(centralSliderVals()); setMode('central'); recompute(); } else { setMode('custom'); refreshMC(); } });
@@ -987,7 +1007,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // ---- Monte Carlo majority odds (correlated swing, chunked on the main thread) ----
   // sigma = std dev of each party's vote-share error (0.015 = 1.5pp). rho = share of that error
   // that is a common left/right national swing vs party-specific (0 = independent, 1 = pure bloc swing).
-  var MC={ simsCentral:500, simsCustom:300, sigma:0.025, rho:0.5, localSigma:0.02, batch:5,
+  var MC={ simsCentral:1000, simsCustom:300, sigma:0.025, rho:0.5, localSigma:0.02, batch:5,
            sign:{LAB:-1,GRN:-1,LDM:-1,CON:1,RFM:1,RES:1,SNP:0,PLC:0} };  // +1 right bloc, -1 left bloc
   var mcSeq=0, mcCache={}, mcRanges=null, mcSeatWin=null, mcSeatN=0, lastTallies={};
   function niWinCounts(){ var c={}; NIFIXED.forEach(function(s){ c[s.winner]=(c[s.winner]||0)+1; }); return c; }
@@ -996,7 +1016,7 @@ document.addEventListener('DOMContentLoaded', function(){
   function refreshMC(){ if(!$('mc')) return; if(mode==='central'){ runMC(MC.simsCentral); } else { mcShowButton(); } }
   function mcShowButton(){ mcSeq++; var hd=$('mc-headline'); if(!hd) return;
     hd.innerHTML='<button class="btn purple" id="mc-run" style="width:100%; flex:none;">Run simulations</button>'+
-      '<div class="mc-sub" style="margin-top:10px;">Estimate this custom model\'s majority odds &mdash; '+MC.simsCustom+' simulated elections with correlated polling error.</div>';
+      '<div class="mc-sub" style="margin-top:10px;">Estimate this user input\'s majority odds &mdash; '+MC.simsCustom+' simulated elections with correlated polling error.</div>';
     $('mc-list').innerHTML=''; $('mc-sims').textContent='';
     var rb=$('mc-run'); if(rb) rb.addEventListener('click',function(){ runMC(MC.simsCustom); });
   }
@@ -1080,7 +1100,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var c=d3.select('#map-container'); c.select('svg').remove();
     var rect=c.node().getBoundingClientRect(); var w=Math.round(rect.width)||800; var h=(rect.height>300?Math.round(rect.height):720);
     var svg=c.append('svg').attr('width','100%').attr('height',h).attr('viewBox','0 0 '+w+' '+h).attr('role','img').attr('aria-label','Map of constituencies coloured by projected winning party. The same data is available as a sortable table further down the page.'); mapG=svg.append('g'); mapSvg=svg;
-    var proj=(mapType==='hex'?d3.geoIdentity().reflectY(true):d3.geoMercator()).fitSize([w,h],g); var path=d3.geoPath().projection(proj); mapPath=path;
+    var proj=(mapType==='hex'?d3.geoIdentity().reflectY(true):d3.geoMercator()).fitExtent([[16,16],[w-16,h-16]],g); var path=d3.geoPath().projection(proj); mapPath=path;
     function strokeForK(k){ return Math.max(0.18, 0.3/Math.pow(k,0.25))+'px'; }
     mapZoom=d3.zoom().scaleExtent([1,40]).on('zoom',function(e){ mapG.attr('transform',e.transform); mapG.attr('stroke-width',strokeForK(e.transform.k)); if(!pinned) tip.style.display='none'; });
     svg.call(mapZoom); mapG.attr('stroke-width',strokeForK(1));
@@ -1089,6 +1109,9 @@ document.addEventListener('DOMContentLoaded', function(){
       .on('mouseout',function(){ if(!pinned) tip.style.display='none'; })
       .on('click',function(e,d){ pinned=(pinned&&pinned._d===d)?null:{_d:d,_evt:e}; mapG.selectAll('.cp').classed('pinned',false); if(pinned){ d3.select(this).classed('pinned',true); showTip(e,d,true);} else tip.style.display='none'; });
     buildSeatList();
+    var cr=$('mapcredit'); if(cr) cr.innerHTML = (mapType==='hex')
+      ? 'Hex cartogram &mdash; one equal-size hexagon per constituency. Layout: <b>Automatic Knowledge</b> (Philip Brown &amp; Alasdair Rae), CC BY 4.0.'
+      : 'Geographic boundaries &copy; ONS / Boundary Commission (OGL).';
     mapDrawn=true; renderMapColors();
   }
   function seatOf(d){ var p=(d&&d.properties)||{};
@@ -1135,7 +1158,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var w19=s.winner2019, w24=s.winner2024, wn=dispWin(s);
     var c19=(PI[w19]||PI.OTH).c, c24=(PI[w24]||PI.OTH).c, cwn=(PI[wn]||PI.OTH).c;
     var pillBg=(!s.fixed&&MARGINCOL[wn])?MARGINCOL[wn][classOf(s,maj)]:cwn;
-    var html='<div class="hd"><div class="nm">'+s.seatName+'</div>'+((mode==='custom')?'<div style="display:inline-block;margin-top:5px;font-size:.6rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:#7c3aed;color:#fff;padding:2px 7px;border-radius:5px">Custom model</div>':'')
+    var html='<div class="hd"><div class="nm">'+s.seatName+'</div>'+((mode==='custom')?'<div style="display:inline-block;margin-top:5px;font-size:.6rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:#7c3aed;color:#fff;padding:2px 7px;border-radius:5px">User Input</div>':'')
       +'<div class="res"><div class="sq" style="background:'+c19+';color:'+textOn(c19)+'">19</div><div class="sq" style="background:'+c24+';color:'+textOn(c24)+'">24</div>'
       +'<div class="pill" style="background:'+pillBg+';color:'+textOn(pillBg)+'">'+(s.fixed?(PI[wn]?PI[wn].n:wn):classOf(s,maj)+' '+wn)+'</div></div>'
       +'<div class="meta">'+(s.fixed?'':'<b>Projected Majority:</b> '+(maj*100).toFixed(1)+'%<br>')
@@ -1163,7 +1186,7 @@ document.addEventListener('DOMContentLoaded', function(){
     $('coal-parties').innerHTML=order.map(function(p){ return '<div class="coalbtn'+(coalSel[p]?' on':'')+'" data-p="'+p+'" style="background:'+PI[p].c+';color:'+textOn(PI[p].c)+'"><span class="cab">'+p+'</span><span class="cn">'+t[p]+'</span></div>'; }).join('');
     $('coal-parties').querySelectorAll('.coalbtn').forEach(function(b){ b.addEventListener('click',function(){ var p=b.getAttribute('data-p'); coalSel[p]=!coalSel[p]; buildCoalition(t); }); });
     var tot=0; order.forEach(function(p){ if(coalSel[p]) tot+=t[p]; });
-    $('coal-total').textContent=tot+' / 326'; $('coal-total').className=tot>=326?'gov':'';
+    $('coal-total').textContent = tot>=326 ? (tot+' / 326 \u00b7 majority of '+(2*tot-650)) : (tot+' / 326'); $('coal-total').className=tot>=326?'gov':'';
     $('coalbar').innerHTML='<div class="majmark"></div>'+order.filter(function(p){return coalSel[p];}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/650)+'%;background:'+PI[p].c+'"></div>'; }).join('');
   }
 
