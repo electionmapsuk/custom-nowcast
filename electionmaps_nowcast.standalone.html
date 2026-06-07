@@ -993,6 +993,7 @@ document.addEventListener('DOMContentLoaded', function(){
   $('toggle-table').addEventListener('click',function(){ var w=$('table-wrap'); if(w.style.display==='block'){ w.style.display='none'; this.textContent='Show table'; } else { if(!tableBuilt) buildTable(); w.style.display='block'; this.textContent='Hide table'; } });
 
   document.querySelectorAll('.mmb').forEach(function(b){ b.addEventListener('click',function(){ mapMode=b.getAttribute('data-m'); document.querySelectorAll('.mmb').forEach(function(x){x.classList.remove('active');}); b.classList.add('active'); renderMapColors(); }); });
+  $('share').addEventListener('click',function(){ var p=new URLSearchParams(); for(var id in URLP){ p.set(URLP[id],$(id).value); } var url=location.href.split('?')[0]+'?'+p.toString();
     var ta=document.createElement('textarea'); ta.value=url; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); $('copied').style.display='block'; setTimeout(function(){$('copied').style.display='none';},1800);}catch(e){ prompt('Copy link:',url);} document.body.removeChild(ta); });
 });
 </script>
