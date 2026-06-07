@@ -487,6 +487,24 @@ const CONFIG = {
   blocs: { left:['LAB','GRN','LDM'], right:['CON','RFM','RES'], nationalist:['SNP','PLC'], neutral:['MIN','OTH','WPB'] },
   blocProtection: { strength: 0.4, deadband: 0.03 },   // soft bumpers (B2)
   cleanNormalise: true,                                // single clean normalisation (B2)
+  // --- Special seats: real local polls / by-election results, swung to the current national
+  // picture (50/50 additive + proportional) then blended 50/50 with the normal model output. ---
+  specialMix: 0.5,    // within the swing: 0 = pure proportional, 1 = pure additive
+  specialBlend: 0.5,  // 0 = ignore the poll, 1 = use only the swung poll, 0.5 = even mix with model
+  specialSeats: {
+    'E14001455': { name:'Runcorn and Helsby',  // 1 May 2025 by-election
+      natAtTime:{LAB:0.234,CON:0.196,RFM:0.282,LDM:0.139,GRN:0.087,RES:0.027,OTH:0.035},
+      seatPoll: {LAB:0.387,CON:0.072,RFM:0.387,LDM:0.029,GRN:0.071,RES:0,    OTH:0.054} },
+    'E14001251': { name:'Gorton and Denton',
+      natAtTime:{LAB:0.198,CON:0.188,RFM:0.282,LDM:0.125,GRN:0.141,RES:0.027,OTH:0.039},
+      seatPoll: {LAB:0.254,CON:0.019,RFM:0.287,LDM:0.018,GRN:0.406,RES:0,    OTH:0.016} },
+    'E14001256': { name:'Great Yarmouth',  // local poll, 7 May
+      natAtTime:{LAB:0.191,CON:0.181,RFM:0.272,LDM:0.120,GRN:0.144,RES:0.033,OTH:0.029},
+      seatPoll: {LAB:0.090,CON:0.120,RFM:0.200,LDM:0.030,GRN:0.110,RES:0.460,OTH:0.000} },
+    'E14001350': { name:'Makerfield',  // local poll, 26 May
+      natAtTime:{LAB:0.194,CON:0.182,RFM:0.276,LDM:0.123,GRN:0.138,RES:0.029,OTH:0.026},
+      seatPoll: {LAB:0.490,CON:0.010,RFM:0.390,LDM:0.010,GRN:0.020,RES:0.080,OTH:0.010} },
+  },
 };
 
 const ENGINE_PARTIES = {
@@ -680,6 +698,27 @@ function mrpSwing(seats, mrpKey, targetForNation, cfg) {
 }
 
 // ---------- Stage 6b: soft bloc bumpers ----------
+function applySpecialSeats(seatShares, inputs, cfg){
+  const sp=cfg.specialSeats; if(!sp) return;
+  const P=cfg.pools, mains=['LAB','CON','RFM','LDM','GRN','RES'];
+  const snpGB=((inputs.scotland&&inputs.scotland.SNP)||0)*P.scotland/P.gb;
+  const plcGB=((inputs.wales&&inputs.wales.PLC)||0)*P.wales/P.gb;
+  const curNat={}; let ms=0; mains.forEach(p=>{ curNat[p]=inputs.gb[p]||0; ms+=curNat[p]; });
+  curNat.OTH=Math.max(0, 1-ms-snpGB-plcGB);
+  const mix=cfg.specialMix, blend=cfg.specialBlend, keys=['LAB','CON','RFM','LDM','GRN','RES','OTH'];
+  seatShares.forEach(x=>{
+    const sd=sp[x.s.code]; if(!sd) return;
+    const est={}; let es=0;
+    keys.forEach(p=>{ const sv=sd.seatPoll[p]||0, nt=sd.natAtTime[p]||0, cn=curNat[p]||0;
+      const add=sv+(cn-nt), prop=nt>0?sv*(cn/nt):sv; est[p]=Math.max(0, mix*add+(1-mix)*prop); es+=est[p]; });
+    if(es>0) keys.forEach(p=>est[p]/=es);
+    const f=x.final, fM=f.MIN||0, fO=f.OTH||0, os=fM+fO, rM=os>0?fM/os:1;
+    const out={}; CANON.forEach(p=>out[p]=(1-blend)*(f[p]||0));
+    keys.forEach(p=>{ if(p==='OTH'){ out.MIN+=blend*est.OTH*rM; out.OTH+=blend*est.OTH*(1-rM); } else out[p]+=blend*est[p]; });
+    let ts=0; CANON.forEach(p=>ts+=out[p]); if(ts>0) CANON.forEach(p=>out[p]/=ts);
+    x.final=out;
+  });
+}
 function applyBlocBumpers(seatShares, inputs, cfg) {
   const bp = cfg.blocProtection || {};
   if (!bp.strength || bp.strength <= 0) return;
@@ -785,6 +824,7 @@ function runNowcast(inputs, data, cfgOverride) {
   });
 
   applyBlocBumpers(seatShares, inputs, cfg);
+  applySpecialSeats(seatShares, inputs, cfg);
 
   const results = seatShares.map(({s, final})=>{
     let winner = CANON.reduce((a,b)=> final[b]>final[a]?b:a, CANON[0]);
@@ -835,7 +875,7 @@ document.addEventListener('DOMContentLoaded', function(){
     DUP:{n:'DUP',c:'#d46a4c'},ALL:{n:'Alliance',c:'#F6CB2F'},SDLP:{n:'SDLP',c:'#3A9E84'},UUP:{n:'UUP',c:'#48A5EE'},
     TUV:{n:'TUV',c:'#0C3A6A'},SF:{n:'Sinn Féin',c:'#326760'},IND:{n:'Independent',c:'#888'},Ind:{n:'Independent',c:'#888'} };
   var SPECTRUM=['SF','GRN','SNP','PLC','SDLP','LAB','ALL','LDM','MIN','IND','Ind','OTH','WPB','SPKR','UUP','CON','DUP','TUV','RFM','RES'];
-  var W2024={LAB:411,CON:121,RFM:5,LDM:72,GRN:4,SNP:9,PLC:4,RES:0,MIN:6,WPB:0,DUP:5,SF:7,SDLP:2,ALL:1,UUP:1,TUV:1,IND:1,SPKR:1};
+  var W2024={LAB:411,CON:121,RFM:5,LDM:72,GRN:4,SNP:9,PLC:4,RES:0,MIN:5,WPB:0,DUP:5,SF:7,SDLP:2,ALL:1,UUP:1,TUV:1,IND:1,SPKR:1};
   var ROWS=[['s_lab','LAB','GB'],['s_con','CON','GB'],['s_ref','RFM','GB'],['s_lib','LDM','GB'],['s_grn','GRN','GB'],['s_res','RES','GB']];
   var NATS=[['s_snp','SNP','Scotland'],['s_plc','PLC','Wales']];
   var URLP={s_lab:'lab',s_con:'con',s_ref:'ref',s_lib:'ld',s_grn:'grn',s_res:'res',s_snp:'snp',s_plc:'pc'};
