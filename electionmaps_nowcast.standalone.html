@@ -59,6 +59,9 @@
   .mc-row .mcbar{flex:1; height:13px; background:var(--line2); border-radius:4px; overflow:hidden; position:relative;}
   .mc-row .mcbar i{position:absolute; left:0; top:0; height:100%; border-radius:4px; transition:width .3s;}
   .mc-row .mcpct{width:40px; text-align:right; font-weight:800; font-size:.8rem; font-variant-numeric:tabular-nums; flex:none;}
+  .mc-row .mcpct.maj{color:var(--accent);}
+  .mc-head{display:flex; align-items:center; gap:8px; font-size:.58rem; text-transform:uppercase; letter-spacing:.04em; color:var(--faint); font-weight:800; margin-bottom:5px;}
+  .mc-head .hsp{width:34px; flex:none;} .mc-head .hbar{flex:1;} .mc-head .hp{width:40px; text-align:right; flex:none;}
   .mc-prog{height:4px; background:var(--line2); border-radius:99px; overflow:hidden; margin-top:8px;}
   .mc-prog i{display:block; height:100%; width:0; background:var(--accent); transition:width .2s;}
   .ctrls{display:flex; gap:8px; margin-top:16px; flex-wrap:wrap;}
@@ -80,6 +83,7 @@
   .tot .nm{font-size:.7rem; font-weight:800; text-transform:uppercase; letter-spacing:.02em; opacity:.92; margin-bottom:1px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .tot .n{font-size:1.75rem; font-weight:900; line-height:1; font-variant-numeric:tabular-nums;}
   .tot .ch{display:inline-block; margin-top:4px; background:rgba(0,0,0,.2); padding:1px 7px; border-radius:5px; font-size:.74rem; font-weight:800; font-variant-numeric:tabular-nums;}
+  .tot .rng{font-size:.62rem; font-weight:700; opacity:.85; margin-top:3px; font-variant-numeric:tabular-nums;}
 
   .section-h{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:28px 0 12px;}
   #map-container{position:relative; width:100%; height:720px; min-height:720px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
@@ -822,7 +826,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
   var PI={ LAB:{n:'Lab',c:'#E4003B'},CON:{n:'Con',c:'#0393D3'},RFM:{n:'Reform',c:'#2BC5DB'},LDM:{n:'Lib Dem',c:'#ff6400'},
     GRN:{n:'Green',c:'#00A85A'},RES:{n:'Restore',c:'#051e40'},SNP:{n:'SNP',c:'#e6d62e'},PLC:{n:'Plaid',c:'#075d55'},
-    MIN:{n:'Ind/Minor',c:'#ca80a8'},OTH:{n:'Other',c:'#9ca3af'},WPB:{n:'Workers',c:'#7a1f3d'},SPKR:{n:'Speaker',c:'#374151'},
+    MIN:{n:'Ind/Minor',c:'#ca80a8'},OTH:{n:'Other',c:'#9ca3af'},WPB:{n:'Workers',c:'#2853a5'},SPKR:{n:'Speaker',c:'#374151'},
     DUP:{n:'DUP',c:'#d46a4c'},ALL:{n:'Alliance',c:'#F6CB2F'},SDLP:{n:'SDLP',c:'#3A9E84'},UUP:{n:'UUP',c:'#48A5EE'},
     TUV:{n:'TUV',c:'#0C3A6A'},SF:{n:'Sinn Féin',c:'#326760'},IND:{n:'Independent',c:'#888'},Ind:{n:'Independent',c:'#888'} };
   var SPECTRUM=['SF','GRN','SNP','PLC','SDLP','LAB','ALL','LDM','MIN','IND','Ind','OTH','WPB','SPKR','UUP','CON','DUP','TUV','RFM','RES'];
@@ -921,7 +925,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // that is a common left/right national swing vs party-specific (0 = independent, 1 = pure bloc swing).
   var MC={ simsCentral:500, simsCustom:300, sigma:0.015, rho:0.5, batch:5,
            sign:{LAB:-1,GRN:-1,LDM:-1,CON:1,RFM:1,RES:1,SNP:0,PLC:0} };  // +1 right bloc, -1 left bloc
-  var mcSeq=0, mcCache={};
+  var mcSeq=0, mcCache={}, mcRanges=null, mcSeatWin=null, mcSeatN=0, lastTallies={};
   function niWinCounts(){ var c={}; NIFIXED.forEach(function(s){ c[s.winner]=(c[s.winner]||0)+1; }); return c; }
   function gaussMC(){ var u=0,v=0; while(!u)u=Math.random(); while(!v)v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(6.283185307*v); }
   // central model auto-runs (cached); custom model runs only when the button is pressed.
@@ -936,12 +940,12 @@ document.addEventListener('DOMContentLoaded', function(){
     if(!ENGINE||!window.NowcastEngine){ var m=$('mc'); if(m) m.style.display='none'; return; }
     n=n||MC.simsCentral;
     var inp=compactInputs(); var key=JSON.stringify([inp,n,MC.sigma,MC.rho]);
-    if(mcCache[key]){ renderMC(mcCache[key]); return; }
+    if(mcCache[key]){ var cc=mcCache[key]; mcRanges=cc.ranges; mcSeatWin=cc.seatWin; mcSeatN=cc.N; renderMC(cc); renderTotals(lastTallies); if(pinned) showTip(pinned._evt,pinned._d,true); return; }
     var seq=++mcSeq;
     $('mc-headline').innerHTML='<div class="mc-sub">Simulating '+n+' elections…</div><div class="mc-prog"><i id="mc-progbar"></i></div>';
     $('mc-list').innerHTML='';
     var sign=MC.sign, sg=MC.sigma, rho=MC.rho, kk=Math.sqrt(1-rho*rho), ni=niWinCounts();
-    var large={}, maj={}, hung=0, i=0;
+    var large={}, maj={}, hung=0, i=0, seatDist={}, seatWin={};
     function step(){
       if(seq!==mcSeq) return;                       // a newer run superseded this one
       var endi=Math.min(i+MC.batch, n);
@@ -951,14 +955,18 @@ document.addEventListener('DOMContentLoaded', function(){
         var o;
         try{ o=window.NowcastEngine.runNowcast({gb:gb, snpScotland:Math.max(0,inp.snpScotland+sg*gaussMC()), plcWales:Math.max(0,inp.plcWales+sg*gaussMC())}, ENGINE); }
         catch(e){ continue; }
-        var t={}; o.individualSeatResults.forEach(function(r){ var w=(r.winner==='MIN'&&r.minType)?r.minType:r.winner; t[w]=(t[w]||0)+1; });
+        var t={}; o.individualSeatResults.forEach(function(r){ var w=(r.winner==='MIN'&&r.minType)?r.minType:r.winner; t[w]=(t[w]||0)+1; var sw=seatWin[r.code]||(seatWin[r.code]={}); sw[w]=(sw[w]||0)+1; });
         for(var k in ni) t[k]=(t[k]||0)+ni[k];
+        for(var dp in t){ (seatDist[dp]||(seatDist[dp]=[])).push(t[dp]); }
         var top=null, tn=-1; for(var q in t){ if(t[q]>tn){ tn=t[q]; top=q; } }
         large[top]=(large[top]||0)+1; if(tn>=326) maj[top]=(maj[top]||0)+1; else hung++;
       }
       var pb=$('mc-progbar'); if(pb) pb.style.width=(100*i/n)+'%';
       if(i<n){ setTimeout(step,0); }
-      else { var res={N:n,large:large,maj:maj,hung:hung}; mcCache[key]=res; renderMC(res); }
+      else { var ranges={}; for(var rp in seatDist){ var arr=seatDist[rp].slice().sort(function(x,y){return x-y;}); var lo=arr[Math.floor(0.05*arr.length)]; var hi=arr[Math.min(arr.length-1,Math.ceil(0.95*arr.length)-1)]; ranges[rp]=[lo,hi]; }
+        mcRanges=ranges; mcSeatWin=seatWin; mcSeatN=n;
+        var res={N:n,large:large,maj:maj,hung:hung,ranges:ranges,seatWin:seatWin}; mcCache[key]=res;
+        renderMC(res); renderTotals(lastTallies); if(pinned) showTip(pinned._evt,pinned._d,true); }
     }
     setTimeout(step,0);
   }
@@ -970,8 +978,9 @@ document.addEventListener('DOMContentLoaded', function(){
     var nm=(PI[lead]||{}).n||lead, col=(PI[lead]||{}).c||'#888';
     $('mc-headline').innerHTML='<div class="mc-big" style="color:'+col+'">'+pMaj+'%</div><div class="mc-sub">chance of a <b>'+nm+' majority</b><br>'+pLarge+'% largest party &middot; '+pHung+'% hung parliament</div>';
     var rows=order.filter(function(p){return large[p];}).sort(function(a,b){return large[b]-large[a];});
-    $('mc-list').innerHTML=rows.map(function(p){ var pc=Math.round(100*large[p]/N); var c=(PI[p]||{}).c||'#888';
-      return '<div class="mc-row"><span class="mcab" style="background:'+c+';color:'+textOn(c)+'">'+p+'</span><span class="mcbar"><i style="width:'+pc+'%;background:'+c+'"></i></span><span class="mcpct">'+pc+'%</span></div>'; }).join('');
+    var head='<div class="mc-head"><span class="hsp"></span><span class="hbar">Largest party</span><span class="hp">Lgst</span><span class="hp">Maj</span></div>';
+    $('mc-list').innerHTML=head+rows.map(function(p){ var pc=Math.round(100*large[p]/N), pm=Math.round(100*(maj[p]||0)/N); var c=(PI[p]||{}).c||'#888';
+      return '<div class="mc-row"><span class="mcab" style="background:'+c+';color:'+textOn(c)+'">'+p+'</span><span class="mcbar"><i style="width:'+pc+'%;background:'+c+'"></i></span><span class="mcpct">'+pc+'%</span><span class="mcpct maj">'+pm+'%</span></div>'; }).join('');
     $('mc-sims').textContent=N+' sims';
   }
 
@@ -980,10 +989,12 @@ document.addEventListener('DOMContentLoaded', function(){
   function band(maj){ return maj>=0.15?'Safe':maj>=0.10?'Likely':maj>=0.05?'Lean':'Tilt'; }
 
   function renderTotals(t){
+    lastTallies=t;
     var order=['LAB','CON','RFM','LDM','GRN','SNP','PLC','RES','MIN','WPB'].slice().sort(function(a,b){return (t[b]||0)-(t[a]||0);});
     $('totstrip').innerHTML=order.filter(function(p){return t[p];}).map(function(p){
       var n=t[p]||0, ch=n-(W2024[p]||0), cs=ch>0?('+'+ch):(ch<0?String(ch):'0'); var tc=textOn(PI[p].c);
-      return '<div class="tot" style="background:'+PI[p].c+';color:'+tc+'"><div class="nm">'+p+'</div><div class="n">'+n+'</div><div class="ch">'+cs+'</div></div>'; }).join('');
+      var rng=''; if(mcRanges&&mcRanges[p]&&mcRanges[p][1]>mcRanges[p][0]) rng='<div class="rng">'+mcRanges[p][0]+'\u2013'+mcRanges[p][1]+'</div>';
+      return '<div class="tot" style="background:'+PI[p].c+';color:'+tc+'"><div class="nm">'+p+'</div><div class="n">'+n+'</div>'+rng+'<div class="ch">'+cs+'</div></div>'; }).join('');
     $('seatbar').innerHTML='<div class="majmark"></div>'+SPECTRUM.filter(function(p){return t[p];}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/650)+'%;background:'+(PI[p]?PI[p].c:'#999')+'"></div>'; }).join('');
     var top=Object.keys(t).filter(function(p){return PI[p];}).sort(function(a,b){return t[b]-t[a];})[0]; var lead=t[top]||0;
     $('hl-party').textContent=PI[top].n+(lead>=326?' Majority':' Largest Party'); $('hl-party').style.color=PI[top].c;
@@ -1034,7 +1045,12 @@ document.addEventListener('DOMContentLoaded', function(){
       +'<div class="res"><div class="sq" style="background:'+c19+';color:'+textOn(c19)+'">19</div><div class="sq" style="background:'+c24+';color:'+textOn(c24)+'">24</div>'
       +'<div class="pill" style="background:'+pillBg+';color:'+textOn(pillBg)+'">'+(s.fixed?(PI[wn]?PI[wn].n:wn):band(maj)+' '+wn)+'</div></div>'
       +'<div class="meta">'+(s.fixed?'':'<b>Projected Majority:</b> '+(maj*100).toFixed(1)+'%<br>')
-      +(s.mp?('<b>2024 MP:</b> '+s.mp):'')+'</div></div>';
+      +(s.mp?('<b>2024 MP:</b> '+s.mp):'')+'</div>'
+      +(function(){ var sw=mcSeatWin&&mcSeatWin[s.code]; if(!sw||!mcSeatN) return '';
+         var ent=Object.keys(sw).sort(function(a,b){return sw[b]-sw[a];}).slice(0,3).filter(function(p){return sw[p]/mcSeatN>=0.005;});
+         if(!ent.length) return '';
+         return '<div class="meta" style="margin-top:5px"><b>Win chance:</b> '+ent.map(function(p){return p+' '+Math.round(100*sw[p]/mcSeatN)+'%';}).join(' \u00b7 ')+'</div>'; })()
+      +'</div>';
     html+='<div class="bd">'+sorted.slice(0,7).map(function(p){ var dp=(p==='MIN'?(s.minType||'MIN'):p); var c=(PI[dp]||PI.OTH).c; var pct=sh[p]*100;
       var bk=(p==='MIN'?(s.minType||'MIN'):p); var ch=(base&&base[bk]!=null)?((sh[p]-base[bk])*100):null; var cs=ch==null?'':(ch>0?'+':'')+ch.toFixed(1);
       return '<div class="r"><span class="ab" style="background:'+c+';color:'+textOn(c)+'">'+dp+'</span><span class="bar"><i style="width:'+Math.min(100,pct/60*100)+'%;background:'+c+'"></i><span>'+pct.toFixed(1)+'%</span></span><span class="chg '+(ch>0?'up':ch<0?'down':'')+'">'+cs+'</span></div>'; }).join('')+'</div>';
