@@ -190,9 +190,9 @@
       </div>
       <h2>National vote share</h2>
       <div id="sliders"></div>
+      <div class="total-line"><span>GB total (excl. SNP/Plaid)</span><b id="gbtotal">100%</b></div>
       <div class="group-label">Nations</div>
       <div id="sliders-nat"></div>
-      <div class="total-line"><span>GB total (excl. SNP/Plaid)</span><b id="gbtotal">100%</b></div>
     </div>
 
     <div class="fullspan">
@@ -923,7 +923,7 @@ document.addEventListener('DOMContentLoaded', function(){
     NIFIXED.forEach(function(s){ byName[norm(s.name)]={seatName:s.name,winner:s.winner,winner2024:s.w24,winner2019:s.w19,mp:s.mp,shares:s.shares,fixed:true}; });
     if(mode==='custom'){ mcRanges=null; mcSeatWin=null; }   // drop stale sim outputs once inputs change
     var t=tallies(); renderTotals(t); maybeDrawMap(); updateGbTotal(); buildCoalition(t);
-    if(tableBuilt) buildTable();
+    if(tableBuilt){ buildTable(); if(sortCol) sortTable(sortCol,true); }
     if(pinned) showTip(pinned._evt,pinned._d,true);
     setTimeout(refreshMC,0);
   }
@@ -1018,7 +1018,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var c=d3.select('#map-container'); var rect=c.node().getBoundingClientRect(); var w=Math.round(rect.width)||800; var h=(rect.height>300?Math.round(rect.height):720);
     var svg=c.append('svg').attr('width','100%').attr('height',h).attr('viewBox','0 0 '+w+' '+h); mapG=svg.append('g'); mapSvg=svg;
     var proj=d3.geoMercator().fitSize([w,h],geo); var path=d3.geoPath().projection(proj); mapPath=path;
-    function strokeForK(k){ return Math.max(0.06, 0.35/Math.sqrt(k))+'px'; }
+    function strokeForK(k){ return Math.max(0.12, 0.45/Math.pow(k,0.4))+'px'; }
     mapZoom=d3.zoom().scaleExtent([1,40]).on('zoom',function(e){ mapG.attr('transform',e.transform); mapG.attr('stroke-width',strokeForK(e.transform.k)); if(!pinned) tip.style.display='none'; });
     svg.call(mapZoom); mapG.attr('stroke-width',strokeForK(1));
     mapG.selectAll('path').data(geo.features).enter().append('path').attr('class','cp').attr('d',path).attr('fill','#e5e7eb')
@@ -1108,7 +1108,7 @@ document.addEventListener('DOMContentLoaded', function(){
       h+='<tr><td>'+s.seatName+'</td><td class="win"><span style="background:'+wc+';color:'+textOn(wc)+'">'+dw+'</span></td><td class="win"><span style="background:'+w2+';color:'+textOn(w2)+'">'+s.winner2024+'</span></td>'+tp.map(function(p){var v=s.shares[p];return '<td class="sh">'+(v>0.005?(v*100).toFixed(0)+'%':'&middot;')+'</td>';}).join('')+'</tr>'; });
     h+='</tbody></table>'; $('table-wrap').innerHTML=h;
     $('table-wrap').querySelectorAll('th[data-c]').forEach(function(th){ th.addEventListener('click',function(){ sortTable(th.getAttribute('data-c')); }); }); tableBuilt=true; }
-  function sortTable(col){ sortDir=(sortCol===col)?-sortDir:1; sortCol=col; var tb=$('table-wrap').querySelector('tbody'); var rows=Array.prototype.slice.call(tb.querySelectorAll('tr'));
+  function sortTable(col,keep){ if(!keep){ sortDir=(sortCol===col)?-sortDir:1; } sortCol=col; var tb=$('table-wrap').querySelector('tbody'); var rows=Array.prototype.slice.call(tb.querySelectorAll('tr'));
     rows.sort(function(a,b){ if(col==='name'){return a.cells[0].textContent.localeCompare(b.cells[0].textContent)*sortDir;} if(col==='win'){return a.cells[1].textContent.localeCompare(b.cells[1].textContent)*sortDir;}
       var tp=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','OTH']; var i=3+tp.indexOf(col); var av=parseFloat(a.cells[i].textContent)||-1, bv=parseFloat(b.cells[i].textContent)||-1; return (av-bv)*sortDir; });
     tb.innerHTML=''; rows.forEach(function(r){tb.appendChild(r);}); }
