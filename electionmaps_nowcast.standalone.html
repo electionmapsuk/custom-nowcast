@@ -498,7 +498,7 @@ const CONFIG = {
     'E14001251': { name:'Gorton and Denton',
       natAtTime:{LAB:0.198,CON:0.188,RFM:0.282,LDM:0.125,GRN:0.141,RES:0.027,OTH:0.039},
       seatPoll: {LAB:0.254,CON:0.019,RFM:0.287,LDM:0.018,GRN:0.406,RES:0,    OTH:0.016} },
-    'E14001256': { name:'Great Yarmouth',  // local poll, 7 May
+    'E14001256': { name:'Great Yarmouth', blend:0.75,  // local poll, 7 May (weighted 75% to the poll)
       natAtTime:{LAB:0.191,CON:0.181,RFM:0.272,LDM:0.120,GRN:0.144,RES:0.033,OTH:0.029},
       seatPoll: {LAB:0.090,CON:0.120,RFM:0.200,LDM:0.030,GRN:0.110,RES:0.460,OTH:0.000} },
     'E14001350': { name:'Makerfield',  // local poll, 26 May
@@ -705,9 +705,10 @@ function applySpecialSeats(seatShares, inputs, cfg){
   const plcGB=((inputs.wales&&inputs.wales.PLC)||0)*P.wales/P.gb;
   const curNat={}; let ms=0; mains.forEach(p=>{ curNat[p]=inputs.gb[p]||0; ms+=curNat[p]; });
   curNat.OTH=Math.max(0, 1-ms-snpGB-plcGB);
-  const mix=cfg.specialMix, blend=cfg.specialBlend, keys=['LAB','CON','RFM','LDM','GRN','RES','OTH'];
+  const mix=cfg.specialMix, keys=['LAB','CON','RFM','LDM','GRN','RES','OTH'];
   seatShares.forEach(x=>{
     const sd=sp[x.s.code]; if(!sd) return;
+    const blend=(sd.blend!=null)?sd.blend:cfg.specialBlend;
     const est={}; let es=0;
     keys.forEach(p=>{ const sv=sd.seatPoll[p]||0, nt=sd.natAtTime[p]||0, cn=curNat[p]||0;
       const add=sv+(cn-nt), prop=nt>0?sv*(cn/nt):sv; est[p]=Math.max(0, mix*add+(1-mix)*prop); es+=est[p]; });
