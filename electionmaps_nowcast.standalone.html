@@ -971,7 +971,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // ---- Monte Carlo majority odds (correlated swing, chunked on the main thread) ----
   // sigma = std dev of each party's vote-share error (0.015 = 1.5pp). rho = share of that error
   // that is a common left/right national swing vs party-specific (0 = independent, 1 = pure bloc swing).
-  var MC={ simsCentral:500, simsCustom:300, sigma:0.015, rho:0.5, localSigma:0.04, batch:5,
+  var MC={ simsCentral:500, simsCustom:300, sigma:0.025, rho:0.5, localSigma:0.02, batch:5,
            sign:{LAB:-1,GRN:-1,LDM:-1,CON:1,RFM:1,RES:1,SNP:0,PLC:0} };  // +1 right bloc, -1 left bloc
   var mcSeq=0, mcCache={}, mcRanges=null, mcSeatWin=null, mcSeatN=0, lastTallies={};
   function niWinCounts(){ var c={}; NIFIXED.forEach(function(s){ c[s.winner]=(c[s.winner]||0)+1; }); return c; }
