@@ -41,9 +41,9 @@
   .sld .val small{color:var(--faint); font-weight:600;}
   input[type=range]{-webkit-appearance:none; appearance:none; width:100%; height:11px; border-radius:99px; background:var(--line); outline:none; margin:2px 0;}
   input[type=range]:disabled{opacity:.6;}
-  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:15px; height:28px; border-radius:6px; background:var(--c,#444); border:2.5px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.3); cursor:grab; margin-top:-9px;}
+  input[type=range]::-webkit-slider-thumb{-webkit-appearance:none; width:24px; height:24px; border-radius:50%; background:var(--c,#444); border:3px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.3); cursor:grab; margin-top:0;}
   input[type=range]:disabled::-webkit-slider-thumb{cursor:not-allowed;}
-  input[type=range]::-moz-range-thumb{width:15px; height:28px; border-radius:6px; background:var(--c,#444); border:2.5px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.3);}
+  input[type=range]::-moz-range-thumb{width:24px; height:24px; border-radius:50%; background:var(--c,#444); border:3px solid #fff; box-shadow:0 1px 5px rgba(0,0,0,.3);}
   input[type=range]::-moz-range-track{height:11px; border-radius:99px;}
   .group-label{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:18px 0 12px; padding-top:14px; border-top:1px solid var(--line2);}
   .total-line{margin-top:14px; padding-top:14px; border-top:1px solid var(--line2); font-size:.82rem; color:var(--muted); display:flex; justify-content:space-between;}
@@ -69,7 +69,7 @@
   .tot .ch{display:inline-block; margin-top:4px; background:rgba(0,0,0,.2); padding:1px 7px; border-radius:5px; font-size:.74rem; font-weight:800; font-variant-numeric:tabular-nums;}
 
   .section-h{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:28px 0 12px;}
-  #map-container{position:relative; width:100%; height:560px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
+  #map-container{position:relative; width:100%; height:720px; min-height:720px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
   #map-container svg{cursor:grab;} #map-container svg:active{cursor:grabbing;}
   .cp{stroke:#fff; stroke-width:.25px; transition:fill .18s; cursor:pointer;}
   .cp:hover{stroke:#15171a; stroke-width:1px;} .cp.pinned{stroke:#15171a; stroke-width:1.1px;}
@@ -81,7 +81,7 @@
 
   /* branded tooltip card */
   #tip{position:fixed; pointer-events:none; z-index:60; width:230px; display:none; border-radius:12px; overflow:hidden; box-shadow:0 12px 32px rgba(0,0,0,.2); background:#fff;}
-  #tip .hd{background:#0b3d3d; color:#fff; padding:11px 12px 10px;}
+  #tip .hd{background:rgb(0,38,38); color:#fff; padding:11px 12px 10px;}
   #tip .hd .nm{font-size:1.12rem; font-weight:800; line-height:1.12; letter-spacing:-0.01em;}
   #tip .hd .res{display:flex; gap:4px; align-items:stretch; margin:8px 0 7px; height:26px;}
   #tip .hd .sq{width:27px; border-radius:6px; display:flex; align-items:center; justify-content:center; font-weight:800; font-size:.72rem;}
@@ -102,12 +102,12 @@
   #coalition{margin-top:14px;}
   #coal-total{text-align:center; font-size:1.25rem; font-weight:800; margin:6px 0 14px; color:#dc2626;}
   #coal-total.gov{color:#16a34a;}
-  #coal-parties{display:flex; flex-wrap:wrap; gap:9px; justify-content:center;}
-  .coalbtn{display:flex; flex-direction:column; align-items:center; gap:2px; min-width:58px; padding:8px 12px 9px; border-radius:10px; color:#fff; cursor:pointer; border:1.5px solid transparent; opacity:.38; filter:saturate(.85); transition:all .16s ease;}
-  .coalbtn .cab{font-size:.66rem; font-weight:800; letter-spacing:.07em; text-transform:uppercase; opacity:.92;}
-  .coalbtn .cn{font-size:1.15rem; font-weight:900; line-height:1; font-variant-numeric:tabular-nums;}
+  #coal-parties{display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin-top:16px;}
+  .coalbtn{display:flex; flex-direction:column; align-items:center; gap:1px; min-width:44px; padding:5px 9px 6px; border-radius:8px; color:#fff; cursor:pointer; border:1.5px solid transparent; opacity:.38; filter:saturate(.85); transition:all .16s ease;}
+  .coalbtn .cab{font-size:.58rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; opacity:.92;}
+  .coalbtn .cn{font-size:.92rem; font-weight:900; line-height:1; font-variant-numeric:tabular-nums;}
   .coalbtn:hover{opacity:.7;}
-  .coalbtn.on{opacity:1; filter:none; box-shadow:0 3px 10px rgba(0,0,0,.18); transform:translateY(-2px);}
+  .coalbtn.on{opacity:1; filter:none; box-shadow:0 2px 8px rgba(0,0,0,.16); transform:translateY(-1px);}
   .coalbar{height:26px; border-radius:8px; overflow:hidden; display:flex; margin:14px 0 4px; background:var(--line2); position:relative;}
   .coalbar .majmark{}
 
@@ -130,8 +130,7 @@
 </head>
 <body>
 <div class="wrap">
-  <div class="masthead">
-    <h1>UK Election Nowcast</h1>
+  <div class="masthead" style="justify-content:flex-end;">
     <span class="modepill" id="modepill">Central projection</span>
   </div>
   <div class="custombanner">You're viewing a <b>custom model</b> &mdash; this is not ElectionMapsUK's central projection.</div>
@@ -906,10 +905,10 @@ document.addEventListener('DOMContentLoaded', function(){
     var order=['LAB','CON','RFM','LDM','GRN','SNP','PLC','RES','MIN','WPB'].slice().sort(function(a,b){return (t[b]||0)-(t[a]||0);});
     $('totstrip').innerHTML=order.filter(function(p){return t[p];}).map(function(p){
       var n=t[p]||0, ch=n-(W2024[p]||0), cs=ch>0?('+'+ch):(ch<0?String(ch):'0'); var tc=textOn(PI[p].c);
-      return '<div class="tot" style="background:'+PI[p].c+';color:'+tc+'"><div class="nm">'+PI[p].n+'</div><div class="n">'+n+'</div><div class="ch">'+cs+'</div></div>'; }).join('');
+      return '<div class="tot" style="background:'+PI[p].c+';color:'+tc+'"><div class="nm">'+p+'</div><div class="n">'+n+'</div><div class="ch">'+cs+'</div></div>'; }).join('');
     $('seatbar').innerHTML='<div class="majmark"></div>'+SPECTRUM.filter(function(p){return t[p];}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/650)+'%;background:'+(PI[p]?PI[p].c:'#999')+'"></div>'; }).join('');
     var top=Object.keys(t).filter(function(p){return PI[p];}).sort(function(a,b){return t[b]-t[a];})[0]; var lead=t[top]||0;
-    $('hl-party').textContent=PI[top].n+' largest'; $('hl-party').style.color=PI[top].c;
+    $('hl-party').textContent=PI[top].n+(lead>=326?' Majority':' Largest Party'); $('hl-party').style.color=PI[top].c;
     var maj=$('hl-maj'); if(lead>=326){ maj.textContent='Majority of '+(2*lead-650); maj.className='maj gov'; } else { maj.textContent=(326-lead)+' short of a majority'; maj.className='maj'; }
   }
 
@@ -994,10 +993,8 @@ document.addEventListener('DOMContentLoaded', function(){
   $('toggle-table').addEventListener('click',function(){ var w=$('table-wrap'); if(w.style.display==='block'){ w.style.display='none'; this.textContent='Show table'; } else { if(!tableBuilt) buildTable(); w.style.display='block'; this.textContent='Hide table'; } });
 
   document.querySelectorAll('.mmb').forEach(function(b){ b.addEventListener('click',function(){ mapMode=b.getAttribute('data-m'); document.querySelectorAll('.mmb').forEach(function(x){x.classList.remove('active');}); b.classList.add('active'); renderMapColors(); }); });
-  $('share').addEventListener('click',function(){ var p=new URLSearchParams(); for(var id in URLP){ p.set(URLP[id],$(id).value); } var url=location.href.split('?')[0]+'?'+p.toString();
     var ta=document.createElement('textarea'); ta.value=url; document.body.appendChild(ta); ta.select(); try{ document.execCommand('copy'); $('copied').style.display='block'; setTimeout(function(){$('copied').style.display='none';},1800);}catch(e){ prompt('Copy link:',url);} document.body.removeChild(ta); });
 });
 </script>
 </body>
 </html>
-    
