@@ -161,7 +161,7 @@
   <div class="grid" id="app" style="display:none;">
     <div class="leftcol">
       <div class="panel">
-        <div class="headline"><span class="big" id="hl-party">&mdash;</span><span class="maj" id="hl-maj"></span></div>
+        <div class="headline" aria-live="polite"><span class="big" id="hl-party">&mdash;</span><span class="maj" id="hl-maj"></span></div>
         <div class="seatbar" id="seatbar"><div class="majmark"></div></div>
         <div class="totstrip" id="totstrip"></div>
       </div>
@@ -173,7 +173,7 @@
         <button class="mmb" data-m="change">Change vs 2024</button>
         <button class="mmb" data-m="margin">Margin</button>
       </div>
-      <div class="mapsearch"><input id="seatsearch" list="seatlist" placeholder="Search for a constituency…" autocomplete="off"><datalist id="seatlist"></datalist></div>
+      <div class="mapsearch"><input id="seatsearch" list="seatlist" placeholder="Search for a constituency…" autocomplete="off" aria-label="Search for a constituency"><datalist id="seatlist"></datalist></div>
       <div id="map-container"><div class="map-hint">Scroll to zoom &middot; drag to pan &middot; click to pin</div></div>
     </div>
 
@@ -185,7 +185,7 @@
       <div id="copied" style="display:none; text-align:center; font-size:.78rem; color:var(--accent); margin:-10px 0 14px;">Link copied</div>
       <div class="mc" id="mc">
         <h3>Majority odds <span class="sims" id="mc-sims"></span></h3>
-        <div id="mc-headline"><div class="mc-sub">Simulating…</div></div>
+        <div id="mc-headline" aria-live="polite"><div class="mc-sub">Simulating…</div></div>
         <div id="mc-list"></div>
       </div>
       <h2>National vote share</h2>
@@ -894,8 +894,8 @@ document.addEventListener('DOMContentLoaded', function(){
   }
   function rowHTML(s){ var id=s[0],p=s[1],sub=s[2],c=PI[p].c;
     return '<div class="sld"><div class="top"><span class="lab"><span class="dot" style="background:'+c+'"></span>'+PI[p].n+' <small>'+sub+'</small></span>'
-      +'<span class="val"><input class="num" id="n_'+id+'" type="number" step="0.1" min="0" max="'+(p==='SNP'?60:60)+'" value="0" disabled><small>%</small></span></div>'
-      +'<input type="range" id="'+id+'" min="0" max="'+(p==='SNP'?60:55)+'" step="0.1" value="0" style="--c:'+c+'"></div>';
+      +'<span class="val"><input class="num" id="n_'+id+'" type="number" step="0.1" min="0" max="'+(p==='SNP'?60:60)+'" value="0" disabled aria-label="'+PI[p].n+' '+sub+' vote share, percent"><small>%</small></span></div>'
+      +'<input type="range" id="'+id+'" min="0" max="'+(p==='SNP'?60:55)+'" step="0.1" value="0" style="--c:'+c+'" aria-label="'+PI[p].n+' '+sub+' vote share, percent"></div>';
   }
   function syncFromSlider(id){ $('n_'+id).value=(parseFloat($(id).value)||0).toFixed(1); setTrack($(id)); schedule(); }
   function syncFromNum(id){ var v=parseFloat($('n_'+id).value)||0; $(id).value=v; setTrack($(id)); schedule(); }
@@ -1016,9 +1016,9 @@ document.addEventListener('DOMContentLoaded', function(){
   function maybeDrawMap(){ if(!geo||!results||typeof d3==='undefined') return; if(!mapDrawn) drawMap(); else renderMapColors(); }
   function drawMap(){ if(!geo||mapDrawn||typeof d3==='undefined') return;
     var c=d3.select('#map-container'); var rect=c.node().getBoundingClientRect(); var w=Math.round(rect.width)||800; var h=(rect.height>300?Math.round(rect.height):720);
-    var svg=c.append('svg').attr('width','100%').attr('height',h).attr('viewBox','0 0 '+w+' '+h); mapG=svg.append('g'); mapSvg=svg;
+    var svg=c.append('svg').attr('width','100%').attr('height',h).attr('viewBox','0 0 '+w+' '+h).attr('role','img').attr('aria-label','Map of Great Britain constituencies coloured by projected winning party. The same data is available as a sortable table further down the page.'); mapG=svg.append('g'); mapSvg=svg;
     var proj=d3.geoMercator().fitSize([w,h],geo); var path=d3.geoPath().projection(proj); mapPath=path;
-    function strokeForK(k){ return Math.max(0.12, 0.45/Math.pow(k,0.4))+'px'; }
+    function strokeForK(k){ return Math.max(0.18, 0.3/Math.pow(k,0.25))+'px'; }
     mapZoom=d3.zoom().scaleExtent([1,40]).on('zoom',function(e){ mapG.attr('transform',e.transform); mapG.attr('stroke-width',strokeForK(e.transform.k)); if(!pinned) tip.style.display='none'; });
     svg.call(mapZoom); mapG.attr('stroke-width',strokeForK(1));
     mapG.selectAll('path').data(geo.features).enter().append('path').attr('class','cp').attr('d',path).attr('fill','#e5e7eb')
