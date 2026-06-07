@@ -130,8 +130,10 @@
 
   /* coalition */
   #coalition{margin-top:14px;}
-  #coal-total{text-align:center; font-size:1.05rem; font-weight:800; font-variant-numeric:tabular-nums; line-height:1.3; margin:6px 0 14px; color:#dc2626;}
+  #coal-total{text-align:center; font-size:1.35rem; font-weight:900; letter-spacing:-0.02em; font-variant-numeric:tabular-nums; line-height:1.25; margin:6px 0 14px; color:#dc2626;}
   #coal-total.gov{color:#16a34a;}
+  #coal-total .coalchip{display:inline-block; padding:2px 8px; border-radius:6px; font-size:.8rem; font-weight:800; letter-spacing:0; margin:0 4px 5px 0; vertical-align:middle;}
+  #coal-total .coaloutcome{vertical-align:middle; margin-left:4px;}
   #coal-parties{display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin-top:16px;}
   .coalbtn{display:flex; flex-direction:column; align-items:center; gap:1px; min-width:44px; padding:5px 9px 6px; border-radius:8px; color:#fff; cursor:pointer; border:1.5px solid transparent; opacity:.38; filter:saturate(.85); transition:all .16s ease;}
   .coalbtn .cab{font-size:.58rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; opacity:.92;}
@@ -1122,8 +1124,8 @@ document.addEventListener('DOMContentLoaded', function(){
     $('totstrip').innerHTML=order.filter(function(p){return t[p];}).map(function(p){
       var n=t[p]||0, ch=n-(W2024[p]||0), cs=ch>0?('+'+ch):(ch<0?String(ch):'0'); var tc=textOn(PI[p].c);
       var rng=''; if(mcRanges&&mcRanges[p]&&mcRanges[p][1]>=mcRanges[p][0]) rng='<div class="rng">'+mcRanges[p][0]+'\u2013'+mcRanges[p][1]+'</div>';
-      return '<div class="tot" style="background:'+PI[p].c+';color:'+tc+'"><div class="nm">'+fullName(p)+'</div><div class="n">'+n+'</div>'+rng+'<div class="ch">'+cs+'</div></div>'; }).join('');
-    $('seatbar').innerHTML='<div class="majmark"></div>'+SPECTRUM.filter(function(p){return t[p];}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/650)+'%;background:'+(PI[p]?PI[p].c:'#999')+'"></div>'; }).join('');
+      return '<div class="tot" style="background:'+PI[p].c+';color:'+tc+'"><div class="nm">'+p+'</div><div class="n">'+n+'</div>'+rng+'<div class="ch">'+cs+'</div></div>'; }).join('');
+    $('seatbar').innerHTML='<div class="majmark"></div>'+SPECTRUM.filter(function(p){return t[p]&&p!=='SF';}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/650)+'%;background:'+(PI[p]?PI[p].c:'#999')+'"></div>'; }).join('');
     var top=Object.keys(t).filter(function(p){return PI[p];}).sort(function(a,b){return t[b]-t[a];})[0]; var lead=t[top]||0;
     $('hl-party').textContent=PI[top].n+(lead>=326?' Majority':' Largest Party'); $('hl-party').style.color=PI[top].c;
     var maj=$('hl-maj'); if(lead>=326){ maj.textContent='Majority of '+(2*lead-650); maj.className='maj gov'; } else { maj.textContent=(326-lead)+' short'; maj.className='maj'; }
@@ -1253,17 +1255,18 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   function buildCoalition(t){
-    var order=Object.keys(t).filter(function(p){return t[p]>0&&PI[p];}).sort(function(a,b){return t[b]-t[a];});
+    var order=Object.keys(t).filter(function(p){return t[p]>0&&PI[p]&&p!=='SF';}).sort(function(a,b){return t[b]-t[a];});  // SF abstain - exclude from coalitions (326 line unchanged)
     var keep={}; order.forEach(function(p){ keep[p]=(coalSel[p]!==undefined)?coalSel[p]:false; }); coalSel=keep;
     if(!order.some(function(p){return coalSel[p];}) && order.length) coalSel[order[0]]=true;
     $('coal-parties').innerHTML=order.map(function(p){ return '<div class="coalbtn'+(coalSel[p]?' on':'')+'" data-p="'+p+'" style="background:'+PI[p].c+';color:'+textOn(PI[p].c)+'"><span class="cab">'+p+'</span><span class="cn">'+t[p]+'</span></div>'; }).join('');
     $('coal-parties').querySelectorAll('.coalbtn').forEach(function(b){ b.addEventListener('click',function(){ var p=b.getAttribute('data-p'); coalSel[p]=!coalSel[p]; buildCoalition(t); }); });
     var tot=0; order.forEach(function(p){ if(coalSel[p]) tot+=t[p]; });
-    var sel=order.filter(function(p){return coalSel[p];}); var label=sel.join('+');
+    var sel=order.filter(function(p){return coalSel[p];});
+    var chips=sel.map(function(p){ var c=PI[p].c; return '<span class="coalchip" style="background:'+c+';color:'+textOn(c)+'">'+p+'</span>'; }).join('');
     var ct=$('coal-total');
-    if(!sel.length){ ct.textContent='Select parties'; ct.className=''; }
-    else if(tot>=326){ ct.textContent=label+' \u00b7 Majority of '+(2*tot-650); ct.className='gov'; }
-    else { ct.textContent=label+' \u00b7 '+(326-tot)+' short'; ct.className=''; }
+    if(!sel.length){ ct.innerHTML='<span class="coaloutcome">Select parties</span>'; ct.className=''; }
+    else if(tot>=326){ ct.innerHTML=chips+'<span class="coaloutcome">Majority of '+(2*tot-650)+'</span>'; ct.className='gov'; }
+    else { ct.innerHTML=chips+'<span class="coaloutcome">'+(326-tot)+' short</span>'; ct.className=''; }
     $('coalbar').innerHTML='<div class="majmark"></div>'+order.filter(function(p){return coalSel[p];}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/650)+'%;background:'+PI[p].c+'"></div>'; }).join('');
   }
 
