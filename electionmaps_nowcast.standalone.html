@@ -22,6 +22,8 @@
   .custombanner{display:none; background:var(--purple-bg); border:1px solid #ddd0ff; color:#5b21b6; font-weight:600; font-size:.85rem; padding:10px 14px; border-radius:12px; margin-bottom:18px;}
   body.custom .custombanner{display:block;}
   .grid{display:grid; grid-template-columns:minmax(0,1fr) 296px; gap:24px; align-items:stretch;}
+  .grid>*{min-width:0;}
+  .leftcol,.controls-panel,.fullspan{min-width:0;}
   @media(max-width:880px){ .grid{grid-template-columns:1fr;} }
   .leftcol{display:flex; flex-direction:column;}
   .leftcol #map-container{flex:1;}
@@ -1161,7 +1163,8 @@ document.addEventListener('DOMContentLoaded', function(){
     var o=seatOf(d); if(!o.s){ tip.style.display='none'; return; }
     var s=o.s, sh=s.shares;
     var sorted=Object.keys(sh).filter(function(p){return sh[p]>0.003;}).sort(function(a,b){return sh[b]-sh[a];});
-    var rowsP=sorted.slice(0,7); if((sh.MIN||0)>0 && rowsP.indexOf('MIN')<0) rowsP.push('MIN');  // always show MIN
+    var CANONP=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','OTH'];
+    var rowsP=CANONP.filter(function(p){return (sh[p]||0)>0.0005;}).sort(function(a,b){return (sh[b]||0)-(sh[a]||0);});  // show every party present (incl. low Restore/MIN)
     var maj=(sorted.length>1)?(sh[sorted[0]]-sh[sorted[1]]):sh[sorted[0]]||0;
     var base=SEATBASE[s.code]?SEATBASE[s.code].a24:null;
     var w19=s.winner2019, w24=s.winner2024, wn=dispWin(s);
