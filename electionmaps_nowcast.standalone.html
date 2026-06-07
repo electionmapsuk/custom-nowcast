@@ -200,7 +200,6 @@
   <div class="masthead" style="justify-content:flex-end;">
     <span class="modepill" id="modepill">Central projection</span>
   </div>
-  <div class="custombanner">You're viewing <b>User Input</b> &mdash; this is not Election Maps UK's central projection.</div>
 
   <div id="loading" class="loading">Loading model&hellip;</div>
 
@@ -235,6 +234,7 @@
       </div>
 
       <div class="rtop">
+        <div class="section-h" style="margin-top:0;" aria-hidden="true">&nbsp;</div>
         <div class="ctrls" style="margin-top:0;">
           <button class="btn purple" id="modebtn">Switch to User Input</button>
           <button class="btn" id="share">Share</button>
@@ -1145,7 +1145,7 @@ document.addEventListener('DOMContentLoaded', function(){
       return '<div class="tot" style="background:'+PI[p].c+';color:'+tc+'"><div class="nm">'+p+'</div><div class="n">'+n+'</div>'+rng+'<div class="ch">'+cs+'</div></div>'; }).join('');
     $('seatbar').innerHTML='<div class="majmark"></div>'+SPECTRUM.filter(function(p){return t[p]&&p!=='SF'&&p!=='SPKR';}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/642)+'%;background:'+(PI[p]?PI[p].c:'#999')+'"></div>'; }).join('');
     var top=Object.keys(t).filter(function(p){return PI[p];}).sort(function(a,b){return t[b]-t[a];})[0]; var lead=t[top]||0;
-    $('hl-party').textContent=PI[top].n+(lead>=326?' Majority':' Largest Party'); $('hl-party').style.color=PI[top].c;
+    $('hl-party').textContent=fullName(top)+(lead>=326?' Majority':' Largest Party'); $('hl-party').style.color=PI[top].c;
     var maj=$('hl-maj'); if(lead>=326){ maj.textContent='Majority of '+(2*lead-650); maj.className='maj gov'; } else { maj.textContent=(326-lead)+' short'; maj.className='maj'; }
   }
 
