@@ -130,10 +130,10 @@
 
   /* coalition */
   #coalition{margin-top:14px;}
-  #coal-total{text-align:center; font-size:1.35rem; font-weight:900; letter-spacing:-0.02em; font-variant-numeric:tabular-nums; line-height:1.25; margin:6px 0 14px; color:#dc2626;}
+  #coal-total{display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:7px; font-size:1.35rem; font-weight:900; letter-spacing:-0.02em; font-variant-numeric:tabular-nums; line-height:1.2; margin:6px 0 14px; color:#dc2626;}
   #coal-total.gov{color:#16a34a;}
-  #coal-total .coalchip{display:inline-block; padding:2px 8px; border-radius:6px; font-size:.8rem; font-weight:800; letter-spacing:0; margin:0 4px 5px 0; vertical-align:middle;}
-  #coal-total .coaloutcome{vertical-align:middle; margin-left:4px;}
+  #coal-total .coalchip{display:inline-block; padding:3px 9px; border-radius:6px; font-size:.8rem; font-weight:800; letter-spacing:0;}
+  #coal-total .coaloutcome{margin-left:2px;}
   #coal-parties{display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin-top:16px;}
   .coalbtn{display:flex; flex-direction:column; align-items:center; gap:1px; min-width:44px; padding:5px 9px 6px; border-radius:8px; color:#fff; cursor:pointer; border:1.5px solid transparent; opacity:.38; filter:saturate(.85); transition:all .16s ease;}
   .coalbtn .cab{font-size:.58rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; opacity:.92;}
@@ -1173,35 +1173,41 @@ document.addEventListener('DOMContentLoaded', function(){
     pinned={_d:d}; mapG.selectAll('.cp').classed('pinned',false); mapG.selectAll('.cp').filter(function(x){return x===d;}).classed('pinned',true);
     setTimeout(function(){ var r=mapSvg.node().getBoundingClientRect(); var ev={clientX:r.left+r.width/2, clientY:r.top+r.height*0.32}; pinned._evt=ev; showTip(ev,d,true); }, 720); }
   function exportMapPNG(){
+    if(mapType==='hex' && !hexGeo){ ensureMapData(function(){ exportMapPNG(); }); return; }
     var g=activeGeo(); if(!g||typeof d3==='undefined'){ return; }
-    var btn=$("dlmap"), label=btn?btn.textContent:""; if(btn){ btn.textContent="Rendering\u2026"; btn.disabled=true; }
+    var btn=$("dlmap"), label=btn?btn.textContent:""; function restore(){ if(btn){ btn.textContent=label; btn.disabled=false; } }
+    if(btn){ btn.textContent="Rendering\u2026"; btn.disabled=true; }
     try{
-      var EXPW=3000, pad=85;
+      var EXPW=3000, pad=85, foot=200;
       var mk=function(){ return mapType==='hex'?d3.geoIdentity().reflectY(true):d3.geoMercator(); };
       var test=mk().fitWidth(EXPW-pad*2, g); var bb=d3.geoPath().projection(test).bounds(g);
-      var aspect=(bb[1][1]-bb[0][1])/(bb[1][0]-bb[0][0]); var EXPH=Math.round((EXPW-pad*2)*aspect)+pad*2+90;
-      var proj=mk().fitExtent([[pad,pad],[EXPW-pad,EXPH-pad-90]], g); var path=d3.geoPath().projection(proj);
-      var paths=g.features.map(function(ft){ var fill="#e5e7eb"; try{ var o=seatOf(ft); if(o.s) fill=colourFor(o.s); }catch(e){} var d=path(ft)||""; return d?('<path d="'+d+'" fill="'+fill+'" stroke="#ffffff" stroke-width="0.95" stroke-linejoin="round"/>'):""; }).join("");
+      var aspect=(bb[1][1]-bb[0][1])/(bb[1][0]-bb[0][0]); var EXPH=Math.round((EXPW-pad*2)*aspect)+pad*2+foot;
+      var proj=mk().fitExtent([[pad,pad],[EXPW-pad,EXPH-pad-foot]], g); var path=d3.geoPath().projection(proj);
+      var paths=g.features.map(function(ft){ var fill="#e5e7eb"; try{ var o=seatOf(ft); if(o.s) fill=colourFor(o.s); }catch(e){} var d=path(ft)||""; return d?('<path d="'+d+'" fill="'+fill+'" stroke="#ffffff" stroke-width="1.4" stroke-linejoin="round"/>'):""; }).join("");
+      var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+EXPW+'" height="'+EXPH+'" viewBox="0 0 '+EXPW+' '+EXPH+'"><rect width="100%" height="100%" fill="#fbf7f4"/>'+paths+'</svg>';
       var when=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
-      var cap=(mapType==="hex"?"Hex cartogram (layout: Automatic Knowledge, CC BY 4.0)":"Constituency projection");
+      var cap=(mapType==="hex"?"Hex cartogram \u00b7 layout: Automatic Knowledge (CC BY 4.0)":"Constituency projection");
       var title=(mode==="custom"?"User Input projection":"Central projection")+" \u00b7 "+when;
       var fontF="Inter, Arial, sans-serif";
-      var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+EXPW+'" height="'+EXPH+'" viewBox="0 0 '+EXPW+' '+EXPH+'">'
-        +'<rect width="100%" height="100%" fill="#fbf7f4"/>'+paths
-        +'<text x="'+pad+'" y="'+(EXPH-54)+'" font-family="'+fontF+'" font-size="34" font-weight="800" fill="#15171a">'+title+'</text>'
-        +'<text x="'+pad+'" y="'+(EXPH-20)+'" font-family="'+fontF+'" font-size="22" fill="#6b7280">electionmapsuk \u00b7 '+cap+'</text>'
-        +'</svg>';
-      var url="data:image/svg+xml;base64,"+btoa(unescape(encodeURIComponent(svg)));
-      var img=new Image(); img.onload=function(){
+      var img=new Image();
+      img.onload=function(){
         var cv=document.createElement('canvas'); cv.width=EXPW; cv.height=EXPH; var cx=cv.getContext('2d');
         cx.fillStyle='#fbf7f4'; cx.fillRect(0,0,EXPW,EXPH); cx.drawImage(img,0,0);
-        cv.toBlob(function(blob){ var a=document.createElement("a"); a.href=URL.createObjectURL(blob);
-          a.download="electionmapsuk-"+mapType+"-"+(mode==="custom"?"userinput":"central")+".png"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
-          setTimeout(function(){ URL.revokeObjectURL(a.href); },4000); if(btn){ btn.textContent=label; btn.disabled=false; } }, "image/png");
+        function footer(textX){
+          cx.textBaseline='alphabetic';
+          cx.fillStyle='#15171a'; cx.font='800 52px '+fontF; cx.fillText(title, textX, EXPH-118);
+          cx.fillStyle='#004d4d'; cx.font='800 46px '+fontF; cx.fillText('electionmaps.uk/nowcast', textX, EXPH-62);
+          cx.fillStyle='#6b7280'; cx.font='400 32px '+fontF; cx.fillText(cap, textX, EXPH-18);
+          cv.toBlob(function(blob){ var a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+            a.download="electionmapsuk-"+mapType+"-"+(mode==="custom"?"userinput":"central")+".png"; document.body.appendChild(a); a.click(); document.body.removeChild(a);
+            setTimeout(function(){ URL.revokeObjectURL(a.href); },4000); restore(); }, "image/png");
+        }
+        if(window.__LOGO__){ var lg=new Image(); lg.onload=function(){ var lh=130, lw=Math.round(lg.width*(lh/lg.height)); cx.drawImage(lg, pad, EXPH-foot+42, lw, lh); footer(pad+lw+45); }; lg.onerror=function(){ footer(pad); }; lg.src=window.__LOGO__; }
+        else footer(pad);
       };
-      img.onerror=function(){ if(btn){ btn.textContent=label; btn.disabled=false; } alert("Sorry, the image could not be generated in this browser."); };
-      img.src=url;
-    }catch(e){ if(btn){ btn.textContent=label; btn.disabled=false; } console.error("export failed",e); }
+      img.onerror=function(){ restore(); alert("Sorry, the image could not be generated in this browser."); };
+      img.src="data:image/svg+xml;base64,"+btoa(unescape(encodeURIComponent(svg)));
+    }catch(e){ restore(); console.error("export failed",e); }
   }
   var MARGINCOL={
     WPB:{Safe:'#2853a5',Likely:'#5375b7',Lean:'#7e98c9',Tilt:'#a9badb'}, LAB:{Safe:'#e4003b',Likely:'#e93362',Lean:'#ef6689',Tilt:'#f499b1'},
