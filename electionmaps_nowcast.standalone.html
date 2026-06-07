@@ -9,7 +9,7 @@
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
   :root{
-    --bg:#f7f7f5; --panel:#fff; --ink:#15171a; --muted:#6b7280; --faint:#9ca3af;
+    --bg:#E2E4E4; --panel:#fbf7f4; --ink:#15171a; --muted:#6b7280; --faint:#9ca3af;
     --line:#e3e3df; --line2:#eeeeea; --accent:#004d4d; --purple:#7c3aed; --purple-bg:#f5f1ff; --radius:10px;
   }
   *{box-sizing:border-box;}
@@ -133,6 +133,11 @@
   .coalbar .majmark{}
 
   .table-tools{display:flex; justify-content:space-between; align-items:center; margin:0 0 12px;}
+  .table-tools{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:0 0 12px;}
+  .tblsearch{flex:1; min-width:160px; max-width:300px; padding:8px 12px; border:1px solid var(--line); border-radius:8px; font-family:inherit; font-size:.82rem; font-weight:600; color:var(--ink); background:#fff;}
+  .tblsearch::placeholder{color:var(--faint); font-weight:500;}
+  .tblsearch:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,77,77,.08);}
+  td.code{font-variant-numeric:tabular-nums; color:var(--faint); font-size:.74rem;}
   .table-wrap{display:none; border:1px solid var(--line); border-radius:var(--radius); overflow:auto; max-height:620px;}
   table{width:100%; border-collapse:separate; border-spacing:0; font-size:.78rem;}
   th,td{padding:8px 10px; text-align:center; border-bottom:1px solid var(--line2); white-space:nowrap;}
@@ -205,7 +210,8 @@
 
       <div class="table-tools" style="margin-top:24px;">
         <div class="section-h" style="margin:0;">All constituencies</div>
-        <button class="btn" id="toggle-table" style="flex:none; padding:7px 16px;">Show table</button>
+        <input id="tablesearch" class="tblsearch" placeholder="Filter by name or code…" autocomplete="off" aria-label="Filter constituencies by name or code">
+        <button class="btn" id="toggle-table" style="flex:none; padding:7px 16px;">Hide table</button>
       </div>
       <div class="table-wrap" id="table-wrap"></div>
     </div>
@@ -1009,7 +1015,7 @@ document.addEventListener('DOMContentLoaded', function(){
           var w=(bw==='MIN'&&r.minType)?r.minType:(bw||r.winner);
           t[w]=(t[w]||0)+1; var sw=seatWin[r.code]||(seatWin[r.code]={}); sw[w]=(sw[w]||0)+1; });
         for(var k in ni) t[k]=(t[k]||0)+ni[k];
-        for(var dp in t){ (seatDist[dp]||(seatDist[dp]=[])).push(t[dp]); }
+        ['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','WPB'].forEach(function(dp){ (seatDist[dp]||(seatDist[dp]=[])).push(t[dp]||0); });
         var top=null, tn=-1; for(var q in t){ if(t[q]>tn){ tn=t[q]; top=q; } }
         large[top]=(large[top]||0)+1; if(tn>=326) maj[top]=(maj[top]||0)+1; else hung++;
       }
@@ -1045,7 +1051,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var order=['LAB','CON','RFM','LDM','GRN','SNP','PLC','RES','MIN','WPB'].slice().sort(function(a,b){return (t[b]||0)-(t[a]||0);});
     $('totstrip').innerHTML=order.filter(function(p){return t[p];}).map(function(p){
       var n=t[p]||0, ch=n-(W2024[p]||0), cs=ch>0?('+'+ch):(ch<0?String(ch):'0'); var tc=textOn(PI[p].c);
-      var rng=''; if(mcRanges&&mcRanges[p]&&mcRanges[p][1]>mcRanges[p][0]) rng='<div class="rng">'+mcRanges[p][0]+'\u2013'+mcRanges[p][1]+'</div>';
+      var rng=''; if(mcRanges&&mcRanges[p]&&mcRanges[p][1]>=mcRanges[p][0]) rng='<div class="rng">'+mcRanges[p][0]+'\u2013'+mcRanges[p][1]+'</div>';
       return '<div class="tot" style="background:'+PI[p].c+';color:'+tc+'"><div class="nm">'+p+'</div><div class="n">'+n+'</div>'+rng+'<div class="ch">'+cs+'</div></div>'; }).join('');
     $('seatbar').innerHTML='<div class="majmark"></div>'+SPECTRUM.filter(function(p){return t[p];}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/650)+'%;background:'+(PI[p]?PI[p].c:'#999')+'"></div>'; }).join('');
     var top=Object.keys(t).filter(function(p){return PI[p];}).sort(function(a,b){return t[b]-t[a];})[0]; var lead=t[top]||0;
@@ -1144,16 +1150,21 @@ document.addEventListener('DOMContentLoaded', function(){
 
   var tableBuilt=false, sortCol=null, sortDir=1;
   function buildTable(){ var tp=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','OTH'];
-    var h='<table><thead><tr><th data-c="name">Constituency</th><th data-c="win">Now</th><th>2024</th>'+tp.map(function(p){return '<th data-c="'+p+'">'+p+'</th>';}).join('')+'</tr></thead><tbody>';
+    var h='<table><thead><tr><th data-c="name">Constituency</th><th data-c="code">Code</th><th data-c="win">Now</th><th>2024</th>'+tp.map(function(p){return '<th data-c="'+p+'">'+p+'</th>';}).join('')+'</tr></thead><tbody>';
     results.forEach(function(s){ var dw=dispWin(s); var wc=(PI[dw]||PI.OTH).c, w2=(PI[s.winner2024]||PI.OTH).c;
-      h+='<tr><td>'+s.seatName+'</td><td class="win"><span style="background:'+wc+';color:'+textOn(wc)+'">'+dw+'</span></td><td class="win"><span style="background:'+w2+';color:'+textOn(w2)+'">'+s.winner2024+'</span></td>'+tp.map(function(p){var v=s.shares[p];return '<td class="sh">'+(v>0.005?(v*100).toFixed(0)+'%':'&middot;')+'</td>';}).join('')+'</tr>'; });
+      h+='<tr><td>'+s.seatName+'</td><td class="code">'+(s.code||'')+'</td><td class="win"><span style="background:'+wc+';color:'+textOn(wc)+'">'+dw+'</span></td><td class="win"><span style="background:'+w2+';color:'+textOn(w2)+'">'+s.winner2024+'</span></td>'+tp.map(function(p){var v=s.shares[p]||0;return '<td class="sh">'+(v>=0.005?(v*100).toFixed(0)+'%':v>=0.0001?'0%':'&middot;')+'</td>';}).join('')+'</tr>'; });
     h+='</tbody></table>'; $('table-wrap').innerHTML=h;
-    $('table-wrap').querySelectorAll('th[data-c]').forEach(function(th){ th.addEventListener('click',function(){ sortTable(th.getAttribute('data-c')); }); }); tableBuilt=true; }
+    $('table-wrap').querySelectorAll('th[data-c]').forEach(function(th){ th.addEventListener('click',function(){ sortTable(th.getAttribute('data-c')); }); }); tableBuilt=true; applyTableSearch(); }
   function sortTable(col,keep){ if(!keep){ sortDir=(sortCol===col)?-sortDir:1; } sortCol=col; var tb=$('table-wrap').querySelector('tbody'); var rows=Array.prototype.slice.call(tb.querySelectorAll('tr'));
-    rows.sort(function(a,b){ if(col==='name'){return a.cells[0].textContent.localeCompare(b.cells[0].textContent)*sortDir;} if(col==='win'){return a.cells[1].textContent.localeCompare(b.cells[1].textContent)*sortDir;}
-      var tp=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','OTH']; var i=3+tp.indexOf(col); var av=parseFloat(a.cells[i].textContent)||-1, bv=parseFloat(b.cells[i].textContent)||-1; return (av-bv)*sortDir; });
-    tb.innerHTML=''; rows.forEach(function(r){tb.appendChild(r);}); }
+    rows.sort(function(a,b){ if(col==='name'){return a.cells[0].textContent.localeCompare(b.cells[0].textContent)*sortDir;} if(col==='code'){return a.cells[1].textContent.localeCompare(b.cells[1].textContent)*sortDir;} if(col==='win'){return a.cells[2].textContent.localeCompare(b.cells[2].textContent)*sortDir;}
+      var tp=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','OTH']; var i=4+tp.indexOf(col); var av=parseFloat(a.cells[i].textContent)||-1, bv=parseFloat(b.cells[i].textContent)||-1; return (av-bv)*sortDir; });
+    tb.innerHTML=''; rows.forEach(function(r){tb.appendChild(r);}); applyTableSearch(); }
+  function applyTableSearch(){ var el=$('tablesearch'); var q=(el&&el.value||'').trim().toLowerCase(); var tb=$('table-wrap').querySelector('tbody'); if(!tb) return;
+    Array.prototype.slice.call(tb.querySelectorAll('tr')).forEach(function(r){ var nm=r.cells[0].textContent.toLowerCase(), cd=r.cells[1].textContent.toLowerCase(); r.style.display=(!q||nm.indexOf(q)>=0||cd.indexOf(q)>=0)?'':'none'; }); }
   $('toggle-table').addEventListener('click',function(){ var w=$('table-wrap'); if(w.style.display==='block'){ w.style.display='none'; this.textContent='Show table'; } else { if(!tableBuilt) buildTable(); w.style.display='block'; this.textContent='Hide table'; } });
+  (function(){ var ts=$('tablesearch'); if(ts) ts.addEventListener('input', applyTableSearch); })();
+  // table open by default
+  if(!tableBuilt) buildTable(); $('table-wrap').style.display='block'; $('toggle-table').textContent='Hide table';
 
   document.querySelectorAll('.mmb').forEach(function(b){ b.addEventListener('click',function(){ mapMode=b.getAttribute('data-m'); document.querySelectorAll('.mmb').forEach(function(x){x.classList.remove('active');}); b.classList.add('active'); renderMapColors(); }); });
   (function(){ var ss=$('seatsearch'); if(ss) ss.addEventListener('change',function(){ searchTo(this.value); }); })();
