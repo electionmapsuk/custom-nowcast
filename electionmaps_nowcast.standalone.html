@@ -50,7 +50,8 @@
   .group-label{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:18px 0 12px; padding-top:14px; border-top:1px solid var(--line2);}
   .total-line{margin-top:14px; padding-top:14px; border-top:1px solid var(--line2); font-size:.82rem; color:var(--muted); display:flex; justify-content:space-between;}
   .total-line b{color:var(--ink); font-variant-numeric:tabular-nums;} .total-line b.warn{color:#d97706;}
-  .mc{margin-top:18px; margin-bottom:22px; padding-top:16px; padding-bottom:22px; border-top:1px solid var(--line2); border-bottom:1px solid var(--line2);}
+  .mc{display:flex; flex-direction:column;}
+  .mapcol{min-width:0;}
   .mc h3{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:0 0 12px; display:flex; justify-content:space-between; align-items:baseline; gap:8px;}
   .mc h3 .sims{font-weight:600; text-transform:none; letter-spacing:0; color:var(--faint); font-size:.7rem;}
   .mc-big{font-size:2.1rem; font-weight:900; line-height:1; letter-spacing:-0.02em;}
@@ -197,14 +198,20 @@
   <div id="loading" class="loading">Loading model&hellip;</div>
 
   <div class="grid" id="app" style="display:none;">
-    <div class="leftcol">
-      <div class="panel">
-        <div class="headline" aria-live="polite"><span class="big" id="hl-party">&mdash;</span><span class="maj" id="hl-maj"></span></div>
-        <div class="seatbar" id="seatbar"><div class="majmark"></div></div>
-        <div class="totstrip" id="totstrip"></div>
-      </div>
+    <div class="panel hlbox">
+      <div class="headline" aria-live="polite"><span class="big" id="hl-party">&mdash;</span><span class="maj" id="hl-maj"></span></div>
+      <div class="seatbar" id="seatbar"><div class="majmark"></div></div>
+      <div class="totstrip" id="totstrip"></div>
+    </div>
 
-      <div class="section-h">Constituency map</div>
+    <div class="panel mc" id="mc">
+      <h3>Majority odds <span class="sims" id="mc-sims"></span></h3>
+      <div id="mc-headline" aria-live="polite"><div class="mc-sub">Simulating…</div></div>
+      <div id="mc-list"></div>
+    </div>
+
+    <div class="leftcol mapcol">
+      <div class="section-h" style="margin-top:0;">Constituency map</div>
       <div class="mapmodes" id="mapmodes">
         <button class="mmb active" data-m="proj">Projection</button>
         <button class="mmb" data-m="actual">2024 Result</button>
@@ -227,11 +234,6 @@
         <button class="btn" id="share">Share</button>
       </div>
       <div id="copied" style="display:none; text-align:center; font-size:.78rem; color:var(--accent); margin:-10px 0 14px;">Link copied</div>
-      <div class="mc" id="mc">
-        <h3>Majority odds <span class="sims" id="mc-sims"></span></h3>
-        <div id="mc-headline" aria-live="polite"><div class="mc-sub">Simulating…</div></div>
-        <div id="mc-list"></div>
-      </div>
       <h2>National vote share</h2>
       <div id="sliders"></div>
       <div class="total-line"><span>GB total (excl. SNP/Plaid)</span><b id="gbtotal">100%</b></div>
