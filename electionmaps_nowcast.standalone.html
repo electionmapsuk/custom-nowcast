@@ -28,7 +28,7 @@
   .leftcol{display:flex; flex-direction:column;}
   .leftcol #map-container{flex:1;}
   .fullspan{grid-column:1 / -1;}
-  .r2grid{display:grid; grid-template-columns:minmax(0,1fr) 296px; gap:24px; align-items:stretch;}
+  .r2grid{display:grid; grid-template-columns:minmax(0,1fr) 296px; gap:24px; align-items:stretch; margin-top:-12px;}
   .r2grid #map-container{grid-column:1;} .r2grid .slidersbox{grid-column:2;} .r2grid .mapcredit{grid-column:1;}
   .topctrls{grid-column:1 / -1; display:grid; grid-template-columns:minmax(0,1fr) 296px; column-gap:24px; row-gap:10px; align-items:start;}
   .topctrls > *{margin:0; min-width:0;}
@@ -62,7 +62,7 @@
   .group-label{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:18px 0 12px; padding-top:14px; border-top:1px solid var(--line2);}
   .total-line{margin-top:14px; padding-top:14px; border-top:1px solid var(--line2); font-size:.82rem; color:var(--muted); display:flex; justify-content:space-between;}
   .total-line b{color:var(--ink); font-variant-numeric:tabular-nums;} .total-line b.warn{color:#d97706;}
-  .mc{display:flex; flex-direction:column;}
+  .mc{display:flex; flex-direction:column; justify-content:space-between; gap:10px;}
   .mapcol{min-width:0;}
   .mc h3{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:0 0 12px; display:flex; justify-content:space-between; align-items:baseline; gap:8px;}
   .mc h3 .sims{font-weight:600; text-transform:none; letter-spacing:0; color:var(--faint); font-size:.7rem;}
@@ -227,7 +227,7 @@
         <div class="mapmodes" id="mapmodes">
           <button class="mmb active" data-m="proj">Projection</button>
           <button class="mmb" data-m="actual">2024 Result</button>
-          <button class="mmb" data-m="change">Change vs 2024</button>
+          <button class="mmb" data-m="change">Changes</button>
           <button class="mmb" data-m="margin">Margin</button>
         </div>
         <div class="mapsearch"><input id="seatsearch" list="seatlist" placeholder="Search for a constituency…" autocomplete="off" aria-label="Search for a constituency"><datalist id="seatlist"></datalist></div>
