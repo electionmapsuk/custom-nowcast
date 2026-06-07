@@ -21,7 +21,7 @@
   body.custom .modepill{background:var(--purple); color:#fff;}
   .custombanner{display:none; background:var(--purple-bg); border:1px solid #ddd0ff; color:#5b21b6; font-weight:600; font-size:.85rem; padding:10px 14px; border-radius:12px; margin-bottom:18px;}
   body.custom .custombanner{display:block;}
-  .grid{display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:24px; align-items:stretch;}
+  .grid{display:grid; grid-template-columns:minmax(0,1fr) 296px; gap:24px; align-items:stretch;}
   @media(max-width:880px){ .grid{grid-template-columns:1fr;} }
   .leftcol{display:flex; flex-direction:column;}
   .leftcol #map-container{flex:1;}
@@ -156,16 +156,16 @@
     </div>
 
     <div class="panel controls-panel">
+      <div class="ctrls" style="margin-top:0; margin-bottom:18px;">
+        <button class="btn purple" id="modebtn">Switch to custom model</button>
+        <button class="btn" id="share">Share</button>
+      </div>
+      <div id="copied" style="display:none; text-align:center; font-size:.78rem; color:var(--accent); margin:-10px 0 14px;">Link copied</div>
       <h2>National vote share</h2>
       <div id="sliders"></div>
       <div class="group-label">Nations</div>
       <div id="sliders-nat"></div>
       <div class="total-line"><span>GB total (excl. SNP/Plaid)</span><b id="gbtotal">100%</b></div>
-      <div class="ctrls">
-        <button class="btn purple" id="modebtn">Switch to custom model</button>
-        <button class="btn" id="share">Share</button>
-      </div>
-      <div id="copied" style="display:none; text-align:center; font-size:.78rem; color:var(--accent); margin-top:8px;">Link copied</div>
     </div>
 
     <div class="fullspan">
@@ -909,15 +909,15 @@ document.addEventListener('DOMContentLoaded', function(){
     $('seatbar').innerHTML='<div class="majmark"></div>'+SPECTRUM.filter(function(p){return t[p];}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/650)+'%;background:'+(PI[p]?PI[p].c:'#999')+'"></div>'; }).join('');
     var top=Object.keys(t).filter(function(p){return PI[p];}).sort(function(a,b){return t[b]-t[a];})[0]; var lead=t[top]||0;
     $('hl-party').textContent=PI[top].n+(lead>=326?' Majority':' Largest Party'); $('hl-party').style.color=PI[top].c;
-    var maj=$('hl-maj'); if(lead>=326){ maj.textContent='Majority of '+(2*lead-650); maj.className='maj gov'; } else { maj.textContent=(326-lead)+' short of a majority'; maj.className='maj'; }
+    var maj=$('hl-maj'); if(lead>=326){ maj.textContent='Majority of '+(2*lead-650); maj.className='maj gov'; } else { maj.textContent=(326-lead)+' short'; maj.className='maj'; }
   }
 
   // ---- map ----
   function maybeDrawMap(){ if(!geo||!results||typeof d3==='undefined') return; if(!mapDrawn) drawMap(); else renderMapColors(); }
   function drawMap(){ if(!geo||mapDrawn||typeof d3==='undefined') return;
-    var c=d3.select('#map-container'); var w=c.node().getBoundingClientRect().width||800,h=560;
+    var rect=c.node().getBoundingClientRect(); var w=rect.width||800, h=rect.height||720;
     var svg=c.append('svg').attr('width',w).attr('height',h); mapG=svg.append('g');
-    var proj=d3.geoMercator().fitSize([w,h],geo); var path=d3.geoPath().projection(proj);
+    var proj=d3.geoMercator().fitExtent([[12,12],[w-12,h-12]],geo); var path=d3.geoPath().projection(proj);
     svg.call(d3.zoom().scaleExtent([1,9]).on('zoom',function(e){ mapG.attr('transform',e.transform); tip.style.display='none'; }));
     mapG.selectAll('path').data(geo.features).enter().append('path').attr('class','cp').attr('d',path).attr('fill','#e5e7eb')
       .on('mousemove',function(e,d){ if(pinned) return; showTip(e,d,false); })
