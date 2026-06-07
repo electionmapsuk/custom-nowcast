@@ -915,9 +915,9 @@ document.addEventListener('DOMContentLoaded', function(){
   // ---- map ----
   function maybeDrawMap(){ if(!geo||!results||typeof d3==='undefined') return; if(!mapDrawn) drawMap(); else renderMapColors(); }
   function drawMap(){ if(!geo||mapDrawn||typeof d3==='undefined') return;
-    var rect=c.node().getBoundingClientRect(); var w=rect.width||800, h=rect.height||720;
-    var svg=c.append('svg').attr('width',w).attr('height',h); mapG=svg.append('g');
-    var proj=d3.geoMercator().fitExtent([[12,12],[w-12,h-12]],geo); var path=d3.geoPath().projection(proj);
+    var rect=c.node().getBoundingClientRect(); var w=Math.round(rect.width)||800; var h=(rect.height>300?Math.round(rect.height):720);
+    var svg=c.append('svg').attr('width','100%').attr('height',h).attr('viewBox','0 0 '+w+' '+h); mapG=svg.append('g');
+    var proj=d3.geoMercator().fitSize([w,h],geo); var path=d3.geoPath().projection(proj);
     svg.call(d3.zoom().scaleExtent([1,9]).on('zoom',function(e){ mapG.attr('transform',e.transform); tip.style.display='none'; }));
     mapG.selectAll('path').data(geo.features).enter().append('path').attr('class','cp').attr('d',path).attr('fill','#e5e7eb')
       .on('mousemove',function(e,d){ if(pinned) return; showTip(e,d,false); })
