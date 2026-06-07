@@ -641,7 +641,10 @@ function regionalSwing(gb, region, cfg){
     const nb=a.national[p]||0, rb=a.regional[p]||0, g=gb[p]||0;
     const additive   = rb + (g - nb);
     const proportional = nb>0 ? rb*(g/nb) : rb;
-    out[p] = Math.max(0, mix*additive + (1-mix)*proportional);
+    // Lean toward proportional as the national share falls below baseline, so a party on ~0%
+    // nationally collapses to ~0 regionally too (uniform swing still applies when it grows).
+    const effMix = mix * (nb>0 ? Math.min(1, g/nb) : 1);
+    out[p] = Math.max(0, effMix*additive + (1-effMix)*proportional);
   });
   return out;
 }
