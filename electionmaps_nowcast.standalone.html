@@ -31,6 +31,8 @@
   .r2grid{display:grid; grid-template-columns:minmax(0,1fr) 296px; gap:24px 24px; align-items:stretch; grid-template-rows:auto 1fr auto;}
   .r2grid #map-container{grid-column:1; grid-row:2;} .r2grid .slidersbox{grid-column:2; grid-row:2;}
   .r2grid .mapcontrols{grid-column:1; grid-row:1; min-width:0;} .r2grid .rtop{grid-column:2; grid-row:1; min-width:0; display:flex; flex-direction:column;}
+  .r2grid .rtop .ctrls{flex:1; align-items:stretch; margin-top:0;}
+  .r2grid .rtop .ctrls .btn{display:flex; align-items:center; justify-content:center; text-align:center;}
   .r2grid .mapcredit{grid-column:1; grid-row:3;}
   @media(max-width:880px){ .r2grid{grid-template-columns:1fr; grid-template-rows:none;} .r2grid>*{grid-column:1 !important;} .r2grid #map-container,.r2grid .slidersbox,.r2grid .mapcontrols,.r2grid .rtop,.r2grid .mapcredit{grid-row:auto;} }
   .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px; transition:border-color .2s, box-shadow .2s;}
@@ -1124,7 +1126,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var pMaj=Math.round(100*(maj[lead]||0)/N), pLarge=Math.round(100*(large[lead]||0)/N), pHung=Math.round(100*d.hung/N);
     var nm=(PI[lead]||{}).n||lead, col=(PI[lead]||{}).c||'#888';
     $('mc-headline').innerHTML='<div class="mc-big" style="color:'+col+'">'+pMaj+'%</div><div class="mc-sub">chance of a <b>'+nm+' majority</b><br>'+pLarge+'% largest party &middot; '+pHung+'% hung parliament</div>';
-    var rows=order.filter(function(p){return large[p]||p==='RES';}).sort(function(a,b){return (large[b]||0)-(large[a]||0);});
+    var rows=order.filter(function(p){return large[p];}).sort(function(a,b){return (large[b]||0)-(large[a]||0);});
     var head='<div class="mc-head"><span class="hsp"></span><span class="hbar">Largest party</span><span class="hp">Lgst</span><span class="hp">Maj</span></div>';
     $('mc-list').innerHTML=head+rows.map(function(p){ var pc=Math.round(100*large[p]/N), pm=Math.round(100*(maj[p]||0)/N); var c=(PI[p]||{}).c||'#888';
       return '<div class="mc-row"><span class="mcab" style="background:'+c+';color:'+textOn(c)+'">'+p+'</span><span class="mcbar"><i style="width:'+pc+'%;background:'+c+'"></i></span><span class="mcpct">'+pc+'%</span><span class="mcpct maj">'+pm+'%</span></div>'; }).join('');
