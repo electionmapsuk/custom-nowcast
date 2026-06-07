@@ -36,9 +36,10 @@
   .topctrls .mapmodes{grid-column:1; grid-row:2;}
   .topctrls .mapsearch{grid-column:1; grid-row:3;}
   .topctrls .maplayout{grid-column:1; grid-row:4;}
-  .topctrls .topbtns{grid-column:2; grid-row:2 / 5; align-self:stretch; display:flex; flex-direction:column;}
+  .topctrls .topbtns{grid-column:2; grid-row:4; align-self:stretch; display:flex; flex-direction:column;}
   .topctrls .topbtns .btnrow{display:flex; gap:8px; flex:1;}
-  .topctrls .topbtns .btnrow .btn{flex:1; display:flex; align-items:center; justify-content:center; text-align:center;}
+  .topctrls .topbtns .btnrow .btn{display:flex; align-items:center; justify-content:center; text-align:center;}
+  .topctrls .topbtns .btnrow #modebtn{flex:2.2;} .topctrls .topbtns .btnrow #share{flex:1;}
   @media(max-width:880px){ .r2grid{grid-template-columns:1fr;} .r2grid>*{grid-column:1 !important;} .topctrls{grid-template-columns:1fr;} .topctrls>*{grid-column:1 !important; grid-row:auto !important;} .topctrls .topbtns{grid-row:auto !important;} }
   .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px; transition:border-color .2s, box-shadow .2s;}
   body.custom .panel, body.custom #map-container{border-color:#a78bfa; box-shadow:0 0 0 3px var(--purple-bg);}
@@ -62,20 +63,20 @@
   .group-label{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:18px 0 12px; padding-top:14px; border-top:1px solid var(--line2);}
   .total-line{margin-top:14px; padding-top:14px; border-top:1px solid var(--line2); font-size:.82rem; color:var(--muted); display:flex; justify-content:space-between;}
   .total-line b{color:var(--ink); font-variant-numeric:tabular-nums;} .total-line b.warn{color:#d97706;}
-  .mc{display:flex; flex-direction:column; justify-content:space-between; gap:10px;}
+  .mc{display:flex; flex-direction:column; justify-content:center; gap:16px;}
   .mapcol{min-width:0;}
   .mc h3{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:0 0 12px; display:flex; justify-content:space-between; align-items:baseline; gap:8px;}
   .mc h3 .sims{font-weight:600; text-transform:none; letter-spacing:0; color:var(--faint); font-size:.7rem;}
-  .mc-big{font-size:2.1rem; font-weight:900; line-height:1; letter-spacing:-0.02em;}
-  .mc-sub{font-size:.79rem; color:var(--muted); margin:4px 0 14px; line-height:1.45;}
+  .mc-big{font-size:2.9rem; font-weight:900; line-height:1; letter-spacing:-0.02em;}
+  .mc-sub{font-size:.95rem; color:var(--muted); margin:8px 0 0; line-height:1.5;}
   .mc-sub b{color:var(--ink);}
-  .mc-row{display:flex; align-items:center; gap:8px; margin-bottom:6px;}
-  .mc-row .mcab{width:34px; font-size:.6rem; font-weight:800; text-align:center; padding:3px 0; border-radius:4px; color:#fff; flex:none;}
-  .mc-row .mcbar{flex:1; height:13px; background:var(--line2); border-radius:4px; overflow:hidden; position:relative;}
+  .mc-row{display:flex; align-items:center; gap:9px; margin-bottom:9px;}
+  .mc-row .mcab{width:40px; font-size:.7rem; font-weight:800; text-align:center; padding:4px 0; border-radius:5px; color:#fff; flex:none;}
+  .mc-row .mcbar{flex:1; height:18px; background:var(--line2); border-radius:5px; overflow:hidden; position:relative;}
   .mc-row .mcbar i{position:absolute; left:0; top:0; height:100%; border-radius:4px; transition:width .3s;}
-  .mc-row .mcpct{width:40px; text-align:right; font-weight:800; font-size:.8rem; font-variant-numeric:tabular-nums; flex:none;}
+  .mc-row .mcpct{width:46px; text-align:right; font-weight:800; font-size:.92rem; font-variant-numeric:tabular-nums; flex:none;}
   .mc-row .mcpct.maj{color:var(--accent);}
-  .mc-head{display:flex; align-items:center; gap:8px; font-size:.58rem; text-transform:uppercase; letter-spacing:.04em; color:var(--faint); font-weight:800; margin-bottom:5px;}
+  .mc-head{display:flex; align-items:center; gap:9px; font-size:.66rem; text-transform:uppercase; letter-spacing:.04em; color:var(--faint); font-weight:800; margin-bottom:5px;}
   .mc-head .hsp{width:34px; flex:none;} .mc-head .hbar{flex:1;} .mc-head .hp{width:40px; text-align:right; flex:none;}
   .mc-prog{height:4px; background:var(--line2); border-radius:99px; overflow:hidden; margin-top:8px;}
   .mc-prog i{display:block; height:100%; width:0; background:var(--accent); transition:width .2s;}
