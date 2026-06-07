@@ -77,7 +77,7 @@
   .headline .maj{font-size:.9rem; font-weight:600; color:var(--muted);} .headline .maj.gov{color:#16a34a;}
   .seatbar{position:relative; height:38px; border-radius:7px; overflow:hidden; display:flex; margin:16px 0 6px; background:var(--line2);}
   .seatbar .seg{height:100%; transition:width .35s cubic-bezier(.4,0,.2,1);}
-  .majmark{position:absolute; top:-4px; bottom:-4px; left:50%; width:2px; background:#15171a; z-index:3;}
+  .majmark{position:absolute; top:-4px; bottom:-4px; left:50.78%; width:2px; background:#15171a; z-index:3;}
   .majmark::after{content:'326'; position:absolute; top:-15px; left:50%; transform:translateX(-50%); font-size:.6rem; font-weight:700; color:var(--faint);}
   .totstrip{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; margin-top:18px;}
   @media(max-width:600px){ .totstrip{grid-template-columns:repeat(3,minmax(0,1fr));} }
@@ -95,6 +95,8 @@
   .mapmodes{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;}
   .maprow{display:flex; justify-content:space-between; align-items:center; gap:10px; margin:28px 0 12px; flex-wrap:wrap;}
   .maptype{display:flex; gap:6px;}
+  .maplayout{display:flex; gap:8px; margin-bottom:10px;}
+  .maplayout .mtb{flex:1; text-align:center;}
   .mtb{padding:7px 13px; border-radius:7px; border:1px solid var(--line); background:#fff; font-weight:700; font-size:.78rem; color:var(--muted); cursor:pointer; font-family:inherit;}
   .mtb:hover{border-color:var(--accent); color:var(--accent);}
   .mtb.active{background:var(--accent); color:#fff; border-color:var(--accent);}
@@ -202,13 +204,7 @@
         <div class="totstrip" id="totstrip"></div>
       </div>
 
-      <div class="maprow"><div class="section-h" style="margin:0;">Constituency map</div>
-        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <div class="maptype" role="group" aria-label="Map layout">
-            <button class="mtb active" data-t="geo">Geographic</button><button class="mtb" data-t="hex">Hex</button>
-          </div>
-          <button class="mtb" id="dlmap" title="Download a high-resolution PNG of the current map">Download PNG</button>
-        </div></div>
+      <div class="section-h">Constituency map</div>
       <div class="mapmodes" id="mapmodes">
         <button class="mmb active" data-m="proj">Projection</button>
         <button class="mmb" data-m="actual">2024 Result</button>
@@ -216,6 +212,11 @@
         <button class="mmb" data-m="margin">Margin</button>
       </div>
       <div class="mapsearch"><input id="seatsearch" list="seatlist" placeholder="Search for a constituency…" autocomplete="off" aria-label="Search for a constituency"><datalist id="seatlist"></datalist></div>
+      <div class="maplayout" role="group" aria-label="Map layout and download">
+        <button class="mtb active" data-t="geo">Geographic</button>
+        <button class="mtb" data-t="hex">Hex</button>
+        <button class="mtb" id="dlmap" title="Download a high-resolution PNG of the current map">Download PNG</button>
+      </div>
       <div id="map-container"><div class="map-hint">Scroll to zoom &middot; drag to pan &middot; click to pin</div></div>
       <div class="mapcredit" id="mapcredit"></div>
     </div>
@@ -1125,7 +1126,7 @@ document.addEventListener('DOMContentLoaded', function(){
       var n=t[p]||0, ch=n-(W2024[p]||0), cs=ch>0?('+'+ch):(ch<0?String(ch):'0'); var tc=textOn(PI[p].c);
       var rng=''; if(mcRanges&&mcRanges[p]&&mcRanges[p][1]>=mcRanges[p][0]) rng='<div class="rng">'+mcRanges[p][0]+'\u2013'+mcRanges[p][1]+'</div>';
       return '<div class="tot" style="background:'+PI[p].c+';color:'+tc+'"><div class="nm">'+p+'</div><div class="n">'+n+'</div>'+rng+'<div class="ch">'+cs+'</div></div>'; }).join('');
-    $('seatbar').innerHTML='<div class="majmark"></div>'+SPECTRUM.filter(function(p){return t[p]&&p!=='SF';}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/650)+'%;background:'+(PI[p]?PI[p].c:'#999')+'"></div>'; }).join('');
+    $('seatbar').innerHTML='<div class="majmark"></div>'+SPECTRUM.filter(function(p){return t[p]&&p!=='SF'&&p!=='SPKR';}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/642)+'%;background:'+(PI[p]?PI[p].c:'#999')+'"></div>'; }).join('');
     var top=Object.keys(t).filter(function(p){return PI[p];}).sort(function(a,b){return t[b]-t[a];})[0]; var lead=t[top]||0;
     $('hl-party').textContent=PI[top].n+(lead>=326?' Majority':' Largest Party'); $('hl-party').style.color=PI[top].c;
     var maj=$('hl-maj'); if(lead>=326){ maj.textContent='Majority of '+(2*lead-650); maj.className='maj gov'; } else { maj.textContent=(326-lead)+' short'; maj.className='maj'; }
@@ -1261,7 +1262,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   function buildCoalition(t){
-    var order=Object.keys(t).filter(function(p){return t[p]>0&&PI[p]&&p!=='SF';}).sort(function(a,b){return t[b]-t[a];});  // SF abstain - exclude from coalitions (326 line unchanged)
+    var order=Object.keys(t).filter(function(p){return t[p]>0&&PI[p]&&p!=='SF'&&p!=='SPKR';}).sort(function(a,b){return t[b]-t[a];});  // SF abstain - exclude from coalitions (326 line unchanged)
     var keep={}; order.forEach(function(p){ keep[p]=(coalSel[p]!==undefined)?coalSel[p]:false; }); coalSel=keep;
     if(!order.some(function(p){return coalSel[p];}) && order.length) coalSel[order[0]]=true;
     $('coal-parties').innerHTML=order.map(function(p){ return '<div class="coalbtn'+(coalSel[p]?' on':'')+'" data-p="'+p+'" style="background:'+PI[p].c+';color:'+textOn(PI[p].c)+'"><span class="cab">'+p+'</span><span class="cn">'+t[p]+'</span></div>'; }).join('');
@@ -1273,7 +1274,7 @@ document.addEventListener('DOMContentLoaded', function(){
     if(!sel.length){ ct.innerHTML='<span class="coaloutcome">Select parties</span>'; ct.className=''; }
     else if(tot>=326){ ct.innerHTML=chips+'<span class="coaloutcome">Majority of '+(2*tot-650)+'</span>'; ct.className='gov'; }
     else { ct.innerHTML=chips+'<span class="coaloutcome">'+(326-tot)+' short</span>'; ct.className=''; }
-    $('coalbar').innerHTML='<div class="majmark"></div>'+order.filter(function(p){return coalSel[p];}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/650)+'%;background:'+PI[p].c+'"></div>'; }).join('');
+    $('coalbar').innerHTML='<div class="majmark"></div>'+order.filter(function(p){return coalSel[p];}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/642)+'%;background:'+PI[p].c+'"></div>'; }).join('');
   }
 
   var tableBuilt=false, sortCol=null, sortDir=1;
@@ -1295,7 +1296,7 @@ document.addEventListener('DOMContentLoaded', function(){
   if(!tableBuilt) buildTable(); $('table-wrap').style.display='block'; $('toggle-table').textContent='Hide table';
 
   document.querySelectorAll('.mmb').forEach(function(b){ b.addEventListener('click',function(){ mapMode=b.getAttribute('data-m'); document.querySelectorAll('.mmb').forEach(function(x){x.classList.remove('active');}); b.classList.add('active'); renderMapColors(); }); });
-  document.querySelectorAll('.mtb').forEach(function(b){ b.addEventListener('click',function(){ var t=b.getAttribute('data-t'); if(t===mapType) return;
+  document.querySelectorAll('.mtb').forEach(function(b){ b.addEventListener('click',function(){ var t=b.getAttribute('data-t'); if(!t || t===mapType) return;
     document.querySelectorAll('.mtb').forEach(function(x){x.classList.remove('active');}); b.classList.add('active');
     mapType=t; pinned=null; tip.style.display='none';
     ensureMapData(function(){ mapDrawn=false; drawMap(); }); }); });
