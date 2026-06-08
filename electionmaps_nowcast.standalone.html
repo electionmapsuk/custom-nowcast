@@ -1236,7 +1236,7 @@ document.addEventListener('DOMContentLoaded', function(){
     GRN:{Safe:'#00a85a',Likely:'#33b97b',Lean:'#66cb9c',Tilt:'#99dcbd'}, SNP:{Safe:'#e6d62e',Likely:'#ebde58',Lean:'#f0e682',Tilt:'#f5efab'},
     PLC:{Safe:'#075d55',Likely:'#397d77',Lean:'#6a9e99',Tilt:'#9cbebb'}, MIN:{Safe:'#cb87ae',Likely:'#d59fbe',Lean:'#e0b7ce',Tilt:'#eacfdf'} };
   function bandOf(m){ return m>=0.15?'Safe':m>=0.10?'Likely':m>=0.05?'Lean':'Tilt'; }
-  function winBand(wp){ return wp>=0.90?'Safe':wp>=0.75?'Likely':wp>=0.60?'Lean':'Tilt'; }
+  function winBand(wp){ return wp>=0.95?'Safe':wp>=0.75?'Likely':wp>=0.55?'Lean':'Tilt'; }
   function classOf(seat, maj){ var sw=mcSeatWin&&seat&&mcSeatWin[seat.code]; if(sw&&mcSeatN){ var wp=(sw[dispWin(seat)]||0)/mcSeatN; return winBand(wp); } return bandOf(maj); }
   function seatMaj(r){ var v=Object.keys(r.shares||{}).map(function(p){return r.shares[p];}).sort(function(a,b){return b-a;}); return (v[0]||0)-(v[1]||0); }
   function colourFor(r){ var dw=dispWin(r);
