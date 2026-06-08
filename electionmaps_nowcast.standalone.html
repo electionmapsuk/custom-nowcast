@@ -38,7 +38,7 @@
   .topctrls .mapgrp{grid-column:1; grid-row:4; align-self:end; display:flex; gap:8px; min-width:0;}
   .topctrls .modegrp{grid-column:2; grid-row:3 / 5; align-self:stretch; display:flex; flex-direction:column; gap:8px; min-width:0;}
   .topctrls .mapgrp button, .topctrls .modegrp button{flex:1 1 0; min-width:0; padding:8px 10px; border-radius:7px; font-weight:700; font-size:.78rem; font-family:inherit; cursor:pointer; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:flex; align-items:center; justify-content:center; text-align:center;}
-  @media(max-width:880px){ .topctrls .mapgrp{grid-row:auto;} .topctrls .modegrp{grid-row:auto; order:-1; flex-direction:row;} }
+  @media(max-width:880px){ .r2grid{margin-top:18px;} .topctrls .mapgrp{grid-row:auto;} .topctrls .modegrp{grid-row:auto; order:-1; flex-direction:row; margin-bottom:4px;} }
   @media(max-width:880px){ .r2grid{grid-template-columns:1fr;} .r2grid>*{grid-column:1 !important;} .topctrls{grid-template-columns:1fr;} .topctrls>*{grid-column:1 !important; grid-row:auto !important;} .topctrls .topbtns{grid-row:auto !important;} }
   .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px; transition:border-color .2s, box-shadow .2s;}
   body.custom .panel, body.custom #map-container{border-color:#a78bfa; box-shadow:0 0 0 3px var(--purple-bg);}
