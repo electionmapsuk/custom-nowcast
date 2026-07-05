@@ -1,0 +1,958 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns" defer></script>
+<style>
+/* ── Nowcast palette ── */
+:root {
+  --bg:     #f7f7f5;
+  --ink:    #15171a;
+  --muted:  #6b7280;
+  --faint:  #9ca3af;
+  --line:   #e3e3df;
+  --line2:  #eeeeea;
+  --accent: #004d4d;
+  --radius: 10px;
+}
+
+/* ── Colour helpers ── */
+.lab-text { color: #E4003B !important; } .con-text { color: #0393D3 !important; }
+.rfm-text { color: #2BC5DB !important; } .ldm-text { color: #ff6400 !important; }
+.grn-text { color: #00A85A !important; } .snp-text { color: #e6d62e !important; }
+.res-text { color: #051d3f !important; }
+.lab-bg { background-color: #E4003B !important; color: #fff !important; }
+.con-bg { background-color: #0393D3 !important; color: #fff !important; }
+.rfm-bg { background-color: #2BC5DB !important; color: #fff !important; }
+.ldm-bg { background-color: #ff6400 !important; color: #fff !important; }
+.grn-bg { background-color: #00A85A !important; color: #fff !important; }
+.snp-bg { background-color: #e6d62e !important; color: #111 !important; }
+.res-bg { background-color: #051d3f !important; color: #fff !important; }
+.tie-bg { background-color: #6b7280 !important; color: #fff !important; }
+
+/* ── Skeleton ── */
+@keyframes shimmer {
+  0%,100% { background-color: var(--line2); }
+  50%      { background-color: var(--line); }
+}
+.skeleton { animation: shimmer 1.5s infinite ease-in-out; color: transparent !important; background-color: var(--line2); border-radius: 6px; user-select: none; pointer-events: none; }
+.skeleton-text { height: 1em; width: 100%; display: inline-block; }
+.skeleton-card { background: var(--line2) !important; animation: shimmer 1.5s infinite ease-in-out; border-radius: var(--radius); }
+.skeleton-row  { height: 54px; border-radius: var(--radius); background: var(--line2); animation: shimmer 1.5s infinite ease-in-out; }
+.skeleton-card:nth-child(2),.skeleton-row:nth-child(2) { animation-delay: 0.15s; }
+.skeleton-card:nth-child(3),.skeleton-row:nth-child(3) { animation-delay: 0.3s; }
+.skeleton-card:nth-child(4),.skeleton-row:nth-child(4) { animation-delay: 0.45s; }
+.skeleton-card:nth-child(5),.skeleton-row:nth-child(5) { animation-delay: 0.6s; }
+
+/* ── Wrapper ── */
+#polling-widget-wrapper {
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  color: var(--ink);
+  background: transparent;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px;
+}
+#polling-widget-wrapper * { box-sizing: border-box; }
+
+/* ── Header (now inside top-card) ── */
+#polling-widget-wrapper header { margin-bottom: 1rem; text-align: left; }
+#polling-widget-wrapper h2.widget-title { font-weight: 900; color: var(--ink); margin: 0; font-size: clamp(1.4rem, 3vw, 2rem); line-height: 1.2; }
+#polling-widget-wrapper .widget-subtitle { display: none; }
+
+/* ── Section headers ── */
+#polling-widget-wrapper .section-header-title { margin: 2rem 0 0.75rem; font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.09em; color: var(--faint); }
+
+/* ── Top section card ── */
+#polling-widget-wrapper .top-card { background: #FBF7F4; border: 1px solid var(--line); border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+
+/* ── Averages grid ── */
+#polling-widget-wrapper .averages-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 0.75rem; margin-bottom: 1rem; }
+#polling-widget-wrapper .avg-card { padding: 0.75rem 0.5rem; border-radius: var(--radius); color: white; text-align: center; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: 0; min-height: 105px; }
+#polling-widget-wrapper .avg-party { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; opacity: 0.85; margin-bottom: 0.25rem; }
+#polling-widget-wrapper .avg-value { font-size: clamp(1.7rem, 3.5vw, 2.2rem); font-weight: 900; line-height: 1; letter-spacing: -1px; margin-bottom: 0.65rem; }
+#polling-widget-wrapper .change-pill { background-color: rgba(0,0,0,0.22); padding: 0.15rem 0; border-radius: 5px; font-size: 0.64rem; font-weight: 800; width: 52px; height: 17px; display: flex; justify-content: center; align-items: center; margin: 0; }
+
+/* ── Methodology ── */
+#polling-widget-wrapper .methodology-wrapper { margin-bottom: 0; display: flex; flex-direction: column; align-items: center; }
+#polling-widget-wrapper .methodology-btn { background: #FBF7F4; border: 1px solid var(--line); border-radius: var(--radius); padding: 6px 16px; color: var(--muted); font-family: inherit; font-size: 0.8rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.15s; }
+#polling-widget-wrapper .methodology-btn:hover { background: var(--line2); color: var(--ink); border-color: var(--line); }
+#polling-widget-wrapper .methodology-btn svg { width: 14px; height: 14px; fill: currentColor; }
+#polling-widget-wrapper .methodology-content { background: #FBF7F4; border: 1px solid var(--line); border-radius: var(--radius); padding: 1.25rem; margin-top: 0.75rem; width: 100%; max-width: 600px; font-size: 0.85rem; line-height: 1.6; color: var(--muted); display: none; }
+#polling-widget-wrapper .methodology-content h4 { margin: 0 0 0.75rem; color: var(--ink); font-weight: 800; font-size: 0.9rem; }
+#polling-widget-wrapper .methodology-item { margin-bottom: 0.85rem; }
+#polling-widget-wrapper .methodology-item:last-child { margin-bottom: 0; }
+#polling-widget-wrapper .methodology-title { font-weight: 700; color: var(--ink); display: block; margin-bottom: 2px; }
+#polling-widget-wrapper .methodology-desc { margin: 0; font-size: 0.82rem; }
+
+/* ── Chart controls ── */
+#polling-widget-wrapper .chart-controls { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; gap: 6px; }
+#polling-widget-wrapper .chart-controls-left { display: flex; gap: 6px; }
+#polling-widget-wrapper .toggle-btn { background: #FBF7F4; border: 1px solid var(--line); border-radius: 8px; padding: 7px 14px; font-family: inherit; font-size: 0.8rem; font-weight: 700; color: var(--muted); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+#polling-widget-wrapper .toggle-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+#polling-widget-wrapper .toggle-btn:hover:not(.active) { background: var(--line2); color: var(--ink); }
+#polling-widget-wrapper .advanced-btn-accent { background: #c9a52c; color: #fff; border-color: #c9a52c; }
+#polling-widget-wrapper .advanced-btn-accent:hover { background: #b08d22; color: #fff; border-color: #b08d22; }
+#polling-widget-wrapper .advanced-btn-accent.active { background: #b08d22; border-color: #b08d22; }
+
+/* ── Chart + panel layout ── */
+#polling-widget-wrapper .chart-and-panel { display: flex; gap: 1rem; align-items: stretch; margin-bottom: 1rem; }
+#polling-widget-wrapper .chart-and-panel .chart-container { margin-bottom: 0; }
+
+/* ── Advanced panel ── */
+#polling-widget-wrapper .advanced-panel { background: #FBF7F4; border: 1px solid var(--line); border-radius: var(--radius); padding: 1.25rem; display: none; font-size: 0.82rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04); width: 300px; flex-shrink: 0; overflow-y: auto; }
+#polling-widget-wrapper .adv-grid { display: grid; grid-template-columns: 1fr; gap: 1.25rem; }
+@media (max-width: 900px) {
+  #polling-widget-wrapper .chart-and-panel { flex-direction: column; }
+  #polling-widget-wrapper .advanced-panel { width: 100%; order: -1; }
+  #polling-widget-wrapper .adv-grid { grid-template-columns: 1fr 1fr; }
+}
+@media (max-width: 600px) { #polling-widget-wrapper .adv-grid { grid-template-columns: 1fr; } }
+#polling-widget-wrapper .adv-section h5 { margin: 0 0 0.5rem; font-weight: 700; color: var(--ink); font-size: 0.82rem; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+#polling-widget-wrapper .adv-controls { display: flex; flex-direction: column; gap: 0.5rem; }
+#polling-widget-wrapper .adv-control-group { display: flex; justify-content: space-between; align-items: center; }
+#polling-widget-wrapper .adv-input { padding: 4px 8px; border: 1px solid var(--line); border-radius: 6px; font-family: inherit; font-size: 0.8rem; background: white; color: var(--ink); }
+#polling-widget-wrapper .pollster-checklist { max-height: 120px; overflow-y: auto; border: 1px solid var(--line); border-radius: 6px; padding: 0.5rem; background: white; }
+#polling-widget-wrapper .pollster-checklist label { display: flex; align-items: center; gap: 0.4rem; cursor: pointer; margin-bottom: 4px; font-size: 0.8rem; }
+#polling-widget-wrapper .adv-text-btn { background: none; border: none; color: var(--accent); font-size: 0.75rem; cursor: pointer; padding: 0; text-decoration: underline; font-family: inherit; }
+#polling-widget-wrapper .adv-slider { flex: 1; cursor: pointer; }
+
+/* ── Chart container ── */
+#polling-widget-wrapper .chart-container { background: #FBF7F4; padding: 14px 14px 6px; border-radius: var(--radius); border: 1px solid var(--line); box-shadow: 0 2px 8px rgba(0,0,0,0.04); flex: 1; min-width: 0; position: relative; }
+#polling-widget-wrapper .custom-legend-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-bottom: 10px; padding: 0 1rem; }
+#polling-widget-wrapper .legend-pill { cursor: pointer; padding: 3px 12px; border-radius: 8px; font-size: 0.7rem; font-weight: 800; color: white; text-transform: uppercase; transition: opacity 0.2s; user-select: none; border: none; }
+#polling-widget-wrapper .legend-pill.inactive { opacity: 0.3; }
+#polling-widget-wrapper .canvas-wrapper { position: relative; height: 500px; width: 100%; }
+#polling-widget-wrapper .chart-skeleton { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: var(--line2); border-radius: var(--radius); z-index: 10; display: flex; align-items: center; justify-content: center; animation: shimmer 2s infinite ease-in-out; }
+#polling-widget-wrapper .watermark-logo { display: block; margin: 10px auto 0; height: 25px; pointer-events: none; }
+
+/* ── Latest by Pollster ── */
+#polling-widget-wrapper .latest-panel { background: #FBF7F4; border: 1px solid var(--line); border-radius: var(--radius); padding: 10px; margin-bottom: 1rem; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+#polling-widget-wrapper .summary-list { display: flex; flex-direction: column; gap: 5px; min-height: 60px; }
+#polling-widget-wrapper .poll-bubble { background: #FBF7F4; border-radius: var(--radius); border: 1px solid var(--line); display: grid; grid-template-columns: 220px minmax(0,1fr) 130px; align-items: center; padding: 0.3rem 0; transition: background 0.1s; overflow: hidden; }
+#polling-widget-wrapper .poll-bubble:hover { background: #f3ede8; }
+#polling-widget-wrapper .bubble-info { padding-left: 0.75rem; padding-right: 0.5rem; display: flex; align-items: center; gap: 10px; overflow: hidden; }
+#polling-widget-wrapper .weight-circle { width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.62rem; font-weight: 900; color: #fff; flex-shrink: 0; }
+#polling-widget-wrapper .pollster-meta { display: flex; flex-direction: column; overflow: hidden; }
+#polling-widget-wrapper .pollster-name { font-weight: 800; font-size: 0.85rem; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.15; }
+#polling-widget-wrapper .poll-date { font-size: 0.68rem; color: var(--muted); font-weight: 500; margin-top: 0; line-height: 1.2; }
+#polling-widget-wrapper .bubble-results { display: flex; flex-wrap: nowrap; justify-content: flex-start; align-items: center; padding: 0.15rem 0.75rem; border-left: 1px solid var(--line); min-height: 32px; }
+#polling-widget-wrapper .result-item { display: flex; align-items: baseline; gap: 0.25rem; font-size: 0.8rem; white-space: nowrap; flex: 0 0 calc(100% / 6); justify-content: center; }
+#polling-widget-wrapper .mini-party { font-weight: 800; text-transform: uppercase; font-size: 0.78rem; }
+#polling-widget-wrapper .mini-val { font-weight: 600; color: var(--muted); }
+#polling-widget-wrapper .bubble-lead { display: flex; align-items: center; justify-content: center; padding: 0 0.7rem; border-left: 1px solid var(--line); height: 100%; min-height: 32px; }
+#polling-widget-wrapper .lead-badge { padding: 0.25rem 0.5rem; font-size: 0.7rem; font-weight: 800; color: white; text-transform: uppercase; border-radius: var(--radius); white-space: nowrap; min-width: 80px; text-align: center; display: inline-block; }
+
+/* ── Table ── */
+#polling-widget-wrapper .year-card { background: #FBF7F4; border-radius: var(--radius); border: 1px solid var(--line); margin-bottom: 1rem; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04); }
+#polling-widget-wrapper .year-header { padding: 0.7rem 1rem; background-color: var(--accent); cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
+#polling-widget-wrapper .year-header:hover { background-color: #003838; }
+#polling-widget-wrapper .year-title { margin: 0; font-size: 0.9rem; font-weight: 800; color: #fff; }
+#polling-widget-wrapper .year-toggle-icon { font-weight: bold; color: rgba(255,255,255,0.7); transition: transform 0.2s; }
+#polling-widget-wrapper .year-card.collapsed .year-toggle-icon { transform: rotate(-90deg); }
+#polling-widget-wrapper .year-card.collapsed .year-content { display: none; }
+#polling-widget-wrapper .year-card.collapsed .year-header { border-bottom: none; }
+#polling-widget-wrapper .table-wrapper { overflow-x: auto; width: 100%; }
+#polling-widget-wrapper table { width: 100%; border-collapse: collapse; font-size: 0.76rem; min-width: 700px; }
+#polling-widget-wrapper th { background-color: #FBF7F4; text-align: left; padding: 0.55rem 0.3rem; font-weight: 700; color: var(--muted); border-bottom: 1px solid var(--line); cursor: pointer; user-select: none; white-space: nowrap; }
+#polling-widget-wrapper th:hover { background-color: var(--line2); color: var(--ink); }
+#polling-widget-wrapper th::after { content: ' \2195'; opacity: 0.3; font-weight: normal; margin-left: 3px; font-size: 0.8em; }
+#polling-widget-wrapper th.sorted-asc::after { content: ' \2193'; opacity: 1; }
+#polling-widget-wrapper th.sorted-desc::after { content: ' \2191'; opacity: 1; }
+#polling-widget-wrapper td { padding: 0.45rem 0.3rem; border-bottom: 1px solid var(--line2); vertical-align: middle; text-align: center; color: var(--ink); font-variant-numeric: tabular-nums; }
+#polling-widget-wrapper th:first-child, #polling-widget-wrapper td:first-child { padding-left: 1rem; text-align: left; }
+#polling-widget-wrapper th:last-child, #polling-widget-wrapper td:last-child { padding-right: 0.75rem; }
+#polling-widget-wrapper tr:last-child td { border-bottom: none; }
+#polling-widget-wrapper tr:hover td { background-color: var(--line2); }
+#polling-widget-wrapper .col-date { white-space: nowrap; min-width: 90px; }
+#polling-widget-wrapper .col-pollster { white-space: nowrap; min-width: 150px; text-align: left; }
+#polling-widget-wrapper td.col-pollster { text-align: left; }
+#polling-widget-wrapper .party-cell { font-weight: 700; }
+#polling-widget-wrapper .table-lead-pill { display: inline-block; padding: 0.2rem 0.5rem; border-radius: var(--radius); color: white; font-weight: 700; font-size: 0.72rem; min-width: 80px; text-align: center; white-space: nowrap; }
+#polling-widget-wrapper .table-weight-dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; margin-right: 6px; vertical-align: middle; }
+
+/* ── Mobile ── */
+@media (max-width: 768px) {
+  #polling-widget-wrapper .poll-bubble {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-rows: auto auto;
+    grid-template-areas: "info lead" "results results";
+    padding: 0.5rem 0.75rem 0.5rem 0;
+    gap: 0;
+  }
+  #polling-widget-wrapper .bubble-info {
+    grid-area: info;
+    padding: 0 0.5rem 0.4rem 0.75rem;
+    border-bottom: 1px solid var(--line2);
+  }
+  #polling-widget-wrapper .bubble-lead {
+    grid-area: lead;
+    border-left: none;
+    border-bottom: 1px solid var(--line2);
+    padding: 0 0.75rem 0.4rem 0.5rem;
+    height: auto;
+    align-items: center;
+    justify-content: flex-end;
+  }
+  #polling-widget-wrapper .bubble-results {
+    grid-area: results;
+    display: flex;
+    flex-wrap: wrap;
+    width: 100%;
+    padding: 0.4rem 0.75rem;
+    border-left: none;
+    min-height: unset;
+    justify-content: flex-start;
+    gap: 5px 10px;
+  }
+  #polling-widget-wrapper .result-item {
+    flex: 0 0 auto;
+  }
+}
+</style>
+</head>
+<body style="margin:0;background:var(--bg);font-family:'Inter',system-ui,sans-serif;">
+<div id="polling-widget-wrapper">
+  <div id="poll-dashboard">
+    <div class="top-card">
+  <header>
+    <h2 class="widget-title">GB Polling Average</h2>
+  </header>
+    <div id="current-averages" class="averages-grid">
+      <div class="avg-card skeleton-card"></div>
+      <div class="avg-card skeleton-card"></div>
+      <div class="avg-card skeleton-card"></div>
+      <div class="avg-card skeleton-card"></div>
+      <div class="avg-card skeleton-card"></div>
+      <div class="avg-card skeleton-card"></div>
+    </div>
+    <div class="methodology-wrapper">
+      <button class="methodology-btn" onclick="window.toggleMethodology()" aria-expanded="false">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M464 256A208 208 0 1 0 48 256a208 208 0 1 0 416 0zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm169.8-90.7c7.9-22.3 29.1-37.3 52.8-37.3l58.3 0c34.2 0 56.3 29 51.6 49c-3 12.5-9.5 23.5-30.3 41c-7.4 6.2-15.1 11.7-23.1 16.4c-9.5 5.6-19.1 11.6-26 22.2c-9.6 14.8-2.3 35.8-2.3 35.8c0 21.8-32.9 21.6-33.1 .5c0-4.6-1-11.4 5.9-23.7c5.9-10.5 18.5-16.7 30-22.3c6.3-3 12.7-6.2 18.5-10.1c16.3-11 16.9-21.6 17.5-24c1.2-5.1-1.3-8.8-5.1-8.8l-58.3 0c-4.8 0-9.2 3.1-10.8 7.7c-5.2 14.9-31.5 8.1-25.7-8.1zm102 249.1c-19 0-34.4-15.4-34.4-34.4c0-19 15.4-34.4 34.4-34.4s34.4 15.4 34.4 34.4c0 19-15.4 34.4-34.4 34.4z"/></svg>
+        How our weighting works
+      </button>
+      <div id="methodology-content" class="methodology-content">
+        <h4>Methodology</h4>
+        <div class="methodology-item">
+          <span class="methodology-title">1. Accuracy Weighting 🎯</span>
+          <p class="methodology-desc">Every pollster is assigned a score derived from their historic accuracy. This is displayed as a 0–100 scale in the coloured circles beside each pollster. <span style="color:rgb(170,170,170);font-weight:700;">Grey circles (50)</span> indicate a new pollster without a track record, assigned the score equivalent to an average error of 3%.</p>
+        </div>
+        <div class="methodology-item">
+          <span class="methodology-title">2. Frequency Balancing ⚖️</span>
+          <p class="methodology-desc">To prevent high-volume pollsters from skewing the average through sheer quantity, weights are adjusted for frequency. If a firm publishes multiple times within a 10-day window, their total weight is distributed across those polls.</p>
+        </div>
+        <div class="methodology-item">
+          <span class="methodology-title">3. Time-Based Kernel Smoothing 📅</span>
+          <p class="methodology-desc">The trendline uses a Time-Based Kernel Average (a 35-day window).</p>
+        </div>
+        <div class="methodology-item">
+          <span class="methodology-title">4. Outlier Rejection (Bisquare) 📉</span>
+          <p class="methodology-desc">A robust two-pass system measures how far a poll deviates from the initial trend. Extreme outliers have their influence drastically reduced or zeroed out.</p>
+        </div>
+      </div>
+    </div>
+    </div><!-- end .top-card -->
+    <h3 class="section-header-title">Trendline</h3>
+    <div class="chart-controls">
+      <div class="chart-controls-left">
+        <button id="btn-todate"   class="toggle-btn active" onclick="window.toggleChartView('todate')">Polls to Date</button>
+        <button id="btn-election" class="toggle-btn"        onclick="window.toggleChartView('election')">Till Next Election</button>
+      </div>
+      <button id="btn-advanced" class="toggle-btn advanced-btn-accent" onclick="window.toggleAdvancedMode()">⚙ Advanced</button>
+    </div>
+    <div class="chart-and-panel">
+      <div class="chart-container">
+        <div id="js-legend" class="custom-legend-container" role="group" aria-label="Toggle parties"></div>
+        <div class="canvas-wrapper">
+          <div id="chart-skeleton" class="chart-skeleton"></div>
+          <canvas id="pollChart" role="img" aria-label="Line chart showing UK voting intention averages over time"></canvas>
+        </div>
+        <img src="https://i.postimg.cc/j2xcNfzg/2026longlogotrans.png" alt="Logo" class="watermark-logo">
+      </div>
+      <div id="advanced-panel" class="advanced-panel">
+        <div class="adv-grid">
+          <div class="adv-section">
+            <h5>Data Filters</h5>
+            <div class="adv-controls">
+              <div class="adv-control-group"><label>Start Date:</label><input type="date" id="adv-start-date" class="adv-input" onchange="window.applyAdvancedFilters()"></div>
+              <div class="adv-control-group"><label>End Date:</label><input type="date" id="adv-end-date" class="adv-input" onchange="window.applyAdvancedFilters()"></div>
+              <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:5px;">
+                <label style="font-weight:600;">Active Pollsters:</label>
+                <button id="toggle-pollsters-btn" class="adv-text-btn" onclick="window.toggleAllPollsters()">Deselect All</button>
+              </div>
+              <div id="adv-pollsters" class="pollster-checklist"></div>
+            </div>
+          </div>
+          <div class="adv-section">
+            <h5>Model Parameters</h5>
+            <div class="adv-controls">
+              <div class="adv-control-group">
+                <label style="font-weight:600;">Smoothing Window:</label>
+                <div style="display:flex;align-items:center;gap:10px;flex:1;margin-left:15px;">
+                  <input type="range" id="adv-window-slider" class="adv-slider" min="7" max="84" step="7" value="35" oninput="document.getElementById('adv-window-val').innerText=this.value+' d';window.applyAdvancedFilters()">
+                  <span id="adv-window-val" style="font-weight:700;width:35px;text-align:right;">35 d</span>
+                </div>
+              </div>
+              <div class="adv-control-group" style="margin-top:5px;"><label style="font-weight:600;">Enable Accuracy Weighting:</label><input type="checkbox" id="adv-weighted" checked style="transform:scale(1.2);" onchange="window.applyAdvancedFilters()"></div>
+              <div class="adv-control-group" style="margin-top:5px;"><label style="font-weight:600;">Apply Frequency Balancing:</label><input type="checkbox" id="adv-frequency" checked style="transform:scale(1.2);" onchange="window.applyAdvancedFilters()"></div>
+              <div class="adv-control-group" style="margin-top:5px;"><label style="font-weight:600;">Suppress Outliers:</label><input type="checkbox" id="adv-outliers" checked style="transform:scale(1.2);" onchange="window.applyAdvancedFilters()"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <h3 class="section-header-title">Latest by Pollster</h3>
+    <div class="latest-panel">
+      <div id="summary-grid" class="summary-list">
+        <div class="skeleton-row"></div>
+        <div class="skeleton-row"></div>
+        <div class="skeleton-row"></div>
+        <div class="skeleton-row"></div>
+        <div class="skeleton-row"></div>
+      </div>
+    </div>
+    <h3 class="section-header-title">All Polls</h3>
+    <div id="polls-years-container"></div>
+  </div>
+</div>
+<script>
+(function () {
+  /* ── Font injection (survives Squarespace stripping <link> tags) ── */
+  var fl = document.createElement('link');
+  fl.rel = 'stylesheet';
+  fl.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap';
+  document.head.appendChild(fl);
+
+  /* ── Config ── */
+  const CONFIG = {
+    WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbwiBsptxdJ4CQoAi6YD-dqGPlYAjjG1hbv2n4CtUt9AAC_q_GpLL8gMwQJXdUwD8yK1EA/exec',
+    NEXT_ELECTION_DATE: new Date('2029-05-03').getTime(),
+    GE_2024_DATE: new Date('2024-07-04').getTime(),
+    FREQUENCY_WINDOW_DAYS: 10,
+    OUTLIER_THRESHOLD: 15.0
+  };
+
+  let activeConfig = {
+    LOESS_WINDOW_DAYS: 35,
+    REJECT_OUTLIERS: true,
+    WEIGHTED: true,
+    FREQUENCY_BALANCING: true,
+    START_DATE: new Date('2024-07-04').getTime(),
+    END_DATE: null,
+    EXCLUDED_POLLSTERS: new Set(),
+    HIDDEN_PARTIES: new Set()
+  };
+
+  const PARTIES = [
+    { key: 'LAB', color: '#E4003B', label: 'Labour', css: 'lab' },
+    { key: 'CON', color: '#0393D3', label: 'Conservative', css: 'con' },
+    { key: 'RFM', color: '#2BC5DB', label: 'Reform', css: 'rfm' },
+    { key: 'LDM', color: '#ff6400', label: 'Lib Dem', css: 'ldm' },
+    { key: 'GRN', color: '#00A85A', label: 'Green', css: 'grn' },
+    { key: 'SNP', color: '#e6d62e', label: 'SNP', css: 'snp' },
+    { key: 'RES', color: '#051d3f', label: 'RES', css: 'res' }
+  ];
+
+  const LAST_ELECTION = { LAB: 34.64, CON: 24.36, RFM: 14.69, LDM: 12.56, GRN: 6.90, SNP: 2.59, RES: 0.00 };
+
+  const CHART_DEFAULTS = {
+    font: 'Inter, system-ui, sans-serif',
+    tickColor: '#9ca3af',
+    titleColor: '#6b7280',
+    gridColor: '#e3e3df'
+  };
+
+  const TOOLTIP_STYLE = {
+    backgroundColor: '#15171a',
+    titleColor: '#ffffff',
+    bodyColor: 'rgba(255,255,255,0.72)',
+    borderColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    padding: { x: 12, y: 10 },
+    cornerRadius: 9,
+    titleFont: { family: 'Inter, system-ui, sans-serif', size: 11, weight: '700' },
+    bodyFont: { family: 'Inter, system-ui, sans-serif', size: 11 },
+    usePointStyle: true,
+    boxWidth: 10, boxHeight: 10, boxPadding: 4,
+    multiKeyBackground: 'transparent',
+    caretSize: 5, caretPadding: 6,
+  };
+
+  let currentSort = { key: 'date', order: 'desc' };
+  let collapsedStates = {};
+  let cachedPolls = [];
+  let chartInstance = null;
+  let currentView = 'todate';
+  let trendCache = null;
+
+  try {
+    const saved = localStorage.getItem('pollWidget_collapsed');
+    if (saved) collapsedStates = JSON.parse(saved);
+  } catch(e) {}
+
+  /* ── UI toggles ── */
+  window.toggleMethodology = function () {
+    const btn = document.querySelector('.methodology-btn');
+    const content = document.getElementById('methodology-content');
+    const isOpen = content.style.display === 'block';
+    content.style.display = isOpen ? 'none' : 'block';
+    btn.setAttribute('aria-expanded', !isOpen);
+  };
+
+  window.toggleAdvancedMode = function () {
+    const panel = document.getElementById('advanced-panel');
+    const btn = document.getElementById('btn-advanced');
+    const isOpen = panel.style.display === 'block';
+    panel.style.display = isOpen ? 'none' : 'block';
+    btn.classList.toggle('active', !isOpen);
+  };
+
+  window.toggleChartView = function (view) {
+    currentView = view;
+    document.getElementById('btn-todate').classList.toggle('active', view === 'todate');
+    document.getElementById('btn-election').classList.toggle('active', view === 'election');
+    if (chartInstance) {
+      if (view === 'election' && !activeConfig.END_DATE) chartInstance.options.scales.x.max = CONFIG.NEXT_ELECTION_DATE;
+      else { delete chartInstance.options.scales.x.max; if (activeConfig.END_DATE) chartInstance.options.scales.x.max = activeConfig.END_DATE; }
+      chartInstance.update();
+    }
+  };
+
+  window.toggleYear = function (year) {
+    const card = document.getElementById(`year-card-${year}`);
+    if (!card) return;
+    const collapsed = card.classList.contains('collapsed');
+    card.classList.toggle('collapsed', !collapsed);
+    collapsedStates[year] = !collapsed;
+    try { localStorage.setItem('pollWidget_collapsed', JSON.stringify(collapsedStates)); } catch(e) {}
+  };
+
+  /* ── Helpers ── */
+  function getWeightColor(weight, isNew = false) {
+    if (isNew || Math.round(weight) === 50) return 'rgb(170,170,170)';
+    const w = Math.max(0, Math.min(100, weight));
+    const red = { r:179,g:33,b:41 }, yellow = { r:222,g:216,b:33 }, green = { r:33,g:179,b:69 };
+    let r, g, b;
+    if (w < 50) { const p = (Math.max(15,w)-15)/35; r = Math.round(red.r+p*(yellow.r-red.r)); g = Math.round(red.g+p*(yellow.g-red.g)); b = Math.round(red.b+p*(yellow.b-red.b)); }
+    else { const p = (Math.min(85,w)-50)/35; r = Math.round(yellow.r+p*(green.r-yellow.r)); g = Math.round(yellow.g+p*(green.g-yellow.g)); b = Math.round(yellow.b+p*(green.b-yellow.b)); }
+    return `rgb(${r},${g},${b})`;
+  }
+
+  function parseUKDate(str) {
+    if (!str) return null; str = str.trim();
+    if (str.includes('-')) { const d = new Date(str); return isNaN(d) ? null : d; }
+    const parts = str.split('/'); if (parts.length !== 3) return null;
+    let [day, month, year] = parts; if (year.length === 2) year = '20' + year;
+    return new Date(`${year}-${month}-${day}`);
+  }
+
+  function cleanPercent(str) {
+    if (str === null || str === undefined || str === '') return null;
+    if (typeof str === 'number') return str;
+    const p = parseFloat(str.replace('%', ''));
+    return isNaN(p) ? null : p;
+  }
+
+  function formatVal(val) {
+    if (val === null || val === undefined || isNaN(val)) return '-';
+    return val + '%';
+  }
+
+  function calculateLeadInfo(p) {
+    const results = PARTIES.map(party => ({ key: party.key, val: p[party.key] || 0, css: party.css })).sort((a,b) => b.val - a.val);
+    const margin = results[0].val - results[1].val;
+    if (margin === 0) return { text: 'TIE', cssClass: 'tie-bg', margin: 0 };
+    return { text: `${results[0].key} +${margin.toFixed(0)}`, cssClass: `${results[0].css}-bg`, margin, winner: results[0].key };
+  }
+
+  /* ── LOESS ── */
+  function loess(dataPoints, daysWindow) {
+    if (dataPoints.length < 2) return dataPoints;
+    const sorted = [...dataPoints].sort((a,b) => a.x - b.x);
+    const windowMs = daysWindow * 86400000;
+    return sorted.map((pt, i) => {
+      let wSumY = 0, wSum = 0;
+      sorted.forEach(p => {
+        const dist = Math.abs(p.x - pt.x);
+        if (dist > windowMs) return;
+        const u = dist / windowMs;
+        const w = Math.pow(1 - Math.pow(u,3), 3) * (p.weight !== undefined ? p.weight : 1);
+        wSumY += w * p.y; wSum += w;
+      });
+      return { x: pt.x, y: wSum === 0 ? pt.y : wSumY / wSum };
+    });
+  }
+
+  function calculateRobustTrend(rawData, partyKey) {
+    const actualPollCount = rawData.length;
+    let pass1Data = [...rawData];
+    let gePoint = null;
+    if (partyKey !== 'RES') {
+      gePoint = { x: CONFIG.GE_2024_DATE, y: LAST_ELECTION[partyKey], weight: 1000 };
+      pass1Data.push(gePoint);
+    }
+    const trend1 = loess(pass1Data, activeConfig.LOESS_WINDOW_DAYS);
+    const pass2Data = pass1Data.map((p, i) => {
+      const trendY = trend1[i] ? trend1[i].y : p.y;
+      const diff = Math.abs(p.y - trendY);
+      let newWeight = p.weight;
+      if (activeConfig.REJECT_OUTLIERS) {
+        newWeight = diff < CONFIG.OUTLIER_THRESHOLD ? newWeight * Math.pow(1 - Math.pow(diff/CONFIG.OUTLIER_THRESHOLD, 2), 2) : 0;
+      }
+      return { ...p, weight: newWeight };
+    });
+    const finalTrend = loess(pass2Data, activeConfig.LOESS_WINDOW_DAYS);
+    const seen = new Set(), unique = [];
+    finalTrend.forEach(pt => { if (!seen.has(pt.x)) { unique.push(pt); seen.add(pt.x); } });
+    return { trendData: unique, gePoint, actualPollCount };
+  }
+
+  function applyFrequencyWeighting(polls) {
+    const winMs = CONFIG.FREQUENCY_WINDOW_DAYS * 86400000;
+    const byPollster = {};
+    polls.forEach(p => { if (!byPollster[p.pollster]) byPollster[p.pollster] = []; byPollster[p.pollster].push(p); });
+    Object.values(byPollster).forEach(list => {
+      list.forEach(poll => {
+        const t = poll.date.getTime();
+        const density = list.filter(p => Math.abs(p.date.getTime() - t) <= winMs).length;
+        poll.weight = poll.weight / density;
+      });
+    });
+  }
+
+  /* ── Data loading ── */
+  async function init() {
+    trendCache = {};
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', runInit);
+    else runInit();
+  }
+
+  async function runInit() {
+    try {
+      const response = await fetch(CONFIG.WEB_APP_URL);
+      const rawData = await response.json();
+      let polls = rawData.map(row => {
+        const endDate = parseUKDate(row['End of Fieldwork']);
+        const startDate = parseUKDate(row['Start of Fieldwork']);
+        let rawW = parseFloat(row['Weight']), isNew = false, w;
+        if (isNaN(rawW)) { isNew = true; w = 50; } else { w = rawW * 100; if (Math.round(w) === 50) isNew = true; }
+        const poll = {
+          pollster: row['Pollster'], date: endDate || startDate, startDate,
+          weight: w, baseWeight: w, isNew,
+          LAB: cleanPercent(row['LAB']), CON: cleanPercent(row['CON']),
+          RFM: cleanPercent(row['RFM']), LDM: cleanPercent(row['LDM']),
+          GRN: cleanPercent(row['GRN']), SNP: cleanPercent(row['SNP']),
+          RES: cleanPercent(row['RES'])
+        };
+        const ptTime = (poll.startDate || poll.date).getTime();
+        if (ptTime < new Date('2026-03-06').getTime()) poll.RES = null;
+        poll.leadInfo = calculateLeadInfo(poll);
+        return poll;
+      }).filter(p => p.date && p.LAB !== null);
+
+      applyFrequencyWeighting(polls);
+      cachedPolls = polls;
+      populateAdvancedPanel(polls);
+      calculateTrendsAndRender(polls);
+      document.getElementById('chart-skeleton').style.display = 'none';
+    } catch (err) {
+      console.error(err);
+      document.getElementById('poll-dashboard').innerHTML = `<p style="color:#dc2626;text-align:center;padding:2rem;">Error loading data.<br>${err.message}</p>`;
+    }
+  }
+
+  function populateAdvancedPanel(polls) {
+    document.getElementById('adv-start-date').value = '2024-07-04';
+    const pollsters = [...new Set(polls.map(p => p.pollster))].sort();
+    document.getElementById('adv-pollsters').innerHTML = pollsters.map(name =>
+      `<label><input type="checkbox" value="${name}" checked class="adv-pollster-cb" onchange="window.applyAdvancedFilters()"> ${name}</label>`
+    ).join('');
+  }
+
+  window.toggleAllPollsters = function () {
+    const cbs = document.querySelectorAll('.adv-pollster-cb'), btn = document.getElementById('toggle-pollsters-btn');
+    const allChecked = Array.from(cbs).every(cb => cb.checked);
+    cbs.forEach(cb => cb.checked = !allChecked);
+    btn.innerText = allChecked ? 'Select All' : 'Deselect All';
+    window.applyAdvancedFilters();
+  };
+
+  window.applyAdvancedFilters = function () {
+    activeConfig.LOESS_WINDOW_DAYS = parseInt(document.getElementById('adv-window-slider').value);
+    activeConfig.REJECT_OUTLIERS   = document.getElementById('adv-outliers').checked;
+    activeConfig.WEIGHTED          = document.getElementById('adv-weighted').checked;
+    activeConfig.FREQUENCY_BALANCING = document.getElementById('adv-frequency').checked;
+    const sd = document.getElementById('adv-start-date').value, ed = document.getElementById('adv-end-date').value;
+    activeConfig.START_DATE = sd ? new Date(sd).getTime() : null;
+    activeConfig.END_DATE   = ed ? new Date(ed).getTime() : null;
+    activeConfig.EXCLUDED_POLLSTERS.clear();
+    document.querySelectorAll('.adv-pollster-cb').forEach(cb => { if (!cb.checked) activeConfig.EXCLUDED_POLLSTERS.add(cb.value); });
+    const filtered = cachedPolls.filter(p => {
+      const t = (p.startDate || p.date).getTime();
+      if (activeConfig.START_DATE && t < activeConfig.START_DATE) return false;
+      if (activeConfig.END_DATE   && t > activeConfig.END_DATE)   return false;
+      if (activeConfig.EXCLUDED_POLLSTERS.has(p.pollster)) return false;
+      return true;
+    });
+    if (chartInstance) {
+      if (currentView === 'election' && !activeConfig.END_DATE) chartInstance.options.scales.x.max = CONFIG.NEXT_ELECTION_DATE;
+      else if (activeConfig.END_DATE) chartInstance.options.scales.x.max = activeConfig.END_DATE;
+      else delete chartInstance.options.scales.x.max;
+    }
+    calculateTrendsAndRender(filtered);
+  };
+
+  /* ── Calculate & render ── */
+  function calculateTrendsAndRender(dataToRender) {
+    PARTIES.forEach(party => {
+      const rawData = dataToRender.filter(p => p[party.key] !== null).map(p => {
+        const accuracyScore = activeConfig.WEIGHTED ? (p.baseWeight || 100) : 100;
+        const freqMult = p.baseWeight > 0 ? p.weight / p.baseWeight : 1;
+        return { x: (p.startDate ? p.startDate.getTime() : p.date.getTime()), y: p[party.key], weight: activeConfig.FREQUENCY_BALANCING ? accuracyScore * freqMult : accuracyScore };
+      });
+      trendCache[party.key] = calculateRobustTrend(rawData, party.key);
+    });
+    renderCurrentAverages();
+    renderSummary(cachedPolls);
+    renderTable();
+    if (chartInstance) chartInstance.destroy();
+    renderChart(dataToRender);
+  }
+
+  function renderCurrentAverages() {
+    const headlineParties = PARTIES.filter(p => p.key !== 'SNP');
+    const averages = headlineParties.map(party => {
+      const cached = trendCache[party.key];
+      const currentVal = cached.trendData.length > 0 ? cached.trendData[cached.trendData.length - 1].y : 0;
+      return { ...party, current: currentVal };
+    }).sort((a,b) => b.current - a.current);
+    document.getElementById('current-averages').innerHTML = averages.map(p => {
+      const diff = p.current - (LAST_ELECTION[p.key] || 0);
+      return `<div class="avg-card ${p.css}-bg">
+        <div class="avg-party">${p.key}</div>
+        <div class="avg-value">${p.current.toFixed(1)}%</div>
+        <div class="change-pill">${diff > 0 ? '+' : ''}${diff.toFixed(1)}</div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderSummary(polls) {
+    const pollsterMap = {};
+    polls.forEach(p => { pollsterMap[p.pollster] = p; });
+    const cutoff = new Date(); cutoff.setMonth(cutoff.getMonth() - 2);
+    const latest = Object.values(pollsterMap).filter(p => (p.startDate || p.date) >= cutoff).sort((a,b) => (b.startDate||b.date) - (a.startDate||a.date));
+    const container = document.getElementById('summary-grid');
+    if (!latest.length) { container.innerHTML = '<p style="text-align:center;color:var(--muted)">No recent polls.</p>'; return; }
+    container.innerHTML = latest.map(p => {
+      const results = PARTIES.map(party => ({ key: party.key, val: p[party.key], css: party.css + '-text' })).filter(r => r.val !== null).sort((a,b) => b.val - a.val).slice(0,6);
+      const displayWeight = p.baseWeight !== undefined ? p.baseWeight : p.weight;
+      return `<div class="poll-bubble">
+        <div class="bubble-info">
+          <div class="weight-circle" style="background:${getWeightColor(displayWeight, p.isNew)}">${Math.round(displayWeight)}</div>
+          <div class="pollster-meta">
+            <div class="pollster-name" title="${p.pollster}">${p.pollster}</div>
+            <div class="poll-date">${(p.startDate||p.date).toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'2-digit'})}</div>
+          </div>
+        </div>
+        <div class="bubble-results">${results.map(r => `<div class="result-item"><span class="mini-party ${r.css}">${r.key}</span><span class="mini-val">${r.val}%</span></div>`).join('')}</div>
+        <div class="bubble-lead"><span class="lead-badge ${p.leadInfo.cssClass}">${p.leadInfo.text}</span></div>
+      </div>`;
+    }).join('');
+  }
+
+  function renderTable() {
+    const container = document.getElementById('polls-years-container'); container.innerHTML = '';
+    const byYear = {};
+    cachedPolls.forEach(p => { const y = (p.startDate||p.date).getFullYear(); if (!byYear[y]) byYear[y] = []; byYear[y].push(p); });
+    Object.keys(byYear).sort((a,b) => b - a).forEach(year => {
+      let data = byYear[year];
+      data.sort((a,b) => {
+        let va, vb;
+        if (currentSort.key === 'date') { va = a.startDate||a.date; vb = b.startDate||b.date; }
+        else if (currentSort.key === 'pollster') { va = a.pollster.toLowerCase(); vb = b.pollster.toLowerCase(); }
+        else if (currentSort.key === 'margin') { va = a.leadInfo.margin; vb = b.leadInfo.margin; }
+        else { va = a[currentSort.key]||0; vb = b[currentSort.key]||0; }
+        return currentSort.order === 'asc' ? (va < vb ? -1 : 1) : (va > vb ? -1 : 1);
+      });
+      const showRES = parseInt(year) >= 2026;
+      const thClass = k => currentSort.key === k ? (currentSort.order === 'asc' ? 'sorted-asc' : 'sorted-desc') : '';
+      const rows = data.map(poll => {
+        const d = poll.startDate || poll.date;
+        const dateStr = d.toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'2-digit' });
+        const dotColor = getWeightColor(poll.baseWeight, poll.isNew);
+        return `<tr>
+          <td class="col-date">${dateStr}</td>
+          <td class="col-pollster"><span class="table-weight-dot" style="background:${dotColor}"></span>${poll.pollster}</td>
+          <td class="party-cell lab-text">${formatVal(poll.LAB)}</td>
+          <td class="party-cell con-text">${formatVal(poll.CON)}</td>
+          <td class="party-cell rfm-text">${formatVal(poll.RFM)}</td>
+          <td class="party-cell ldm-text">${formatVal(poll.LDM)}</td>
+          <td class="party-cell grn-text">${formatVal(poll.GRN)}</td>
+          <td class="party-cell snp-text">${formatVal(poll.SNP)}</td>
+          ${showRES ? `<td class="party-cell res-text">${formatVal(poll.RES)}</td>` : ''}
+          <td><span class="table-lead-pill ${poll.leadInfo.cssClass}">${poll.leadInfo.text}</span></td>
+        </tr>`;
+      }).join('');
+      const isCollapsed = collapsedStates[year] === true;
+      container.insertAdjacentHTML('beforeend', `
+        <div class="year-card ${isCollapsed?'collapsed':''}" id="year-card-${year}">
+          <div class="year-header" onclick="window.toggleYear('${year}')">
+            <h4 class="year-title">${year}</h4>
+            <div class="year-toggle-icon">▼</div>
+          </div>
+          <div class="year-content">
+            <div class="table-wrapper">
+              <table>
+                <thead><tr>
+                  <th data-sort="date" class="col-date ${thClass('date')}" onclick="window.tableSort('date')">Date</th>
+                  <th data-sort="pollster" class="col-pollster ${thClass('pollster')}" onclick="window.tableSort('pollster')">Pollster</th>
+                  <th class="${thClass('LAB')}" onclick="window.tableSort('LAB')"><span class="lab-text">LAB</span></th>
+                  <th class="${thClass('CON')}" onclick="window.tableSort('CON')"><span class="con-text">CON</span></th>
+                  <th class="${thClass('RFM')}" onclick="window.tableSort('RFM')"><span class="rfm-text">RFM</span></th>
+                  <th class="${thClass('LDM')}" onclick="window.tableSort('LDM')"><span class="ldm-text">LDM</span></th>
+                  <th class="${thClass('GRN')}" onclick="window.tableSort('GRN')"><span class="grn-text">GRN</span></th>
+                  <th class="${thClass('SNP')}" onclick="window.tableSort('SNP')"><span class="snp-text">SNP</span></th>
+                  ${showRES ? `<th class="${thClass('RES')}" onclick="window.tableSort('RES')"><span class="res-text">RES</span></th>` : ''}
+                  <th class="${thClass('margin')}" onclick="window.tableSort('margin')">Lead</th>
+                </tr></thead>
+                <tbody>${rows}</tbody>
+              </table>
+            </div>
+          </div>
+        </div>`);
+    });
+  }
+
+  window.tableSort = function (key) {
+    if (currentSort.key === key) currentSort.order = currentSort.order === 'asc' ? 'desc' : 'asc';
+    else { currentSort.key = key; currentSort.order = 'desc'; }
+    renderTable();
+  };
+
+  /* ── Trend interpolation ── */
+  function getInterpolatedScore(partyKey, ts) {
+    const cache = trendCache[partyKey];
+    if (!cache || !cache.trendData || !cache.trendData.length) return null;
+    const data = cache.trendData;
+    if (ts < data[0].x) return null;
+    if (ts > data[data.length-1].x + 30*86400000) return null;
+    let lo = 0, hi = data.length - 1;
+    while (lo < hi - 1) { const mid = (lo+hi)>>1; if (data[mid].x <= ts) lo = mid; else hi = mid; }
+    if (lo === hi) return data[lo].y;
+    const t = (ts - data[lo].x) / (data[hi].x - data[lo].x);
+    return data[lo].y + t * (data[hi].y - data[lo].y);
+  }
+
+  /* ── Chart ── */
+  function renderChart(polls) {
+    const canvas = document.getElementById('pollChart'); if (!canvas) return;
+    const chartPolls = [...polls].sort((a,b) => a.date - b.date);
+    let lastPollDate = chartPolls.length > 0 ? chartPolls[chartPolls.length-1].date.getTime() : Date.now();
+    const datasets = [];
+
+    PARTIES.forEach(party => {
+      const rawData = chartPolls.filter(p => p[party.key] !== null)
+        .map(p => ({ x: (p.startDate ? p.startDate.getTime() : p.date.getTime()), y: p[party.key], weight: p.weight }))
+        .sort((a,b) => a.x - b.x);
+      const cached = trendCache[party.key];
+      const isHidden = activeConfig.HIDDEN_PARTIES.has(party.key);
+      const geData = cached.gePoint ? [cached.gePoint] : [];
+      const stoodIn2024 = LAST_ELECTION[party.key] > 0;
+      let trendData = [];
+      if (stoodIn2024) {
+        trendData = cached.trendData;
+      } else if (cached.actualPollCount >= 2) {
+        trendData = cached.trendData.filter(pt => pt.x >= rawData[1].x);
+      }
+      datasets.push({ type:'scatter', label:`${party.key} (GE)`, data: geData, backgroundColor: party.color, pointRadius: 5, pointHoverRadius: 8, pointStyle:'circle', order:0, hidden: isHidden });
+      datasets.push({ type:'scatter', label:`${party.key} (Polls)`, data: rawData, backgroundColor: party.color+'22', borderWidth:0, pointRadius:2.5, pointHitRadius:0, pointStyle:'circle', order:2, hidden: isHidden });
+      datasets.push({ type:'line', label: party.key, data: trendData, borderColor: party.color, backgroundColor:'transparent', pointStyle:'circle', borderWidth:3, pointRadius:0, fill:false, tension:0.4, order:1, hidden: isHidden });
+    });
+
+    /* ── End labels plugin ── */
+    const endLabels = {
+      id: 'endLabels',
+      afterDatasetsDraw(chart) {
+        const ctx = chart.ctx;
+        const labels = [];
+        chart.data.datasets.forEach((ds, i) => {
+          if (ds.type === 'line' && !chart.getDatasetMeta(i).hidden && ds.data.length > 0) {
+            const meta = chart.getDatasetMeta(i);
+            const last = meta.data[meta.data.length - 1];
+            if (last) labels.push({ y: last.y, x: last.x + 8, text: ds.data[ds.data.length-1].y.toFixed(1)+'%', color: ds.borderColor });
+          }
+        });
+        labels.sort((a,b) => a.y - b.y);
+        let lastY = -12;
+        ctx.save();
+        ctx.font = '900 11px Inter, system-ui, sans-serif';
+        ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+        labels.forEach(l => {
+          if (l.y < lastY + 12) l.y = lastY + 12;
+          ctx.fillStyle = l.color;
+          ctx.fillText(l.text, l.x, l.y);
+          lastY = l.y;
+        });
+        ctx.restore();
+      }
+    };
+
+    /* ── Canvas tooltip plugin (all parties, hollow circles) ── */
+    const votingTooltip = {
+      id: 'votingTooltip',
+      afterDraw(chart) {
+        const tt = chart.tooltip;
+        if (!tt || tt.opacity === 0) return;
+        const pts = tt.dataPoints; if (!pts || !pts.length) return;
+        const ts = pts[0].parsed.x;
+        const rows = PARTIES
+          .filter(p => !activeConfig.HIDDEN_PARTIES.has(p.key))
+          .map(p => {
+            const val = getInterpolatedScore(p.key, ts);
+            return val !== null ? { label: p.key, color: p.color, val } : null;
+          })
+          .filter(Boolean).sort((a,b) => b.val - a.val);
+        if (!rows.length) return;
+        const ctx = chart.ctx;
+        const dateStr = new Date(ts).toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+        const pad = 12, lineH = 17, titleH = 20, dotR = 4.5;
+        ctx.save();
+        ctx.font = '700 11px Inter, system-ui, sans-serif';
+        let maxW = ctx.measureText(dateStr).width;
+        ctx.font = '400 11px Inter, system-ui, sans-serif';
+        rows.forEach(r => { const w = ctx.measureText(r.label + ': ' + r.val.toFixed(1) + '%').width; if (w > maxW) maxW = w; });
+        const boxW = maxW + pad*2 + dotR*2 + 8;
+        const boxH = pad + titleH + rows.length*lineH + pad*0.6;
+        let bx = tt.caretX + 14;
+        let by = Math.max(chart.chartArea.top + 4, tt.caretY - boxH/2);
+        if (bx + boxW > chart.width - 4) bx = tt.caretX - boxW - 14;
+        if (by + boxH > chart.chartArea.bottom - 4) by = chart.chartArea.bottom - boxH - 4;
+        const cr = 9;
+        ctx.shadowColor = 'rgba(0,0,0,0.28)'; ctx.shadowBlur = 10;
+        ctx.fillStyle = '#15171a';
+        ctx.beginPath();
+        ctx.moveTo(bx+cr,by); ctx.lineTo(bx+boxW-cr,by); ctx.quadraticCurveTo(bx+boxW,by,bx+boxW,by+cr);
+        ctx.lineTo(bx+boxW,by+boxH-cr); ctx.quadraticCurveTo(bx+boxW,by+boxH,bx+boxW-cr,by+boxH);
+        ctx.lineTo(bx+cr,by+boxH); ctx.quadraticCurveTo(bx,by+boxH,bx,by+boxH-cr);
+        ctx.lineTo(bx,by+cr); ctx.quadraticCurveTo(bx,by,bx+cr,by); ctx.closePath();
+        ctx.fill();
+        ctx.shadowColor='transparent'; ctx.shadowBlur=0;
+        ctx.strokeStyle='rgba(255,255,255,0.08)'; ctx.lineWidth=1; ctx.stroke();
+        ctx.fillStyle='#ffffff'; ctx.font='700 11px Inter, system-ui, sans-serif';
+        ctx.fillText(dateStr, bx+pad, by+pad+11);
+        rows.forEach((row,i) => {
+          const ry = by+pad+titleH+i*lineH+lineH/2;
+          ctx.beginPath(); ctx.arc(bx+pad+dotR, ry, dotR, 0, Math.PI*2);
+          ctx.strokeStyle=row.color; ctx.lineWidth=2; ctx.stroke();
+          ctx.fillStyle='rgba(255,255,255,0.82)'; ctx.font='400 11px Inter, system-ui, sans-serif';
+          ctx.fillText(row.label+': '+row.val.toFixed(1)+'%', bx+pad+dotR*2+8, ry+4);
+        });
+        ctx.restore();
+      }
+    };
+
+    /* ── Crosshair plugin ── */
+    const hoverCrosshair = {
+      id: 'hoverCrosshair',
+      afterDraw(chart) {
+        if (!chart.tooltip || chart.tooltip.opacity === 0) return;
+        const { ctx, chartArea: { top, bottom } } = chart;
+        const x = chart.tooltip.caretX;
+        ctx.save();
+        ctx.beginPath();
+        ctx.strokeStyle = 'rgba(100,100,100,0.25)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([4, 4]);
+        ctx.moveTo(x, top); ctx.lineTo(x, bottom);
+        ctx.stroke(); ctx.restore();
+      }
+    };
+
+    /* ── "Last poll" dashed line (election view only) ── */
+    const todayLine = {
+      id: 'todayLine',
+      beforeDraw(chart) {
+        if (currentView !== 'election') return;
+        const { ctx, chartArea: { top, bottom }, scales: { x } } = chart;
+        const xPos = x.getPixelForValue(lastPollDate);
+        if (xPos < x.left || xPos > x.right) return;
+        ctx.save();
+        ctx.beginPath(); ctx.strokeStyle = '#d1d5db'; ctx.lineWidth = 2; ctx.setLineDash([5,5]);
+        ctx.moveTo(xPos, top); ctx.lineTo(xPos, bottom); ctx.stroke();
+        ctx.fillStyle = 'rgba(249,250,251,0.4)';
+        ctx.fillRect(xPos, top, x.right - xPos, bottom - top);
+        ctx.restore();
+      }
+    };
+
+    chartInstance = new Chart(canvas.getContext('2d'), {
+      data: { datasets },
+      plugins: [endLabels, votingTooltip, hoverCrosshair, todayLine],
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        layout: { padding: { right: 60 } },
+        interaction: { mode: 'nearest', axis: 'x', intersect: false },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            enabled: true,
+            backgroundColor: 'transparent', borderColor: 'transparent',
+            titleColor: 'transparent', bodyColor: 'transparent',
+            displayColors: false, caretSize: 0, padding: 0,
+            intersect: false,
+            filter: item => item.dataset.type === 'line',
+            callbacks: { title: () => '', label: () => '' }
+          }
+        },
+        scales: {
+          x: {
+            type: 'time',
+            min: activeConfig.START_DATE || undefined,
+            max: activeConfig.END_DATE || (currentView === 'election' ? CONFIG.NEXT_ELECTION_DATE : undefined),
+            time: { unit:'month', displayFormats: { month:'MMM yy' } },
+            grid: { display: false },
+            ticks: { maxTicksLimit: 8, color: CHART_DEFAULTS.tickColor, font: { family: CHART_DEFAULTS.font, size:11, weight:'700' } }
+          },
+          y: {
+            beginAtZero: true,
+            title: { display: true, text: 'Vote Share %', color: CHART_DEFAULTS.titleColor, font: { family: CHART_DEFAULTS.font, size:11, weight:'700' } },
+            grid: { color: CHART_DEFAULTS.gridColor },
+            ticks: { color: CHART_DEFAULTS.tickColor, font: { family: CHART_DEFAULTS.font, size:11, weight:'700' } }
+          }
+        }
+      }
+    });
+    initLegend(chartInstance);
+  }
+
+  function initLegend(chart) {
+    const container = document.getElementById('js-legend'); container.innerHTML = '';
+    PARTIES.forEach((party, i) => {
+      const isHidden = activeConfig.HIDDEN_PARTIES.has(party.key);
+      const pill = document.createElement('button');
+      pill.className = 'legend-pill' + (isHidden ? ' inactive' : '');
+      pill.style.backgroundColor = party.color;
+      pill.innerText = party.key;
+      pill.setAttribute('aria-pressed', (!isHidden).toString());
+      pill.onclick = () => {
+        const hidden = activeConfig.HIDDEN_PARTIES.has(party.key);
+        if (hidden) { activeConfig.HIDDEN_PARTIES.delete(party.key); pill.classList.remove('inactive'); pill.setAttribute('aria-pressed','true'); }
+        else { activeConfig.HIDDEN_PARTIES.add(party.key); pill.classList.add('inactive'); pill.setAttribute('aria-pressed','false'); }
+        [0,1,2].forEach(offset => { chart.getDatasetMeta(3*i+offset).hidden = !hidden; });
+        chart.update();
+      };
+      container.appendChild(pill);
+    });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

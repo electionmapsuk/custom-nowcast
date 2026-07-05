@@ -1,8 +1,18 @@
 <!-- Paste THIS (and only this) into a Squarespace Code Block.
-     It embeds the hosted nowcast page in an isolated iframe.
-     Update the src to your GitHub Pages URL for electionmaps_nowcast.standalone.html. -->
+     The iframe auto-resizes to the page's content height (no inner scrollbar) and the
+     width:1px / min-width:100% trick forces iOS Safari to respect the column width so
+     the page reflows for mobile instead of overflowing. -->
 <iframe
+  id="nowcastFrame"
   src="https://electionmapsuk.github.io/custom-nowcast/electionmaps_nowcast.standalone.html"
   title="UK Election Nowcast"
-  style="width:100%; height:2200px; border:0;"
+  style="width:1px; min-width:100%; height:2200px; border:0; overflow:hidden;"
+  scrolling="no"
   loading="lazy"></iframe>
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data && e.data.nowcastHeight && document.getElementById('nowcastFrame')) {
+      document.getElementById('nowcastFrame').style.height = (e.data.nowcastHeight + 20) + 'px';
+    }
+  });
+</script>

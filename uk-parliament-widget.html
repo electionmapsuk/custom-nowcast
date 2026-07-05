@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    margin: 0;
+    -webkit-font-smoothing: antialiased;
+    background: transparent;
+    color: #15171a;
+    padding: 0;
+  }
+
+  .widget, .widget * {
+    font-family: 'Inter', system-ui, sans-serif !important;
+  }
+  .tot {
+    text-align: left !important;
+  }
+
+  .widget {
+    display: flex;
+    gap: 14px;
+    align-items: stretch;
+    font-size: 16px;
+    width: 100%;
+  }
+
+  .panel {
+    background: #fff;
+    border: 1px solid #e3e3df;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    padding: 22px;
+  }
+
+  /* LEFT */
+  .panel-left {
+    flex: 0 0 44%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .headline {
+    font-size: 1.5em;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    color: #E4003B;
+    margin-bottom: 16px;
+  }
+
+  .totstrip {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 4px;
+    flex: 1;
+    align-content: stretch;
+  }
+
+  .tot {
+    container-type: inline-size;
+    border-radius: 7px;
+    padding: 20px 6px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: flex-start;
+    text-align: left;
+    gap: 0;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .tot .nm {
+    font-size: clamp(8px, 17cqi, 14px);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    opacity: 0.92;
+    line-height: 1.2;
+    margin-bottom: 1px;
+    white-space: nowrap;
+  }
+
+  .tot .n {
+    font-size: clamp(14px, 48cqi, 42px);
+    font-weight: 900;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+  }
+
+  .tot .ch {
+    display: inline-block;
+    background: rgba(0,0,0,0.2);
+    padding: 0px 4px;
+    border-radius: 4px;
+    font-size: clamp(7px, 20cqi, 20px);
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.4;
+    margin-top: 2px;
+  }
+
+  /* RIGHT */
+  .panel-right {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .parl-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+  }
+
+  .side-label {
+    display: block;
+    font-size: 0.72em;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.09em;
+    color: #9ca3af;
+    margin-bottom: 2px;
+  }
+
+  .side-count {
+    font-size: 1.3em;
+    font-weight: 900;
+    letter-spacing: -0.02em;
+    font-variant-numeric: tabular-nums;
+    color: #15171a;
+  }
+
+  .side-count.gov { color: #16a34a; }
+
+  .parl-svg-wrap { flex: 1; }
+  .parl-svg-wrap svg { display: block; width: 100%; height: 100%; }
+
+  /* Tooltip */
+  #tip {
+    position: fixed;
+    background: #0b3d3d;
+    color: #fff;
+    padding: 5px 10px;
+    border-radius: 8px;
+    font-size: 0.75em;
+    font-weight: 700;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 9999;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    transition: opacity 0.1s;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+
+  @media (max-width: 800px) {
+    body { padding: 0; }
+    .widget { flex-direction: column; }
+    .panel-left { flex: none; }
+    .headline { font-size: 1.25em; }
+    .totstrip { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  }
+</style>
+</head>
+<body>
+
+<div class="widget">
+
+  <div class="panel panel-left">
+    <div class="headline" id="hl"></div>
+    <div class="totstrip" id="totstrip"></div>
+  </div>
+
+  <div class="panel panel-right">
+    <div class="parl-header">
+      <div>
+        <span class="side-label">Government</span>
+        <span class="side-count gov" id="gov-count"></span>
+      </div>
+      <div style="text-align:right">
+        <span class="side-label">Opposition</span>
+        <span class="side-count" id="opp-count"></span>
+      </div>
+    </div>
+    <div class="parl-svg-wrap">
+      <svg id="parl-svg" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet"></svg>
+    </div>
+  </div>
+
+</div>
+
+<div id="tip"></div>
+
+<script>
+(function () {
+  /* ── FONT LOAD (survives Squarespace sanitisation) ── */
+  var fl = document.createElement('link');
+  fl.rel = 'stylesheet';
+  fl.href = 'https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap';
+  document.head.appendChild(fl);
+
+  /* ── DATA ── */
+  const seats = {
+    LAB:403, CON:118, LDM:71, IND:13, RFM:8, SNP:7, GRN:5,
+    DUP:5, PLC:4, SDL:2, YP:2, ALL:1, UUP:1, TUV:1, RES:1
+  };
+  const prev = {
+    LAB:411, CON:121, LDM:72, IND:6, RFM:5, SNP:9, GRN:4,
+    DUP:5, PLC:4, SDL:2, YP:0, ALL:1, UUP:1, TUV:1, RES:0
+  };
+  const cfg = {
+    LAB: { color:'#E4003B', name:'Labour' },
+    CON: { color:'#0393D3', name:'Conservative' },
+    LDM: { color:'#FF6400', name:'Lib Dem' },
+    IND: { color:'#8b8b8b', name:'Independent' },
+    RFM: { color:'#2bc5db', name:'Reform' },
+    SNP: { color:'#e6d62e', name:'SNP' },
+    GRN: { color:'#00A85A', name:'Green' },
+    DUP: { color:'rgb(212,106,76)', name:'DUP' },
+    PLC: { color:'#075d55', name:'Plaid Cymru' },
+    SDL: { color:'#3A9E84', name:'SDLP' },
+    YP:  { color:'#990000', name:'Your Party' },
+    ALL: { color:'#FFE01E', name:'Alliance' },
+    UUP: { color:'#48A5EE', name:'UUP' },
+    TUV: { color:'#0C3A6A', name:'TUV' },
+    RES: { color:'#051d3f', name:'Restore' },
+  };
+
+  const GOV = new Set(['LAB']);
+  const MAJORITY = 325;
+  const sorted = Object.keys(seats).sort((a,b) => seats[b] - seats[a]);
+
+  function textOn(hex) {
+    const c = hex.replace(/[^0-9a-f]/gi,'');
+    const h = c.length === 3 ? c.split('').map(x=>x+x).join('') : c;
+    const r=parseInt(h.slice(0,2),16), g=parseInt(h.slice(2,4),16), b=parseInt(h.slice(4,6),16);
+    return (0.299*r + 0.587*g + 0.114*b) / 255 > 0.62 ? '#15171a' : '#fff';
+  }
+
+  /* ── HEADLINE ── */
+  const lead = sorted[0], ls = seats[lead], hasMaj = ls >= MAJORITY;
+  document.getElementById('hl').textContent = hasMaj
+    ? cfg[lead].name + ' majority of ' + ((ls - 325) * 2)
+    : cfg[lead].name + ' — largest party';
+
+  /* ── TILES ── */
+  const strip = document.getElementById('totstrip');
+  sorted.forEach(k => {
+    const p = cfg[k];
+    const chg = seats[k] - (prev[k] || 0);
+    const cs = chg > 0 ? '+'+chg : chg < 0 ? String(chg) : '=';
+    const div = document.createElement('div');
+    div.className = 'tot';
+    div.style.background = p.color;
+    div.style.color = textOn(p.color);
+    div.innerHTML =
+      '<div class="nm">'+k+'</div>' +
+      '<div class="n">'+seats[k]+'</div>' +
+      '<div class="ch">'+cs+'</div>';
+    strip.appendChild(div);
+  });
+
+  /* ── PARLIAMENT SVG ── */
+  const svg = document.getElementById('parl-svg');
+  const tip = document.getElementById('tip');
+  const ROWS = 10, SZ = 8, GAP = 2, STEP = SZ + GAP;
+
+  let govList = [], oppList = [];
+  sorted.forEach(k => {
+    const list = GOV.has(k) ? govList : oppList;
+    for (let i = 0; i < seats[k]; i++) list.push(k);
+  });
+
+  document.getElementById('gov-count').textContent = govList.length + ' seats';
+  document.getElementById('opp-count').textContent = oppList.length + ' seats';
+
+  let maxX = 0, maxY = 0, curY = 0;
+
+  function drawGroup(list) {
+    let col = 0, row = 0;
+    list.forEach(k => {
+      const x = col * STEP, y = curY + row * STEP;
+      const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      r.setAttribute('x', x); r.setAttribute('y', y);
+      r.setAttribute('width', SZ); r.setAttribute('height', SZ);
+      r.setAttribute('fill', cfg[k].color); r.setAttribute('rx', 2);
+      if (x + SZ > maxX) maxX = x + SZ;
+      if (y + SZ > maxY) maxY = y + SZ;
+      r.addEventListener('mouseenter', e => {
+        tip.textContent = cfg[k].name + ' · ' + seats[k] + ' seats';
+        tip.style.opacity = 1;
+        tip.style.left = (e.clientX + 12) + 'px';
+        tip.style.top  = (e.clientY + 12) + 'px';
+      });
+      r.addEventListener('mousemove', e => {
+        tip.style.left = (e.clientX + 12) + 'px';
+        tip.style.top  = (e.clientY + 12) + 'px';
+      });
+      r.addEventListener('mouseleave', () => { tip.style.opacity = 0; });
+      svg.appendChild(r);
+      if (++row >= ROWS) { row = 0; col++; }
+    });
+  }
+
+  drawGroup(govList);
+
+  curY += ROWS * STEP + 8;
+  const spk = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+  spk.setAttribute('x', 0); spk.setAttribute('y', curY);
+  spk.setAttribute('width', 10); spk.setAttribute('height', 10);
+  spk.setAttribute('fill', '#15171a'); spk.setAttribute('rx', 3);
+  svg.appendChild(spk);
+  if (10 > maxX) maxX = 10;
+  if (curY + 10 > maxY) maxY = curY + 10;
+  curY += 10 + 8;
+
+  drawGroup(oppList);
+
+  svg.setAttribute('viewBox', '0 0 ' + maxX + ' ' + maxY);
+
+})();
+</script>
+</body>
+</html>
