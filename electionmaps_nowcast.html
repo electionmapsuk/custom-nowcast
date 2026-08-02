@@ -89,8 +89,9 @@
   .headline .maj{font-size:.9rem; font-weight:600; color:var(--muted);} .headline .maj.gov{color:#16a34a;}
   .seatbar{position:relative; height:38px; border-radius:7px; overflow:hidden; display:flex; margin:16px 0 6px; background:var(--line2);}
   .seatbar .seg{height:100%; transition:width .35s cubic-bezier(.4,0,.2,1);}
-  .majmark{position:absolute; top:-4px; bottom:-4px; left:50.78%; width:2px; background:#15171a; z-index:3;}
+  .majmark{position:absolute; top:-4px; bottom:-4px; left:50%; width:2px; background:#15171a; z-index:3;}
   .majmark::after{content:'326'; position:absolute; top:-15px; left:50%; transform:translateX(-50%); font-size:.6rem; font-weight:700; color:var(--faint);}
+  #seatbar .majmark, #coalbar .majmark{top:-7px; bottom:-7px; width:0; background:none; border-left:2px dotted #15171a;}
   .totstrip{display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:8px; margin-top:18px;}
   @media(max-width:600px){ .totstrip{grid-template-columns:repeat(3,minmax(0,1fr));} }
   .tot{border-radius:8px; padding:11px 12px;}
@@ -149,6 +150,7 @@
   #coal-total.gov{color:#16a34a;}
   #coal-total .coalchip{display:inline-block; padding:3px 9px; border-radius:6px; font-size:.8rem; font-weight:800; letter-spacing:0;}
   #coal-total .coaloutcome{margin-left:2px;}
+  #coal-total .coalsep{color:var(--faint); font-weight:200; opacity:.45; margin:0 3px; transform:scaleX(.6); display:inline-block;}
   #coal-parties{display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin-top:16px;}
   .coalbtn{display:flex; flex-direction:column; align-items:center; gap:1px; min-width:44px; padding:5px 9px 6px; border-radius:8px; color:#fff; cursor:pointer; border:1.5px solid transparent; opacity:.38; filter:saturate(.85); transition:all .16s ease;}
   .coalbtn .cab{font-size:.58rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; opacity:.92;}
@@ -286,8 +288,8 @@ document.addEventListener('DOMContentLoaded', function(){
   var PI={ LAB:{n:'Lab',c:'#E4003B'},CON:{n:'Con',c:'#0393D3'},RFM:{n:'Reform',c:'#2BC5DB'},LDM:{n:'Lib Dem',c:'#ff6400'},
     GRN:{n:'Green',c:'#00A85A'},RES:{n:'Restore',c:'#051e40'},SNP:{n:'SNP',c:'#e6d62e'},PLC:{n:'Plaid',c:'#075d55'},
     MIN:{n:'Ind/Minor',c:'#ca80a8'},OTH:{n:'Other',c:'#9ca3af'},WPB:{n:'Workers',c:'#2853a5'},SPKR:{n:'Speaker',c:'#374151'},
-    DUP:{n:'DUP',c:'#d46a4c'},ALL:{n:'Alliance',c:'#F6CB2F'},SDLP:{n:'SDLP',c:'#3A9E84'},UUP:{n:'UUP',c:'#48A5EE'},
-    TUV:{n:'TUV',c:'#0C3A6A'},SF:{n:'Sinn Féin',c:'#326760'},IND:{n:'Independent',c:'#888'},Ind:{n:'Independent',c:'#888'} };
+    DUP:{n:'DUP',c:'#d46a4c'},ALL:{n:'Alliance',c:'#F4C72E'},SDLP:{n:'SDLP',c:'#FF0000'},UUP:{n:'UUP',c:'#48A5EE'},
+    TUV:{n:'TUV',c:'#1F1763'},SF:{n:'Sinn Féin',c:'#326760'},IND:{n:'Independent',c:'#888'},Ind:{n:'Independent',c:'#888'} };
   var FULL={LAB:'Labour',CON:'Conservatives',RFM:'Reform',LDM:'Lib Dems',GRN:'Greens',RES:'Restore',SNP:'SNP',PLC:'Plaid Cymru',MIN:'Independent',OTH:'Other',WPB:'Workers Party',SPKR:'Speaker',DUP:'DUP',ALL:'Alliance',SDLP:'SDLP',UUP:'UUP',TUV:'TUV',SF:'Sinn Féin',IND:'Independent',Ind:'Independent'};
   var fullName=function(p){ return FULL[p]||(PI[p]&&PI[p].n)||p; };
   var SPECTRUM=['SF','GRN','SNP','PLC','SDLP','LAB','ALL','LDM','MIN','IND','Ind','OTH','WPB','SPKR','UUP','CON','DUP','TUV','RFM','RES'];
@@ -458,6 +460,17 @@ document.addEventListener('DOMContentLoaded', function(){
   function tallies(){ var t={}; results.forEach(function(r){ var w=dispWin(r); t[w]=(t[w]||0)+1; });
     NIFIXED.forEach(function(s){ t[s.winner]=(t[s.winner]||0)+1; }); return t; }
 
+  // Diverging order: left-wing parties large->small from the LEFT edge, right-wing parties
+  // large->small from the RIGHT edge, so the smallest / neutral parties sit in the middle.
+  function barOrder(t){
+    var LEAN={LAB:'L',GRN:'L',LDM:'L',SNP:'L',PLC:'L',SDLP:'L',ALL:'L',WPB:'L',SF:'L',
+              CON:'R',RFM:'R',RES:'R',DUP:'R',UUP:'R',TUV:'R'};
+    var pres=Object.keys(t).filter(function(p){return t[p]&&PI[p]&&p!=='SF'&&p!=='SPKR';});
+    var L=pres.filter(function(p){return LEAN[p]==='L';}).sort(function(a,b){return t[b]-t[a];});
+    var R=pres.filter(function(p){return LEAN[p]==='R';}).sort(function(a,b){return t[a]-t[b];});
+    var M=pres.filter(function(p){return LEAN[p]!=='L'&&LEAN[p]!=='R';}).sort(function(a,b){return t[b]-t[a];});
+    return L.concat(M,R);
+  }
   function renderTotals(t){
     if(!t||!Object.keys(t).length) return;   // never blank the header on an empty tally
     lastTallies=t;
@@ -466,7 +479,7 @@ document.addEventListener('DOMContentLoaded', function(){
       var n=t[p]||0, ch=n-(W2024[p]||0), cs=ch>0?('+'+ch):(ch<0?String(ch):'0'); var tc=textOn(PI[p].c);
       var rng=(mcRanges&&mcRanges[p]&&mcRanges[p][1]>=mcRanges[p][0]) ? '<div class="rng">'+mcRanges[p][0]+'\u2013'+mcRanges[p][1]+'</div>' : '<div class="rng">&nbsp;</div>';
       return '<div class="tot" style="background:'+PI[p].c+';color:'+tc+'"><div class="nm">'+p+'</div><div class="n">'+n+'</div>'+rng+'<div class="ch">'+cs+'</div></div>'; }).join('');
-    $('seatbar').innerHTML='<div class="majmark"></div>'+SPECTRUM.filter(function(p){return t[p]&&p!=='SF'&&p!=='SPKR';}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/642)+'%;background:'+(PI[p]?PI[p].c:'#999')+'"></div>'; }).join('');
+    $('seatbar').innerHTML='<div class="majmark"></div>'+barOrder(t).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/642)+'%;background:'+(PI[p]?PI[p].c:'#999')+'"></div>'; }).join('');
     var top=Object.keys(t).filter(function(p){return PI[p];}).sort(function(a,b){return t[b]-t[a];})[0]; var lead=t[top]||0;
     $('hl-party').textContent=fullName(top)+(lead>=326?' Majority':' Largest Party'); $('hl-party').style.color=PI[top].c;
     var maj=$('hl-maj'); if(lead>=326){ maj.textContent='Majority of '+(2*lead-650); maj.className='maj gov'; } else { maj.textContent=(326-lead)+' short'; maj.className='maj'; }
@@ -621,8 +634,8 @@ document.addEventListener('DOMContentLoaded', function(){
     var chips=sel.map(function(p){ var c=PI[p].c; return '<span class="coalchip" style="background:'+c+';color:'+textOn(c)+'">'+p+'</span>'; }).join('');
     var ct=$('coal-total');
     if(!sel.length){ ct.innerHTML='<span class="coaloutcome">Select parties</span>'; ct.className=''; }
-    else if(tot>=326){ ct.innerHTML=chips+'<span class="coaloutcome">Majority of '+(2*tot-650)+'</span>'; ct.className='gov'; }
-    else { ct.innerHTML=chips+'<span class="coaloutcome">'+(326-tot)+' short</span>'; ct.className=''; }
+    else if(tot>=326){ ct.innerHTML=chips+'<span class="coalsep">|</span><span class="coalseats">'+tot+'</span><span class="coalsep">|</span><span class="coaloutcome">Majority of '+(2*tot-650)+'</span>'; ct.className='gov'; }
+    else { ct.innerHTML=chips+'<span class="coalsep">|</span><span class="coalseats">'+tot+'</span><span class="coalsep">|</span><span class="coaloutcome">'+(326-tot)+' short</span>'; ct.className=''; }
     $('coalbar').innerHTML='<div class="majmark"></div>'+order.filter(function(p){return coalSel[p];}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/642)+'%;background:'+PI[p].c+'"></div>'; }).join('');
   }
 
