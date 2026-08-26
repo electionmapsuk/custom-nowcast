@@ -62,7 +62,7 @@ def vintage(service_name: str):
         year = int(m.group(1))
     month = 0
     for name, num in MONTHS.items():
-        if f"_{name}_" in low:
+        if f"_{name}_" in low or f"_{name[:3]}_" in low:   # ONS uses both
             month = num
             break
     ver = 0
@@ -143,15 +143,118 @@ def _norm(s):
     return re.sub(r"[^a-z0-9]", "", (s or "").lower().replace("&", " and "))
 
 
+# ---- topological dissolve (no third-party dependency) -----------------------
+# Neighbouring ONS polygons are clipped from one topology, so a shared boundary
+# appears in both parts with identical vertices and opposite direction. Drop
+# every such edge pair and stitch what is left back into rings: that is exactly
+# the union, and it needs nothing but the standard library.
+
+def _rings(geom):
+    polys = [geom["coordinates"]] if geom["type"] == "Polygon" else geom["coordinates"]
+    out = []
+    for poly in polys:
+        for ring in poly:
+            r = [tuple(pt) for pt in ring]
+            if r and r[0] != r[-1]:
+                r.append(r[0])
+            if len(r) > 3:
+                out.append(r)
+    return out
+
+
+def _signed_area(ring):
+    s = 0.0
+    for (x1, y1), (x2, y2) in zip(ring, ring[1:]):
+        s += x1 * y2 - x2 * y1
+    return s / 2.0
+
+
+def _contains(ring, pt):
+    """Ray casting; ring is closed."""
+    x, y = pt
+    inside = False
+    for (x1, y1), (x2, y2) in zip(ring, ring[1:]):
+        if (y1 > y) != (y2 > y):
+            xin = x1 + (y - y1) * (x2 - x1) / (y2 - y1)
+            if xin > x:
+                inside = not inside
+    return inside
+
+
+def dissolve(geoms):
+    """Union a set of non-overlapping polygons. Returns a geometry, or None."""
+    edges: dict = {}
+    for g in geoms:
+        for ring in _rings(g):
+            for a, b in zip(ring, ring[1:]):
+                if a == b:
+                    continue
+                if edges.get((b, a)):
+                    edges[(b, a)] -= 1
+                    if not edges[(b, a)]:
+                        del edges[(b, a)]
+                else:
+                    edges[(a, b)] = edges.get((a, b), 0) + 1
+
+    nxt: dict = {}
+    for (a, b), n in edges.items():
+        nxt.setdefault(a, []).extend([b] * n)
+
+    rings = []
+    while nxt:
+        start = next(iter(nxt))
+        ring, cur = [start], start
+        while True:
+            outs = nxt.get(cur)
+            if not outs:
+                return None            # open chain: the parts were not a clean partition
+            nb = outs.pop()
+            if not outs:
+                del nxt[cur]
+            ring.append(nb)
+            cur = nb
+            if cur == start:
+                break
+        if len(ring) > 3:
+            rings.append(ring)
+    if not rings:
+        return None
+
+    # Split exteriors from holes by containment.
+    rings.sort(key=lambda r: abs(_signed_area(r)), reverse=True)
+    exteriors, holes = [], []
+    for i, r in enumerate(rings):
+        depth = sum(1 for j in range(i) if _contains(rings[j], r[0]))
+        (holes if depth % 2 else exteriors).append(r)
+    polys = []
+    for ext in exteriors:
+        mine = [h for h in holes if _contains(ext, h[0])]
+        holes = [h for h in holes if h not in mine]
+        polys.append([[list(p) for p in ext]] + [[list(p) for p in h] for h in mine])
+
+    if len(polys) == 1:
+        return {"type": "Polygon", "coordinates": polys[0]}
+    return {"type": "MultiPolygon", "coordinates": polys}
+
+
+def _net_area(geom):
+    total = 0.0
+    polys = [geom["coordinates"]] if geom["type"] == "Polygon" else geom["coordinates"]
+    for poly in polys:
+        for i, ring in enumerate(poly):
+            r = [tuple(pt) for pt in ring]
+            if r[0] != r[-1]:
+                r.append(r[0])
+            total += abs(_signed_area(r)) * (1 if i == 0 else -1)
+    return total
+
+
 def apply_merges(lower, upper):
     """Dissolve the constituent districts into their successor unitaries.
 
     The successor replaces its parts on the lower-tier layer and the county it
     supersedes on the upper-tier layer, so neither layer gains an overlap.
     """
-    from shapely.geometry import mapping, shape
-    from shapely.ops import unary_union
-
     lower_by_name = {_norm(f["properties"]["name"]): f for f in lower}
     have_lower = {_norm(f["properties"]["name"]) for f in lower}
     have_upper = {_norm(f["properties"]["name"]) for f in upper}
@@ -163,26 +266,35 @@ def apply_merges(lower, upper):
             print(f"  {m['name']}: ONS now publishes this - merge skipped",
                   file=sys.stderr)
             continue
-        parts = []
+        parts, want = [], 0.0
         for part in m["parts"]:
             f = lower_by_name.get(_norm(part))
             if f is None:
                 print(f"FAIL: {m['name']} needs {part!r}, not in the layer",
                       file=sys.stderr)
                 return None
-            parts.append(shape(f["geometry"]))
+            parts.append(f["geometry"])
+            want += _net_area(f["geometry"])
             drop_lower.add(_norm(part))
-        geom = unary_union(parts).buffer(0)
-        feat = {"type": "Feature",
-                "properties": {"code": m["code"], "name": m["name"]},
-                "geometry": {"type": geom.geom_type,
-                             "coordinates": round_coords(
-                                 mapping(geom)["coordinates"])}}
-        made.append(feat)
+
+        geom = dissolve(parts)
+        if geom is None:
+            print(f"FAIL: could not dissolve {m['name']} - the districts do not "
+                  f"share exact boundaries", file=sys.stderr)
+            return None
+        got = _net_area(geom)
+        if abs(got - want) > max(1e-9, want * 1e-6):
+            print(f"FAIL: {m['name']} dissolved to area {got:.8f}, expected "
+                  f"{want:.8f}", file=sys.stderr)
+            return None
+
+        made.append({"type": "Feature",
+                     "properties": {"code": m["code"], "name": m["name"]},
+                     "geometry": geom})
         for name in m.get("replaces_upper", []):
             drop_upper.add(_norm(name))
         print(f"  merged {m['name']} from {len(parts)} districts "
-              f"({geom.geom_type})", file=sys.stderr)
+              f"({geom['type']}, area checks out)", file=sys.stderr)
 
     if not made:
         return lower, upper
