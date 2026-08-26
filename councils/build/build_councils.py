@@ -1,23 +1,24 @@
 #!/usr/bin/env python3
 """Build councils.json for the ElectionMapsUK council-control dashboard.
 
-Sources (both CC0 / CC BY-SA, Open Council Data UK):
-  * https://opencouncildata.co.uk/councils.php?model=..&y=0   live composition
-    tables - authoritative for CONTROL and vacancies
-  * https://opencouncildata.co.uk/csv2.php?y=YYYY             every councillor,
-    with Electoral Commission party code - gives the full party breakdown that
-    the summary tables collapse into "Oth"
+Sources (Open Council Data UK):
+  * councils.php?model=..&y=0 / nicouncils.php  live composition tables.
+    These are the SOURCE OF TRUTH for control, vacancies, seat totals and every
+    party that has its own column.
+  * csv2.php?y=YYYY   every councillor with an Electoral Commission party code.
+    Used only to split the tables' "Oth" bucket into named parties, so the
+    per-council numbers always add up to the live total.
+  * csv3.php          the party register: Electoral Commission code -> Open
+    Council Data's own short party code. Drives all party identification.
 
-Geography join uses mySociety's local authority register, which carries an
-`open-council-data-id` column, so councils are matched by identifier first and
-by name only as a fallback.
+Geography comes from mySociety's local authority register (which carries an
+`open-council-data-id` column) and is then reconciled against the ONS boundary
+files actually in data/, so a council whose GSS code has been re-issued is
+re-matched by name rather than silently dropping off the map.
 
 Writes:
   data/councils.json        the dashboard payload
-  data/build-report.json    always written: counts, warnings, unmatched names
-
-Exit code is non-zero if validation fails, but the report is still written so a
-failed CI run can be diagnosed from the committed artefact.
+  data/build-report.json    always written: counts, warnings, anything dropped
 """
 from __future__ import annotations
 
@@ -35,13 +36,12 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 from fetch import get_text  # noqa: E402
-from parties import (CONTROL_TOKENS, NOC_COLOUR, PARTIES, SPECTRUM,  # noqa: E402
-                     TABLE_COLUMNS, party_from_row)
+from parties import (CONTROL_TOKENS, NOC_COLOUR, OCD_CODES, PARTIES,  # noqa: E402
+                     SPECTRUM, TABLE_COLUMNS, party_from_name, refine_other)
 from tables import largest_table  # noqa: E402
 
 BASE = "https://opencouncildata.co.uk/"
 
-# model code -> (url, our label for the group)
 COMPOSITION_PAGES = [
     ("C", BASE + "councils.php?model=C&y=0", "county"),
     ("D", BASE + "councils.php?model=D&y=0", "district"),
@@ -57,92 +57,138 @@ REGISTRY_URL = ("https://raw.githubusercontent.com/mysociety/"
                 "uk_local_authority_names_and_codes/main/data/packages/"
                 "uk_la_future/uk_local_authorities_future.csv")
 
+# Rows that are page furniture, not councils.
+FOOTER_RE = re.compile(r"^(total|totals|sum|all councils|average)\b|:$", re.I)
+
 warnings: list[str] = []
+_warned_once: set[str] = set()
 
 
-def warn(msg: str) -> None:
+def warn(msg: str, once_key: str | None = None) -> None:
+    if once_key is not None:
+        if once_key in _warned_once:
+            return
+        _warned_once.add(once_key)
     warnings.append(msg)
     print("WARN:", msg, file=sys.stderr)
 
 
 def norm(s: str) -> str:
-    """Normalise a council name for matching."""
-    s = (s or "").lower()
-    s = s.replace("&", " and ")
+    s = (s or "").lower().replace("&", " and ")
     for suffix in (" city council", " borough council", " district council",
                    " county council", " council", " city", " borough",
                    " district", " metropolitan", " unitary", " authority"):
         if s.endswith(suffix):
             s = s[: -len(suffix)]
-    s = re.sub(r"[^a-z0-9]", "", s)
-    return s
+    return re.sub(r"[^a-z0-9]", "", s)
 
 
-# ---------------------------------------------------------------- control ---
+# ------------------------------------------------------------ party register --
 
-def parse_control(label: str, seats: dict, total: int):
-    """Turn opencouncildata's control string into structured fields.
+def load_party_register() -> dict:
+    """Electoral Commission code -> canonical party code."""
+    text = get_text(BASE + "csv3.php")
+    reader = csv.DictReader(io.StringIO(text))
+    fields = [f.strip().lower() for f in (reader.fieldnames or [])]
 
-    Examples seen in the wild:
-      "LAB"            outright majority
-      "REF min"        largest party running a minority administration
-      "LD/GRN"         coalition
-      "NOC"            no overall control, no stated administration
+    def find(*names):
+        for n in names:
+            if n in fields:
+                return (reader.fieldnames or [])[fields.index(n)]
+        return None
+
+    f_ref = find("elec comm ref", "elec comm code", "code ec", "ec ref")
+    f_code = find("code")
+    f_name = find("name")
+    if not f_ref or not f_code:
+        raise RuntimeError(f"unexpected csv3.php columns: {reader.fieldnames}")
+
+    out: dict[str, str] = {}
+    unknown: Counter = Counter()
+    n = 0
+    for row in reader:
+        ref = (row.get(f_ref) or "").strip().upper()
+        short = (row.get(f_code) or "").strip().upper()
+        name = (row.get(f_name) or "").strip()
+        if not ref:
+            continue
+        n += 1
+        code = OCD_CODES.get(short)
+        if code is None:
+            unknown[short] += 1
+            code = party_from_name(name)
+        elif code == "OTH":
+            code = refine_other(name)
+        out[ref] = code
+    if unknown:
+        warn(f"party register had short codes we don't map: {dict(unknown)}")
+    print(f"  party register: {n} parties, {len(out)} codes", file=sys.stderr)
+    return out
+
+
+# ---------------------------------------------------------------- control ----
+
+def parse_control(label: str, seats: dict, total: int) -> dict:
+    """Structure Open Council Data's control string.
+
+    Seen in the wild: "LAB", "REF min", "LD/GRN", "NOC", "LAB Mayor", "TBC".
     """
     raw = (label or "").strip()
     up = raw.upper()
-    kind = "majority"
+
     if not raw or up in ("NOC", "NONE", "-", "?"):
-        kind = "noc"
-        parts: list[str] = []
-    else:
-        if "MIN" in up.split():
-            kind = "minority"
-        body = re.sub(r"\bMIN\b", "", up).strip()
-        tokens = [t.strip() for t in re.split(r"[/+]", body) if t.strip()]
-        parts = []
-        for t in tokens:
-            code = CONTROL_TOKENS.get(t)
-            if code is None:
-                code = CONTROL_TOKENS.get(t.replace(" ", ""))
-            if code:
+        return {"label": raw or "NOC", "type": "noc", "parties": [],
+                "lead": _largest(seats)[0], "mayor": False}
+    if up == "TBC":
+        return {"label": "TBC", "type": "noc", "parties": [],
+                "lead": _largest(seats)[0], "mayor": False}
+
+    mayor = bool(re.search(r"\bMAYOR\b", up))
+    minority = bool(re.search(r"\bMIN\b", up))
+    body = re.sub(r"\b(MAYOR|MIN)\b", " ", up).strip()
+
+    parts: list[str] = []
+    for tok in [t.strip() for t in re.split(r"[/+,]", body) if t.strip()]:
+        code = CONTROL_TOKENS.get(tok) or CONTROL_TOKENS.get(tok.replace(" ", ""))
+        if code:
+            if code not in parts:
                 parts.append(code)
-            elif t:
-                warn(f"unrecognised control token {t!r} in {raw!r}")
-        if kind == "majority" and len(parts) > 1:
-            kind = "coalition"
-        if not parts:
-            kind = "noc"
+        else:
+            warn(f"unrecognised control token {tok!r} (e.g. in {raw!r})",
+                 once_key="ctrl:" + tok)
+            if "OTH" not in parts:
+                parts.append("OTH")
 
-    lead = parts[0] if parts else None
-    # Sanity: an outright majority should really hold more than half the seats.
-    if kind == "majority" and lead and total:
-        held = seats.get(lead, 0)
-        if held * 2 <= total:
-            kind = "minority"
-    if lead is None and seats:
-        # NOC - still record the largest party for the "largest party" view.
-        contested = {k: v for k, v in seats.items() if k != "VAC"}
-        if contested:
-            top = max(contested.values())
-            tied = [k for k, v in contested.items() if v == top]
-            lead = tied[0] if len(tied) == 1 else None
-    return {"label": raw or "NOC", "type": kind, "parties": parts, "lead": lead}
+    if not parts:
+        return {"label": raw, "type": "noc", "parties": [],
+                "lead": _largest(seats)[0], "mayor": mayor}
+
+    if minority:
+        kind = "minority"
+    elif len(parts) > 1:
+        kind = "coalition"
+    else:
+        held = seats.get(parts[0], 0)
+        kind = "majority" if total and held * 2 > total else "minority"
+    if mayor and kind != "majority":
+        kind = "mayoral"
+
+    return {"label": raw, "type": kind, "parties": parts,
+            "lead": parts[0], "mayor": mayor}
 
 
-def largest_party(seats: dict):
+def _largest(seats: dict):
     contested = {k: v for k, v in seats.items() if k != "VAC" and v > 0}
     if not contested:
         return None, False
     top = max(contested.values())
     tied = [k for k, v in contested.items() if v == top]
-    return tied[0], len(tied) > 1
+    return (tied[0] if len(tied) == 1 else None), len(tied) > 1
 
 
 # ------------------------------------------------------- composition pages ---
 
 def scrape_compositions() -> dict:
-    """council-name -> {group, control_label, summary seats, total, vacant}"""
     out: dict[str, dict] = {}
     for model, url, group in COMPOSITION_PAGES:
         html = get_text(url)
@@ -151,7 +197,7 @@ def scrape_compositions() -> dict:
             warn(f"no composition table found on {url}")
             continue
         rows = table["rows"]
-        # Find the header row: the one containing "Council" and "Total".
+
         head_idx = None
         for i, r in enumerate(rows[:6]):
             low = [c.strip().lower() for c in r]
@@ -162,9 +208,9 @@ def scrape_compositions() -> dict:
             warn(f"no header row on {url} (first row: {rows[0][:12]})")
             continue
         header = [c.strip().lower() for c in rows[head_idx]]
-        # Map each column index to a canonical party code (or special).
-        col_map: dict[int, str] = {}
-        name_col = control_col = total_col = None
+
+        named: dict[int, str] = {}     # columns that are a specific party
+        oth_col = vac_col = name_col = control_col = total_col = None
         for i, h in enumerate(header):
             if h == "council":
                 name_col = i
@@ -172,8 +218,12 @@ def scrape_compositions() -> dict:
                 control_col = i
             elif h.startswith("total"):
                 total_col = i
+            elif h in ("oth", "others", "other"):
+                oth_col = i
+            elif h == "vac":
+                vac_col = i
             elif h in TABLE_COLUMNS:
-                col_map[i] = TABLE_COLUMNS[h]
+                named[i] = TABLE_COLUMNS[h]
             elif h:
                 warn(f"unmapped column {h!r} on {url}")
         if name_col is None or total_col is None:
@@ -185,24 +235,30 @@ def scrape_compositions() -> dict:
             if len(r) <= total_col:
                 continue
             name = r[name_col].strip()
-            if not name or name.lower() == "council":
+            if not name or name.lower() == "council" or FOOTER_RE.search(name):
                 continue
-            try:
-                total = int(re.sub(r"[^0-9]", "", r[total_col]) or 0)
-            except ValueError:
-                continue
+
+            def cell(i):
+                if i is None or i >= len(r):
+                    return 0
+                digits = re.sub(r"[^0-9]", "", r[i])
+                return int(digits) if digits else 0
+
+            total = cell(total_col)
             if total <= 0:
                 continue
-            seats: dict[str, int] = {}
-            for i, code in col_map.items():
-                if i >= len(r):
-                    continue
-                digits = re.sub(r"[^0-9]", "", r[i])
-                if digits:
-                    n = int(digits)
-                    if n:
-                        seats[code] = seats.get(code, 0) + n
-            control_label = r[control_col].strip() if control_col is not None and control_col < len(r) else ""
+            explicit = {}
+            for i, code in named.items():
+                n = cell(i)
+                if n:
+                    explicit[code] = explicit.get(code, 0) + n
+            oth = cell(oth_col)
+            vac = cell(vac_col)
+
+            stated = sum(explicit.values()) + oth + vac
+            if stated != total:
+                warn(f"{name}: table row sums to {stated}, states {total}")
+
             key = norm(name)
             if key in out:
                 warn(f"duplicate council {name!r} ({group} and {out[key]['group']})")
@@ -211,19 +267,21 @@ def scrape_compositions() -> dict:
                 "ocdName": name,
                 "group": group,
                 "model": model,
-                "controlLabel": control_label,
-                "summarySeats": seats,
+                "controlLabel": (r[control_col].strip()
+                                 if control_col is not None and control_col < len(r) else ""),
+                "explicit": explicit,
+                "explicitCodes": set(named.values()),
+                "oth": oth,
+                "vacant": vac,
                 "total": total,
-                "vacant": seats.get("VAC", 0),
             }
         print(f"  {group:16s} {len(out) - n_before:3d} councils", file=sys.stderr)
     return out
 
 
-# ------------------------------------------------------------ councillors ---
+# ------------------------------------------------------------ councillors ----
 
-def scrape_councillors(year: int):
-    """council-name -> {party code -> count}, plus next-election dates."""
+def scrape_councillors(year: int, register: dict):
     url = f"{BASE}csv2.php?y={year}"
     text = get_text(url)
     reader = csv.reader(io.StringIO(text))
@@ -246,9 +304,8 @@ def scrape_councillors(year: int):
         raise RuntimeError(f"unexpected CSV columns at {url}: {header}")
 
     seats: dict[str, Counter] = defaultdict(Counter)
-    names: dict[str, str] = {}
     nxt: dict[str, Counter] = defaultdict(Counter)
-    rows = 0
+    rows = unmatched_codes = 0
     for r in reader:
         if len(r) <= c_party:
             continue
@@ -257,17 +314,38 @@ def scrape_councillors(year: int):
             continue
         rows += 1
         key = norm(council)
-        names.setdefault(key, council)
-        code = party_from_row(r[c_code] if c_code is not None and c_code < len(r) else "",
-                              r[c_party])
+        ref = (r[c_code].strip().upper() if c_code is not None and c_code < len(r) else "")
+        code = register.get(ref)
+        if code is None:
+            unmatched_codes += 1
+            code = party_from_name(r[c_party])
         seats[key][code] += 1
         if c_next is not None and c_next < len(r) and r[c_next].strip():
             nxt[key][r[c_next].strip()] += 1
+    if unmatched_codes:
+        warn(f"{unmatched_codes} councillor rows had a party code missing from "
+             f"the register; fell back to name matching")
     print(f"  councillor CSV: {rows} rows, {len(seats)} councils", file=sys.stderr)
-    return seats, names, nxt, rows
+    return seats, nxt, rows
 
 
-# --------------------------------------------------------------- registry ---
+def split_other(oth: int, csv_other: dict) -> dict:
+    """Split the table's Oth bucket across the parties the CSV found there,
+    using largest-remainder rounding so the pieces sum to exactly `oth`."""
+    if oth <= 0:
+        return {}
+    tot = sum(csv_other.values())
+    if not tot:
+        return {"OTH": oth}
+    quotas = {k: oth * v / tot for k, v in csv_other.items()}
+    alloc = {k: int(q) for k, q in quotas.items()}
+    left = oth - sum(alloc.values())
+    for k in sorted(quotas, key=lambda k: (-(quotas[k] - alloc[k]), k))[:left]:
+        alloc[k] += 1
+    return {k: v for k, v in alloc.items() if v}
+
+
+# --------------------------------------------------------------- registry ----
 
 def load_registry(local_path: str):
     try:
@@ -278,86 +356,104 @@ def load_registry(local_path: str):
         with open(local_path, encoding="utf-8") as f:
             text = f.read()
     rows = list(csv.DictReader(io.StringIO(text)))
-    current = [r for r in rows if r.get("current-authority", "").strip().lower() == "true"]
-    # Councils with elected members only - drop combined/strategic authorities.
-    current = [r for r in current if r.get("local-authority-type") not in ("COMB", "SRA")]
-
-    by_ocd: dict[str, dict] = {}
+    current = [r for r in rows
+               if r.get("current-authority", "").strip().lower() == "true"
+               and r.get("local-authority-type") not in ("COMB", "SRA")]
     by_name: dict[str, dict] = {}
     for r in current:
-        ocd = (r.get("open-council-data-id") or "").strip()
-        if ocd:
-            by_ocd[ocd.split(".")[0]] = r
         for candidate in [r.get("official-name"), r.get("nice-name")] + \
                 (r.get("alt-names") or "").split(","):
             k = norm(candidate or "")
             if k:
                 by_name.setdefault(k, r)
-    return current, by_ocd, by_name
+    return current, by_name
 
 
 TYPE_TIER = {
-    "CTY": "upper",   # county councils - upper tier only
-    "NMD": "lower",   # non-metropolitan districts - lower tier only
+    "CTY": "upper", "NMD": "lower",
     "UA": "both", "MD": "both", "LBO": "both", "CC": "both",
     "SCO": "both", "WPA": "both", "NID": "both",
 }
 
 
-# ------------------------------------------------------------------ build ---
+def load_boundaries(out_dir: str):
+    """code set and name -> code map from the boundary files actually in use."""
+    codes: set[str] = set()
+    by_name: dict[str, str] = {}
+    for tier in ("lower", "upper"):
+        path = os.path.join(out_dir, f"boundaries-{tier}.json")
+        if not os.path.exists(path):
+            warn(f"boundary file missing: {path} - geography not reconciled")
+            continue
+        with open(path, encoding="utf-8") as f:
+            g = json.load(f)
+        for feat in g.get("features", []):
+            p = feat.get("properties") or {}
+            if p.get("code"):
+                codes.add(p["code"])
+                if p.get("name"):
+                    by_name.setdefault(norm(p["name"]), p["code"])
+    return codes, by_name
+
+
+# ------------------------------------------------------------------ build ----
 
 def build(year: int, out_dir: str) -> int:
+    print("Fetching party register...", file=sys.stderr)
+    register = load_party_register()
     print("Fetching composition tables...", file=sys.stderr)
     comps = scrape_compositions()
     print("Fetching councillor CSV...", file=sys.stderr)
-    detail, det_names, nxt, csv_rows = scrape_councillors(year)
+    detail, nxt, csv_rows = scrape_councillors(year, register)
     print("Loading local authority register...", file=sys.stderr)
-    registry, by_ocd, by_name = load_registry(os.path.join(HERE, "la_registry.csv"))
+    _registry, by_name = load_registry(os.path.join(HERE, "la_registry.csv"))
+    print("Loading boundaries for reconciliation...", file=sys.stderr)
+    bcodes, bnames = load_boundaries(out_dir)
 
-    councils = []
-    unmatched_geo, unmatched_detail = [], []
-    used_gss = set()
+    councils, not_shown, regssed, split_failed = [], [], [], []
 
     for key, c in sorted(comps.items(), key=lambda kv: kv[1]["ocdName"]):
         reg = by_name.get(key)
         if reg is None:
-            # second chance: try the raw name and a couple of common variants
             for variant in (norm(c["ocdName"] + " council"),
                             norm(c["ocdName"].replace(" and ", " & "))):
                 reg = by_name.get(variant)
                 if reg:
                     break
-        if reg is None:
-            unmatched_geo.append(c["ocdName"])
 
-        seats = dict(detail.get(key, {}))
-        has_detail = bool(seats)
-        if not has_detail:
-            unmatched_detail.append(c["ocdName"])
-            seats = dict(c["summarySeats"])
-        else:
-            # The councillor CSV lists filled seats only; carry vacancies over
-            # from the summary table so the totals reconcile.
-            if c["vacant"]:
-                seats["VAC"] = c["vacant"]
+        # --- seats: live table is truth, CSV only splits the Oth bucket ---
+        csv_seats = dict(detail.get(key, {}))
+        csv_other = {k: v for k, v in csv_seats.items()
+                     if k not in c["explicitCodes"] and k != "VAC"}
+        allocated = split_other(c["oth"], csv_other)
+        has_detail = bool(c["oth"] == 0 or (csv_other and "OTH" not in allocated))
+        if c["oth"] and not csv_other:
+            split_failed.append(c["ocdName"])
 
-        filled = sum(v for k, v in seats.items() if k != "VAC")
-        stated = c["total"] - c["vacant"]
-        if has_detail and stated and abs(filled - stated) > 0:
-            warn(f"{c['ocdName']}: {filled} councillors in CSV vs {stated} in table")
+        seats = dict(c["explicit"])
+        for k, v in allocated.items():
+            seats[k] = seats.get(k, 0) + v
+        if c["vacant"]:
+            seats["VAC"] = c["vacant"]
+
+        if sum(seats.values()) != c["total"]:
+            warn(f"{c['ocdName']}: seats sum to {sum(seats.values())} "
+                 f"but total is {c['total']}")
 
         control = parse_control(c["controlLabel"], seats, c["total"])
-        lead, tied = largest_party(seats)
-
-        next_election = None
-        if key in nxt and nxt[key]:
-            next_election = nxt[key].most_common(1)[0][0]
+        lead, tied = _largest(seats)
 
         gss = (reg.get("gss-code") if reg else "") or ""
-        if gss:
-            if gss in used_gss:
-                warn(f"duplicate GSS code {gss} for {c['ocdName']}")
-            used_gss.add(gss)
+        if bcodes and gss not in bcodes:
+            alt = bnames.get(key) or bnames.get(norm(c["ocdName"]))
+            if alt:
+                regssed.append(f"{c['ocdName']}: {gss or 'none'} -> {alt}")
+                gss = alt
+            else:
+                not_shown.append({"name": c["ocdName"], "type": c["group"],
+                                  "total": c["total"],
+                                  "reason": "no boundary for this council"})
+                continue
 
         la_type = (reg.get("local-authority-type") if reg else "") or ""
         councils.append({
@@ -376,8 +472,13 @@ def build(year: int, out_dir: str) -> int:
             "vacant": c["vacant"],
             "seats": {k: v for k, v in seats.items() if v},
             "detail": has_detail,
-            "nextElection": next_election,
+            "nextElection": (nxt[key].most_common(1)[0][0] if nxt.get(key) else None),
         })
+
+    seen_gss: Counter = Counter(c["gss"] for c in councils)
+    for g, n in seen_gss.items():
+        if n > 1:
+            warn(f"GSS {g} used by {n} councils")
 
     party_totals: Counter = Counter()
     control_totals: Counter = Counter()
@@ -385,9 +486,7 @@ def build(year: int, out_dir: str) -> int:
         for p, n in c["seats"].items():
             party_totals[p] += n
         ct = c["control"]
-        if ct["type"] == "noc" or not ct["parties"]:
-            control_totals["NOC"] += 1
-        elif ct["type"] == "majority":
+        if ct["type"] == "majority" and ct["parties"]:
             control_totals[ct["parties"][0]] += 1
         else:
             control_totals["NOC"] += 1
@@ -404,6 +503,7 @@ def build(year: int, out_dir: str) -> int:
             "vacancies": party_totals.get("VAC", 0),
             "partyTotals": dict(party_totals.most_common()),
             "controlTotals": dict(control_totals.most_common()),
+            "notShown": not_shown,
         },
         "parties": {k: {"name": v[0], "colour": v[1]} for k, v in PARTIES.items()},
         "spectrum": SPECTRUM,
@@ -416,33 +516,33 @@ def build(year: int, out_dir: str) -> int:
         "generated": payload["meta"]["generated"],
         "year": year,
         "csvRows": csv_rows,
-        "councilsParsed": len(councils),
-        "councilsWithGss": sum(1 for c in councils if c["gss"]),
-        "councilsWithDetail": sum(1 for c in councils if c["detail"]),
+        "councilsParsed": len(comps),
+        "councilsOnMap": len(councils),
+        "councilsWithSplitDetail": sum(1 for c in councils if c["detail"]),
         "byGroup": dict(Counter(c["typeName"] for c in councils)),
         "byNation": dict(Counter(c["nation"] for c in councils)),
+        "councillors": payload["meta"]["councillors"],
         "partyTotals": dict(party_totals.most_common()),
         "controlTotals": dict(control_totals.most_common()),
-        "unmatchedGeography": unmatched_geo,
-        "unmatchedDetail": unmatched_detail,
+        "notShown": not_shown,
+        "gssReassigned": regssed,
+        "othNotSplit": split_failed,
         "warnings": warnings[:400],
         "warningCount": len(warnings),
     }
-    with open(os.path.join(out_dir, "build-report.json"), "w", encoding="utf-8") as f:
-        json.dump(report, f, indent=1)
 
-    # ---- validation gate -------------------------------------------------
     problems = []
     if len(councils) < 350:
-        problems.append(f"only {len(councils)} councils parsed (expected ~382)")
-    if report["councilsWithGss"] < len(councils) - 5:
-        problems.append(f"{len(councils) - report['councilsWithGss']} councils without a GSS code")
+        problems.append(f"only {len(councils)} councils on the map (expected ~380)")
+    if len(not_shown) > 6:
+        problems.append(f"{len(not_shown)} councils had no boundary match")
     total_cllrs = payload["meta"]["councillors"]
     if not (15000 < total_cllrs < 23000):
-        problems.append(f"councillor total {total_cllrs} outside the plausible 15k-23k range")
-    if report["councilsWithDetail"] < len(councils) * 0.9:
-        problems.append("fewer than 90% of councils have a full party breakdown")
+        problems.append(f"councillor total {total_cllrs} outside the plausible range")
+    if len(split_failed) > 40:
+        problems.append(f"{len(split_failed)} councils could not have Oth split")
     report["problems"] = problems
+
     with open(os.path.join(out_dir, "build-report.json"), "w", encoding="utf-8") as f:
         json.dump(report, f, indent=1)
 

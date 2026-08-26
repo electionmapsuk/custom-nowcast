@@ -13,7 +13,7 @@ councils/
   build/
     build_councils.py              weekly scraper -> data/councils.json
     build_boundaries.py            one-off ONS boundary fetch -> data/boundaries-*.json
-    parties.py                     party codes, colours, name/PP-code matching
+    parties.py                     canonical party codes, colours and matching rules
     tables.py                      minimal HTML table parser (stdlib only)
     fetch.py                       HTTP helper with retries
     la_registry.csv                mySociety local-authority register (fallback copy)
@@ -41,20 +41,37 @@ to install.
 
 After that it runs itself at 06:15 UTC every Monday.
 
-## The two data sources, and why both
+## The three data sources, and how they fit together
 
-| Source | Gives us |
+| Source | Role |
 |---|---|
-| `councils.php?model=…&y=0` (and `nicouncils.php`) | Open Council Data's **own control label** — `LAB`, `REF min`, `LD/GRN`, `NOC` — plus vacancies. These tables are maintained live, so by-elections and defections show up within days. |
-| `csv2.php?y=YYYY` | Every councillor with their Electoral Commission party code, which is where the **full party breakdown** comes from. The summary tables collapse everything outside the big five into "Oth"; the CSV does not. |
+| `councils.php?model=…&y=0` and `nicouncils.php` | **Source of truth.** Open Council Data's own control label — `LAB`, `REF min`, `LD/GRN`, `NOC`, `LAB Mayor` — plus vacancies, seat totals, and every party that has its own column. Maintained live, so by-elections and defections show up within days. |
+| `csv2.php?y=YYYY` | Every councillor with their Electoral Commission party code. Used **only** to split the tables' "Oth" column into named parties. |
+| `csv3.php` | The party register: Electoral Commission code → Open Council Data's own short party code. Drives all party identification. |
 
-The two are cross-checked: if a council's councillor count in the CSV disagrees
-with the total in the summary table, it lands in `build-report.json` as a warning.
+The split matters. The summary tables are live but collapse everything outside
+the big five into "Oth". The councillor CSV names every party but is a snapshot,
+and in practice runs one to three seats behind the tables on about one council
+in six. So the tables' numbers are taken verbatim and the CSV is used only for
+proportions inside the Oth bucket, allocated by largest remainder. Every
+council's party numbers therefore add up to its live total, exactly.
+
+Party identification goes through `csv3.php` rather than hard-coded Electoral
+Commission codes. That is not fussiness: an early version guessed the codes and
+put Sinn Féin's councillors in the DUP column and the SDLP's in Labour's.
 
 Geography is joined via [mySociety's local authority
 register](https://github.com/mysociety/uk_local_authority_names_and_codes),
-which carries an `open-council-data-id` column, so councils match on identifier
-rather than on fuzzy name comparison. Names are only a fallback.
+then **reconciled against the boundary files actually in `data/`**. If a
+council's GSS code isn't in either boundary layer, it is re-matched by name and
+the swap is logged in `gssReassigned`. That is what keeps Barnsley and Sheffield
+on the map — the register still carries their pre-2018 codes.
+
+Anything the source lists that has no boundary at all — currently the East and
+West Surrey shadow unitaries, which would otherwise double-count against Surrey
+County Council and its districts — is excluded from the map and from every
+national total, and listed in `meta.notShown`. The widget names them in its
+footer rather than dropping them silently.
 
 ## Map tiers
 
@@ -74,7 +91,8 @@ doesn't mean the same thing.
 ## Colour
 
 * **Solid fill** — one party holds more than half the seats.
-* **Diagonal stripes** — that party leads a minority or coalition administration.
+* **Diagonal stripes** — that party leads a minority or coalition administration,
+  or holds a directly elected mayoralty.
 * **Grey** — no overall control with no stated administration.
 
 The *Colour: largest party* toggle ignores administrations and just shows who has
@@ -91,9 +109,9 @@ the most seats.
   working while you look at what changed. The report's `problems` array says
   which validation gate tripped.
 
-Validation gates: at least 350 councils parsed, at most 5 without a GSS code,
-a UK councillor total between 15,000 and 23,000, and a full party breakdown for
-at least 90% of councils.
+Validation gates: at least 350 councils on the map, at most 6 with no boundary
+match, a UK councillor total between 15,000 and 23,000, and the Oth bucket
+successfully split on all but at most 40 councils.
 
 ## Attribution
 

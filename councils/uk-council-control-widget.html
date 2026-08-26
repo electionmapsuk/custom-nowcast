@@ -58,9 +58,25 @@
   .sugg div{padding:7px 11px; font-size:.8rem; cursor:pointer;}
   .sugg div:hover, .sugg div.sel{background:#eef2f2; color:var(--accent);}
 
-  #map-container{position:relative; width:100%; height:600px; background:var(--panel);
-    border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
-  @media(max-width:700px){ #map-container{height:460px;} }
+  .mapgrid{display:grid; grid-template-columns:minmax(0,1fr) 360px; gap:16px; align-items:start;}
+  @media(max-width:900px){ .mapgrid{grid-template-columns:1fr;} }
+  /* the UK is roughly twice as tall as it is wide, so cap the map's width to
+     stop it swimming in a wide column */
+  #map-container{position:relative; width:100%; max-width:560px; margin:0 auto; height:640px;
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
+  @media(max-width:900px){ #map-container{height:520px; max-width:none;} }
+
+  /* side panel - the same card the tooltip renders, pinned in place */
+  #detail{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    overflow:hidden; min-height:260px; position:sticky; top:12px;}
+  @media(max-width:900px){ #detail{display:none;} }
+  #detail .empty{padding:20px;}
+  #detail .empty h3{margin:0 0 4px; font-size:.95rem; font-weight:800;}
+  #detail .empty p{margin:0 0 16px; font-size:.8rem; color:var(--muted); line-height:1.5;}
+  #detail .ctrlrow{display:grid; grid-template-columns:1fr 34px; align-items:center; gap:8px;
+    font-size:.78rem; font-weight:700; padding:5px 0; border-top:1px solid var(--line2);}
+  #detail .ctrlrow i{display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:7px; vertical-align:-1px;}
+  #detail .ctrlrow b{text-align:right; font-variant-numeric:tabular-nums;}
   #map-container svg{cursor:grab; display:block;} #map-container svg:active{cursor:grabbing;}
   .cp{stroke:#fff; stroke-width:.3px; cursor:pointer; transition:fill-opacity .15s;}
   .cp:hover{stroke:#15171a; stroke-width:1.1px;}
@@ -83,30 +99,32 @@
   .lgd i{width:13px; height:13px; border-radius:3px; flex:none;}
   .lgd b{color:var(--ink); font-variant-numeric:tabular-nums;}
 
-  /* tooltip card - mirrors the Nowcast constituency card */
+  /* card - used by both the floating tooltip and the side panel */
   #cc-tip{position:fixed; pointer-events:none; z-index:60; width:252px; display:none; border-radius:12px;
     overflow:hidden; box-shadow:0 12px 32px rgba(0,0,0,.2); background:#fff;
     font-family:'Inter',system-ui,sans-serif;}
-  #cc-tip .hd{background:#0b3d3d; color:#fff; padding:11px 12px 10px;}
-  #cc-tip .hd .nm{font-size:1.1rem; font-weight:800; line-height:1.12; letter-spacing:-0.01em;}
-  #cc-tip .hd .ty{font-size:.68rem; opacity:.8; font-weight:600; margin-top:2px;}
-  #cc-tip .hd .res{display:flex; gap:4px; margin:9px 0 7px; height:26px;}
-  #cc-tip .hd .pill{flex:1; border-radius:6px; display:flex; align-items:center; justify-content:center;
+  .ccard .hd{background:#0b3d3d; color:#fff; padding:11px 12px 10px;}
+  .ccard .hd .nm{font-size:1.1rem; font-weight:800; line-height:1.12; letter-spacing:-0.01em;}
+  .ccard .hd .ty{font-size:.68rem; opacity:.8; font-weight:600; margin-top:2px;}
+  .ccard .hd .res{display:flex; gap:4px; margin:9px 0 7px; height:26px;}
+  .ccard .hd .pill{flex:1; border-radius:6px; display:flex; align-items:center; justify-content:center;
     font-weight:800; font-size:.8rem; padding:0 6px; text-align:center;}
-  #cc-tip .hd .meta{font-size:.71rem; opacity:.92; line-height:1.45;}
-  #cc-tip .hd .meta b{font-weight:800;}
-  #cc-tip .stack{display:flex; height:9px; background:#0b3d3d;}
-  #cc-tip .stack i{height:100%;}
-  #cc-tip .bd{padding:9px 12px 6px; max-height:236px; overflow:hidden;}
-  #cc-tip .r{display:grid; grid-template-columns:34px 1fr 30px; align-items:center; gap:6px; margin-bottom:4px;}
-  #cc-tip .r .ab{font-size:.63rem; font-weight:800; text-align:center; padding:2px 0; border-radius:4px;}
-  #cc-tip .r .bar{position:relative; height:16px; background:#eee; border-radius:4px; overflow:hidden;}
-  #cc-tip .r .bar i{position:absolute; left:0; top:0; height:100%; border-radius:4px;}
-  #cc-tip .r .bar span{position:absolute; left:7px; right:4px; top:0; height:100%; display:flex; align-items:center;
-    font-size:.66rem; font-weight:700; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.5);
-    white-space:nowrap; overflow:hidden;}
-  #cc-tip .r .n{font-size:.75rem; font-weight:800; text-align:right; font-variant-numeric:tabular-nums;}
-  #cc-tip .ft{text-align:center; padding:6px; color:var(--accent); font-weight:800; font-size:.7rem;
+  .ccard .hd .meta{font-size:.71rem; opacity:.92; line-height:1.45;}
+  .ccard .hd .meta b{font-weight:800;}
+  .ccard .stack{display:flex; height:9px; background:#0b3d3d;}
+  .ccard .stack i{height:100%;}
+  .ccard .bd{padding:9px 12px 6px;}
+  #cc-tip .bd{max-height:236px; overflow:hidden;}
+  .ccard .r{display:grid; grid-template-columns:34px 1fr 30px; align-items:center; gap:6px; margin-bottom:4px;}
+  .ccard .r .ab{font-size:.63rem; font-weight:800; text-align:center; padding:2px 0; border-radius:4px;}
+  .ccard .r .bar{position:relative; height:16px; background:#eee; border-radius:4px; overflow:hidden;}
+  .ccard .r .bar i{position:absolute; left:0; top:0; height:100%; border-radius:4px;}
+  .ccard .r .bar span{position:absolute; top:0; height:100%; display:flex; align-items:center;
+    font-size:.66rem; font-weight:700; white-space:nowrap; overflow:hidden; right:4px;}
+  .ccard .r .bar span.inside{left:7px; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.45);}
+  .ccard .r .bar span.outside{color:var(--muted);}
+  .ccard .r .n{font-size:.75rem; font-weight:800; text-align:right; font-variant-numeric:tabular-nums;}
+  .ccard .ft{text-align:center; padding:6px; color:var(--accent); font-weight:800; font-size:.7rem;
     border-top:1px solid var(--line2);}
 
   /* table */
@@ -157,11 +175,16 @@
       </div>
     </div>
 
-    <div id="map-container">
-      <div class="map-hint">Scroll to zoom · drag to pan · click to pin</div>
-      <button class="map-reset" id="reset">Reset view</button>
+    <div class="mapgrid">
+      <div>
+        <div id="map-container">
+          <div class="map-hint">Scroll to zoom · drag to pan · click to pin</div>
+          <button class="map-reset" id="reset">Reset view</button>
+        </div>
+        <div class="legend" id="legend"></div>
+      </div>
+      <div id="detail" class="ccard"></div>
     </div>
-    <div class="legend" id="legend"></div>
 
     <div class="toolbar" style="margin-top:26px;">
       <button class="mmb" id="tabletog">Show full table</button>
@@ -204,7 +227,7 @@
   }
   function abbrev(code){
     var m = {LAB:'Lab',CON:'Con',LDM:'LD',RFM:'Ref',GRN:'Grn',SNP:'SNP',PLC:'PC',IND:'Ind',
-             OTH:'Oth',RA:'Res',VAC:'Vac',SF:'SF',DUP:'DUP',ALL:'All',UUP:'UUP',SDLP:'SDLP',TUV:'TUV'};
+             OTH:'Oth',UKI:'UKIP',VAC:'Vac',SF:'SF',DUP:'DUP',ALL:'All',UUP:'UUP',SDLP:'SDLP',TUV:'TUV'};
     return m[code] || code;
   }
   function fmt(n){ return (n||0).toLocaleString('en-GB'); }
@@ -234,8 +257,11 @@
   }
   function controlText(c){
     var ct = c.control;
-    if(!ct || ct.type === 'noc' || !ct.parties.length) return 'No overall control';
+    if(!ct || ct.type === 'noc' || !ct.parties.length){
+      return (ct && ct.label === 'TBC') ? 'Administration to be confirmed' : 'No overall control';
+    }
     var names = ct.parties.map(function(p){ return pInfo(p).name; }).join(' + ');
+    if(ct.type === 'mayoral')   return names + ' mayor';
     if(ct.type === 'majority')  return names + ' majority';
     if(ct.type === 'minority')  return names + ' minority';
     return names + ' coalition';
@@ -266,7 +292,7 @@
     $('app').style.display = 'block';
     var d = new Date(DATA.meta.generated);
     $('stamp').textContent = 'Updated ' + d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
-    buildTiles(); buildNatBar(); buildFoot(); wire(); drawMap(); buildLegend(); buildTable();
+    buildTiles(); buildNatBar(); buildFoot(); panelDefault(); wire(); drawMap(); buildLegend(); buildTable();
   }
 
   // ----------------------------------------------------------------- tiles --
@@ -343,10 +369,17 @@
       'licensed under the Open Government Licence v3.0; contains OS data © Crown copyright and database right. ' +
       '<br>Control labels are Open Council Data\'s own. Solid fill = outright majority; ' +
       'striped = minority or coalition administration; grey = no overall control. ' +
-      'Refreshed automatically every Monday.';
+      'Refreshed automatically every Monday.' + notShownNote();
     $('counts').textContent = fmt(DATA.meta.councils) + ' councils · ' +
       fmt(DATA.meta.councillors) + ' councillors' +
       (DATA.meta.vacancies ? ' · ' + fmt(DATA.meta.vacancies) + ' vacant seats' : '');
+  }
+
+  function notShownNote(){
+    var ns = (DATA.meta && DATA.meta.notShown) || [];
+    if(!ns.length) return '';
+    return '<br>Listed by Open Council Data but not mapped (no published boundary yet): ' +
+           ns.map(function(x){ return x.name; }).join(', ') + '.';
   }
 
   // ------------------------------------------------------------------- map --
@@ -389,18 +422,18 @@
       mapG.selectAll('path.cp').data(g.features).enter().append('path')
         .attr('class','cp').attr('d', path)
         .on('mousemove', function(e,d){ if(!pinned) showTip(e,d); })
-        .on('mouseleave', function(){ if(!pinned) tip.style.display='none'; })
+        .on('mouseleave', function(){ if(!pinned) clearCard(); })
         .on('click', function(e,d){
           var same = pinned && pinned === d;
           mapG.selectAll('.cp').classed('pinned', false);
-          if(same){ pinned = null; tip.style.display='none'; }
-          else { pinned = d; d3.select(this).classed('pinned', true); showTip(e,d); }
+          if(same){ pinned = null; clearCard(); }
+          else { pinned = d; d3.select(this).classed('pinned', true); showCard(e,d); }
         });
 
       zoomB = d3.zoom().scaleExtent([1,50]).on('zoom', function(e){
         mapG.attr('transform', e.transform);
         mapG.attr('stroke-width', 0.3/Math.sqrt(e.transform.k));
-        if(!pinned) tip.style.display='none';
+        if(!pinned && !panelOn()) tip.style.display='none';
       });
       svg.call(zoomB);
       recolour();
@@ -414,12 +447,12 @@
     highlight(focusParty);
   }
 
-  function showTip(e, d){
-    var c = byGss[d.properties.code];
+  // The same card is used by the floating tooltip (narrow screens) and by the
+  // side panel (wide screens).
+  function cardHtml(c, fallbackName){
     if(!c){
-      tip.innerHTML = '<div class="hd"><div class="nm">'+(d.properties.name||'Unknown')+'</div>' +
-        '<div class="ty">No council data</div></div>';
-      place(e); return;
+      return '<div class="hd"><div class="nm">'+(fallbackName||'Unknown')+'</div>' +
+             '<div class="ty">No council data</div></div>';
     }
     var seats = c.seats, order = DATA.spectrum.filter(function(p){ return seats[p]; });
     var contested = order.filter(function(p){ return p !== 'VAC'; });
@@ -432,16 +465,17 @@
     }).join('');
 
     var rows = order.map(function(p){
-      var pc = pInfo(p);
+      var pc = pInfo(p), pct = 100*seats[p]/max;
+      var inside = pct >= 46;   // short bars get their label outside, in dark ink
       return '<div class="r">' +
         '<div class="ab" style="background:'+pc.colour+'; color:'+txtOn(pc.colour)+'">'+abbrev(p)+'</div>' +
-        '<div class="bar"><i style="width:'+(100*seats[p]/max)+'%; background:'+pc.colour+'; opacity:.8"></i>' +
-        '<span>'+pc.name+'</span></div>' +
+        '<div class="bar"><i style="width:'+pct+'%; background:'+pc.colour+'"></i>' +
+        '<span class="'+(inside?'inside':'outside')+'"'+
+          (inside ? '' : ' style="left:calc('+pct+'% + 6px)"')+'>'+pc.name+'</span></div>' +
         '<div class="n">'+seats[p]+'</div></div>';
     }).join('');
 
-    tip.innerHTML =
-      '<div class="hd">' +
+    return '<div class="hd">' +
         '<div class="nm">'+c.name+'</div>' +
         '<div class="ty">'+(c.typeName||'')+(c.nation && c.nation!=='England' ? ' · '+c.nation : '')+'</div>' +
         '<div class="res"><div class="pill" style="background:'+col+'; color:'+txtOn(col)+'">'+
@@ -453,8 +487,47 @@
       '<div class="bd">'+rows+'</div>' +
       (c.nextElection ? '<div class="ft">Next election '+
         new Date(c.nextElection).toLocaleDateString('en-GB',{month:'short',year:'numeric'})+'</div>' : '');
-    place(e);
   }
+
+  function panelOn(){ return window.innerWidth > 900; }
+
+  function panelDefault(){
+    var ct = DATA.meta.controlTotals || {};
+    var keys = Object.keys(ct).filter(function(k){ return k !== 'NOC'; })
+      .sort(function(a,b){ return ct[b]-ct[a]; });
+    if(ct.NOC) keys.push('NOC');
+    var rows = keys.map(function(k){
+      var col = k==='NOC' ? DATA.nocColour : pInfo(k).colour;
+      var nm  = k==='NOC' ? 'No overall control' : pInfo(k).name;
+      return '<div class="ctrlrow"><span><i style="background:'+col+'"></i>'+nm+'</span>' +
+             '<b>'+ct[k]+'</b></div>';
+    }).join('');
+    $('detail').innerHTML =
+      '<div class="empty"><h3>Councils by control</h3>' +
+      '<p>Hover a council on the map for its full party breakdown. Click to keep it open.</p>' +
+      rows + '</div>';
+  }
+
+  function showCard(e, d){
+    var c = byGss[d.properties.code];
+    var html = cardHtml(c, d.properties.name);
+    if(panelOn()){
+      $('detail').innerHTML = html;
+      tip.style.display = 'none';
+    } else {
+      tip.innerHTML = html;
+      place(e);
+    }
+  }
+
+  function clearCard(){
+    tip.style.display = 'none';
+    if(panelOn()){
+      if(pinned) showCard(null, pinned); else panelDefault();
+    }
+  }
+
+  function showTip(e, d){ showCard(e, d); }
 
   function place(e){
     tip.style.display = 'block';
@@ -578,7 +651,7 @@
         document.querySelectorAll('[data-tier]').forEach(function(x){ x.classList.remove('active'); });
         b.classList.add('active');
         tier = b.getAttribute('data-tier');
-        pinned = null; tip.style.display='none';
+        pinned = null; clearCard();
         drawMap(); buildTable();
       });
     });
@@ -592,8 +665,9 @@
     });
     $('reset').addEventListener('click', function(){
       if(svg && zoomB) svg.transition().duration(500).call(zoomB.transform, d3.zoomIdentity);
-      pinned = null; tip.style.display='none';
+      pinned = null;
       if(mapG) mapG.selectAll('.cp').classed('pinned', false);
+      clearCard();
     });
     $('tabletog').addEventListener('click', function(){
       var w = $('tablewrap');
@@ -628,8 +702,9 @@
     q.addEventListener('blur', function(){ setTimeout(function(){ sg.style.display='none'; }, 180); });
     document.addEventListener('keydown', function(e){
       if(e.key === 'Escape'){
-        pinned = null; tip.style.display='none';
+        pinned = null;
         if(mapG) mapG.selectAll('.cp').classed('pinned', false);
+        clearCard();
         if(focusParty){
           focusParty = null;
           $('legend').querySelectorAll('.lgd').forEach(function(x){ x.classList.remove('off'); });
