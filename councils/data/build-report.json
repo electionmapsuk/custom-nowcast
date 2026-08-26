@@ -1,50 +1,50 @@
 {
- "generated": "2026-08-26T18:44:01+00:00",
+ "generated": "2026-08-26T19:14:12+00:00",
  "year": 2026,
  "csvRows": 19273,
  "councilsParsed": 383,
- "councilsOnMap": 381,
- "councilsWithSplitDetail": 286,
+ "councilsOnMap": 371,
+ "councilsWithSplitDetail": 280,
  "byGroup": {
   "Scottish unitary authority": 32,
-  "Non-metropolitan district": 164,
+  "Non-metropolitan district": 153,
   "NI district": 11,
   "London borough": 32,
   "Metropolitan district": 36,
-  "Unitary authority": 62,
+  "Unitary authority": 64,
   "Welsh unitary authority": 22,
-  "County": 21,
+  "County": 20,
   "City corporation": 1
  },
  "byNation": {
   "Scotland": 32,
-  "England": 316,
+  "England": 306,
   "Northern Ireland": 11,
   "Wales": 22
  },
- "councillors": 19051,
+ "councillors": 18682,
  "partyTotals": {
-  "LAB": 4595,
-  "CON": 3820,
-  "LDM": 3270,
-  "RFM": 2321,
-  "IND": 2297,
-  "GRN": 1343,
+  "LAB": 4569,
+  "CON": 3723,
+  "LDM": 3166,
+  "RFM": 2326,
+  "IND": 2212,
+  "GRN": 1329,
   "SNP": 411,
-  "OTH": 369,
+  "OTH": 321,
   "PLC": 200,
   "SF": 144,
   "DUP": 120,
   "ALL": 65,
   "UUP": 51,
-  "VAC": 44,
+  "VAC": 41,
   "SDLP": 35,
   "TUV": 10
  },
  "controlTotals": {
-  "NOC": 217,
+  "NOC": 208,
   "LAB": 61,
-  "LDM": 38,
+  "LDM": 37,
   "CON": 25,
   "RFM": 23,
   "GRN": 6,
@@ -53,20 +53,70 @@
   "SNP": 1,
   "OTH": 1
  },
- "notShown": [
+ "notShown": [],
+ "superseded": [
   {
-   "name": "East Surrey",
-   "type": "unitary",
-   "total": 72,
-   "reason": "no boundary for this council"
+   "name": "Elmbridge",
+   "total": 48,
+   "replacedBy": "East Surrey"
   },
   {
-   "name": "West Surrey",
-   "type": "unitary",
-   "total": 90,
-   "reason": "no boundary for this council"
+   "name": "Epsom and Ewell",
+   "total": 35,
+   "replacedBy": "East Surrey"
+  },
+  {
+   "name": "Guildford",
+   "total": 48,
+   "replacedBy": "West Surrey"
+  },
+  {
+   "name": "Mole Valley",
+   "total": 39,
+   "replacedBy": "East Surrey"
+  },
+  {
+   "name": "Reigate and Banstead",
+   "total": 45,
+   "replacedBy": "East Surrey"
+  },
+  {
+   "name": "Runnymede",
+   "total": 41,
+   "replacedBy": "West Surrey"
+  },
+  {
+   "name": "Spelthorne",
+   "total": 39,
+   "replacedBy": "West Surrey"
+  },
+  {
+   "name": "Surrey",
+   "total": 81,
+   "replacedBy": "East Surrey"
+  },
+  {
+   "name": "Surrey Heath",
+   "total": 35,
+   "replacedBy": "West Surrey"
+  },
+  {
+   "name": "Tandridge",
+   "total": 43,
+   "replacedBy": "East Surrey"
+  },
+  {
+   "name": "Waverley",
+   "total": 50,
+   "replacedBy": "West Surrey"
+  },
+  {
+   "name": "Woking",
+   "total": 30,
+   "replacedBy": "West Surrey"
   }
  ],
+ "noElectionCycle": [],
  "gssReassigned": [
   "Barnsley: E08000016 -> E08000038",
   "Sheffield: E08000019 -> E08000039"
@@ -81,8 +131,10 @@
   "Wakefield"
  ],
  "warnings": [
-  "1949 councillor rows had a party code missing from the register; fell back to name matching"
+  "1949 councillor rows had a party code missing from the register; fell back to name matching",
+  "East Surrey: no boundary for LGR-EASTSURREY - rebuild boundaries",
+  "West Surrey: no boundary for LGR-WESTSURREY - rebuild boundaries"
  ],
- "warningCount": 1,
+ "warningCount": 3,
  "problems": []
 }
