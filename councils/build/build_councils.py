@@ -57,6 +57,15 @@ REGISTRY_URL = ("https://raw.githubusercontent.com/mysociety/"
                 "uk_local_authority_names_and_codes/main/data/packages/"
                 "uk_la_future/uk_local_authorities_future.csv")
 
+# Councils the source does not carry at all. Open Council Data omits the Isles
+# of Scilly, whose sixteen members all sit as independents and which elects
+# all-out every four years (last May 2025).
+EXTRA_COUNCILS = [
+    {"name": "Isles of Scilly", "group": "unitary", "model": "U",
+     "controlLabel": "IND", "seats": {"IND": 16}, "total": 16,
+     "nextElection": "2029-05-03"},
+]
+
 # Rows that are page furniture, not councils.
 FOOTER_RE = re.compile(r"^(total|totals|sum|all councils|average)\b|:$", re.I)
 
@@ -138,10 +147,10 @@ def parse_control(label: str, seats: dict, total: int) -> dict:
 
     if not raw or up in ("NOC", "NONE", "-", "?"):
         return {"label": raw or "NOC", "type": "noc", "parties": [],
-                "lead": _largest(seats)[0], "mayor": False}
+                "lead": _largest(seats)[0], "mayor": False, "majority": False}
     if up == "TBC":
         return {"label": "TBC", "type": "noc", "parties": [],
-                "lead": _largest(seats)[0], "mayor": False}
+                "lead": _largest(seats)[0], "mayor": False, "majority": False}
 
     mayor = bool(re.search(r"\bMAYOR\b", up))
     minority = bool(re.search(r"\bMIN\b", up))
@@ -161,20 +170,24 @@ def parse_control(label: str, seats: dict, total: int) -> dict:
 
     if not parts:
         return {"label": raw, "type": "noc", "parties": [],
-                "lead": _largest(seats)[0], "mayor": mayor}
+                "lead": _largest(seats)[0], "mayor": mayor, "majority": False}
 
-    if minority:
+    held = seats.get(parts[0], 0)
+    has_majority = bool(total and held * 2 > total)
+
+    # A directly elected mayor holds the executive whatever the chamber looks
+    # like, so the mayoralty outranks the seat arithmetic.
+    if mayor:
+        kind = "mayoral"
+    elif minority:
         kind = "minority"
     elif len(parts) > 1:
         kind = "coalition"
     else:
-        held = seats.get(parts[0], 0)
-        kind = "majority" if total and held * 2 > total else "minority"
-    if mayor and kind != "majority":
-        kind = "mayoral"
+        kind = "majority" if has_majority else "minority"
 
     return {"label": raw, "type": kind, "parties": parts,
-            "lead": parts[0], "mayor": mayor}
+            "lead": parts[0], "mayor": mayor, "majority": has_majority}
 
 
 def _largest(seats: dict):
@@ -466,8 +479,28 @@ def build(year: int, out_dir: str) -> int:
     register = load_party_register()
     print("Fetching composition tables...", file=sys.stderr)
     comps = scrape_compositions()
+    added = []
+    for extra in EXTRA_COUNCILS:
+        k = norm(extra["name"])
+        if k in comps:
+            continue
+        comps[k] = {
+            "ocdName": extra["name"], "group": extra["group"],
+            "model": extra["model"], "controlLabel": extra["controlLabel"],
+            "explicit": dict(extra["seats"]), "explicitCodes": set(extra["seats"]),
+            "oth": 0, "vacant": 0, "total": extra["total"],
+        }
+        added.append(extra["name"])
+    if added:
+        print(f"  added {', '.join(added)} (absent from the source)", file=sys.stderr)
+
     print("Fetching councillor CSV...", file=sys.stderr)
     detail, nxt, cycle, csv_rows = scrape_councillors(year, register)
+    for extra in EXTRA_COUNCILS:
+        k = norm(extra["name"])
+        if extra.get("nextElection") and not nxt.get(k):
+            nxt[k][extra["nextElection"]] = extra["total"]
+
     print("Loading local authority register...", file=sys.stderr)
     _registry, by_name = load_registry(os.path.join(HERE, "la_registry.csv"))
     print("Loading boundaries for reconciliation...", file=sys.stderr)
@@ -568,7 +601,8 @@ def build(year: int, out_dir: str) -> int:
         for p, n in c["seats"].items():
             party_totals[p] += n
         ct = c["control"]
-        if ct["type"] == "majority" and ct["parties"]:
+        # counted by whoever leads the administration, matching the map
+        if ct["parties"]:
             control_totals[ct["parties"][0]] += 1
         else:
             control_totals["NOC"] += 1
@@ -610,6 +644,7 @@ def build(year: int, out_dir: str) -> int:
         "notShown": not_shown,
         "superseded": superseded,
         "noElectionCycle": no_cycle,
+        "addedManually": added,
         "gssReassigned": regssed,
         "othNotSplit": split_failed,
         "warnings": warnings[:400],
