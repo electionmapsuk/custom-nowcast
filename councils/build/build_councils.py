@@ -305,6 +305,7 @@ def scrape_councillors(year: int, register: dict):
 
     seats: dict[str, Counter] = defaultdict(Counter)
     nxt: dict[str, Counter] = defaultdict(Counter)
+    cycle: dict[str, dict[str, Counter]] = defaultdict(lambda: defaultdict(Counter))
     rows = unmatched_codes = 0
     for r in reader:
         if len(r) <= c_party:
@@ -320,13 +321,35 @@ def scrape_councillors(year: int, register: dict):
             unmatched_codes += 1
             code = party_from_name(r[c_party])
         seats[key][code] += 1
-        if c_next is not None and c_next < len(r) and r[c_next].strip():
-            nxt[key][r[c_next].strip()] += 1
+        if c_next is not None and c_next < len(r):
+            iso = parse_date(r[c_next])
+            if iso:
+                nxt[key][iso] += 1
+                cycle[key][code][iso] += 1
     if unmatched_codes:
         warn(f"{unmatched_codes} councillor rows had a party code missing from "
              f"the register; fell back to name matching")
     print(f"  councillor CSV: {rows} rows, {len(seats)} councils", file=sys.stderr)
-    return seats, nxt, rows
+    return seats, nxt, cycle, rows
+
+
+_ISO = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
+_DMY = re.compile(r"^(\d{1,2})[/-](\d{1,2})[/-](\d{4})$")
+
+
+def parse_date(raw: str):
+    """Normalise a Next Election cell to an ISO date, or None."""
+    v = (raw or "").strip()
+    if not v:
+        return None
+    if _ISO.match(v):
+        return v
+    m = _DMY.match(v)
+    if m:
+        return f"{m.group(3)}-{int(m.group(2)):02d}-{int(m.group(1)):02d}"
+    if re.match(r"^\d{4}$", v):          # bare year
+        return f"{v}-05-01"
+    return None
 
 
 def split_other(oth: int, csv_other: dict) -> dict:
@@ -343,6 +366,28 @@ def split_other(oth: int, csv_other: dict) -> dict:
     for k in sorted(quotas, key=lambda k: (-(quotas[k] - alloc[k]), k))[:left]:
         alloc[k] += 1
     return {k: v for k, v in alloc.items() if v}
+
+
+def election_cycle(seats: dict, party_dates: dict, fallback: str | None, today: str):
+    """When each party's seats are next up.
+
+    The councillor CSV carries a next-election date per councillor, which is what
+    makes a thirds/halves council legible. Those counts can be a seat or two
+    behind the live tables, so each party's live seat total is distributed across
+    its own dates by largest remainder - the segments always sum to the bar.
+    """
+    out: dict[str, dict] = {}
+    for party, total in seats.items():
+        if party == "VAC" or not total:
+            continue
+        dates = {d: n for d, n in (party_dates.get(party) or {}).items() if d >= today}
+        if not dates:
+            if fallback:
+                out.setdefault(fallback, {})[party] = total
+            continue
+        for d, n in split_other(total, dates).items():
+            out.setdefault(d, {})[party] = out.get(d, {}).get(party, 0) + n
+    return [{"date": d, "seats": out[d]} for d in sorted(out)]
 
 
 # --------------------------------------------------------------- registry ----
@@ -367,6 +412,24 @@ def load_registry(local_path: str):
             if k:
                 by_name.setdefault(k, r)
     return current, by_name
+
+
+# Councils elected but not yet vested, which supersede existing authorities.
+# Mirrors MERGES in build_boundaries.py - the codes must match.
+REORGANISATIONS = [
+    {"name": "East Surrey", "gss": "LGR-EASTSURREY",
+     "type": "UA", "typeName": "Unitary authority", "tier": "both",
+     "nation": "England", "region": "South East",
+     "replaces": ["Elmbridge", "Epsom and Ewell", "Mole Valley",
+                  "Reigate and Banstead", "Tandridge", "Surrey"]},
+    {"name": "West Surrey", "gss": "LGR-WESTSURREY",
+     "type": "UA", "typeName": "Unitary authority", "tier": "both",
+     "nation": "England", "region": "South East",
+     "replaces": ["Guildford", "Runnymede", "Spelthorne", "Surrey Heath",
+                  "Waverley", "Woking"]},
+]
+SUCCESSORS = {norm(r["name"]): r for r in REORGANISATIONS}
+SUPERSEDED = {norm(n): r["name"] for r in REORGANISATIONS for n in r["replaces"]}
 
 
 TYPE_TIER = {
@@ -404,15 +467,21 @@ def build(year: int, out_dir: str) -> int:
     print("Fetching composition tables...", file=sys.stderr)
     comps = scrape_compositions()
     print("Fetching councillor CSV...", file=sys.stderr)
-    detail, nxt, csv_rows = scrape_councillors(year, register)
+    detail, nxt, cycle, csv_rows = scrape_councillors(year, register)
     print("Loading local authority register...", file=sys.stderr)
     _registry, by_name = load_registry(os.path.join(HERE, "la_registry.csv"))
     print("Loading boundaries for reconciliation...", file=sys.stderr)
     bcodes, bnames = load_boundaries(out_dir)
 
     councils, not_shown, regssed, split_failed = [], [], [], []
+    superseded, no_cycle = [], []
+    today = dt.date.today().isoformat()
 
     for key, c in sorted(comps.items(), key=lambda kv: kv[1]["ocdName"]):
+        if key in SUPERSEDED:
+            superseded.append({"name": c["ocdName"], "total": c["total"],
+                               "replacedBy": SUPERSEDED[key]})
+            continue
         reg = by_name.get(key)
         if reg is None:
             for variant in (norm(c["ocdName"] + " council"),
@@ -443,8 +512,11 @@ def build(year: int, out_dir: str) -> int:
         control = parse_control(c["controlLabel"], seats, c["total"])
         lead, tied = _largest(seats)
 
-        gss = (reg.get("gss-code") if reg else "") or ""
-        if bcodes and gss not in bcodes:
+        succ = SUCCESSORS.get(key)
+        gss = (succ["gss"] if succ else (reg.get("gss-code") if reg else "")) or ""
+        if succ and bcodes and gss not in bcodes:
+            warn(f"{c['ocdName']}: no boundary for {gss} - rebuild boundaries")
+        if bcodes and gss not in bcodes and not succ:
             alt = bnames.get(key) or bnames.get(norm(c["ocdName"]))
             if alt:
                 regssed.append(f"{c['ocdName']}: {gss or 'none'} -> {alt}")
@@ -455,16 +527,25 @@ def build(year: int, out_dir: str) -> int:
                                   "reason": "no boundary for this council"})
                 continue
 
-        la_type = (reg.get("local-authority-type") if reg else "") or ""
+        la_type = (succ["type"] if succ else (reg.get("local-authority-type") if reg else "")) or ""
+        future = sorted(d for d in (nxt.get(key) or {}) if d >= today)
+        next_election = future[0] if future else None
+        cyc = election_cycle({k: v for k, v in seats.items() if v},
+                             cycle.get(key) or {}, next_election, today)
+        if not cyc:
+            no_cycle.append(c["ocdName"])
+
         councils.append({
             "gss": gss,
-            "name": (reg.get("nice-name") if reg else c["ocdName"]) or c["ocdName"],
+            "name": (succ["name"] if succ else
+                     (reg.get("nice-name") if reg else c["ocdName"])) or c["ocdName"],
             "ocdName": c["ocdName"],
             "type": la_type,
-            "typeName": (reg.get("local-authority-type-name") if reg else c["group"]) or c["group"],
-            "tier": TYPE_TIER.get(la_type, "lower"),
-            "nation": (reg.get("nation") if reg else "") or "",
-            "region": (reg.get("region") if reg else "") or "",
+            "typeName": (succ["typeName"] if succ else
+                         (reg.get("local-authority-type-name") if reg else c["group"])) or c["group"],
+            "tier": (succ["tier"] if succ else TYPE_TIER.get(la_type, "lower")),
+            "nation": (succ["nation"] if succ else (reg.get("nation") if reg else "")) or "",
+            "region": (succ["region"] if succ else (reg.get("region") if reg else "")) or "",
             "control": control,
             "largest": lead,
             "largestTied": tied,
@@ -472,7 +553,8 @@ def build(year: int, out_dir: str) -> int:
             "vacant": c["vacant"],
             "seats": {k: v for k, v in seats.items() if v},
             "detail": has_detail,
-            "nextElection": (nxt[key].most_common(1)[0][0] if nxt.get(key) else None),
+            "nextElection": next_election,
+            "cycle": cyc,
         })
 
     seen_gss: Counter = Counter(c["gss"] for c in councils)
@@ -504,6 +586,7 @@ def build(year: int, out_dir: str) -> int:
             "partyTotals": dict(party_totals.most_common()),
             "controlTotals": dict(control_totals.most_common()),
             "notShown": not_shown,
+            "superseded": superseded,
         },
         "parties": {k: {"name": v[0], "colour": v[1]} for k, v in PARTIES.items()},
         "spectrum": SPECTRUM,
@@ -525,6 +608,8 @@ def build(year: int, out_dir: str) -> int:
         "partyTotals": dict(party_totals.most_common()),
         "controlTotals": dict(control_totals.most_common()),
         "notShown": not_shown,
+        "superseded": superseded,
+        "noElectionCycle": no_cycle,
         "gssReassigned": regssed,
         "othNotSplit": split_failed,
         "warnings": warnings[:400],

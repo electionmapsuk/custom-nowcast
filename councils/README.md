@@ -67,11 +67,30 @@ council's GSS code isn't in either boundary layer, it is re-matched by name and
 the swap is logged in `gssReassigned`. That is what keeps Barnsley and Sheffield
 on the map — the register still carries their pre-2018 codes.
 
-Anything the source lists that has no boundary at all — currently the East and
-West Surrey shadow unitaries, which would otherwise double-count against Surrey
-County Council and its districts — is excluded from the map and from every
-national total, and listed in `meta.notShown`. The widget names them in its
-footer rather than dropping them silently.
+### Reorganisation
+
+East and West Surrey were elected in May 2026 but do not take over until 1 April
+2027, so for now they overlap Surrey County Council and its eleven districts.
+The map treats Surrey as already reorganised: the successors appear on both
+layers and the twelve superseded councils drop out of the map and out of every
+national total. They are listed in `meta.superseded` and named in the widget's
+footer.
+
+ONS has not published boundaries for the new unitaries, so `build_boundaries.py`
+dissolves them out of their constituent districts with shapely — East Surrey
+from Elmbridge, Epsom & Ewell, Mole Valley, Reigate & Banstead and Tandridge;
+West Surrey from Guildford, Runnymede, Spelthorne, Surrey Heath, Waverley and
+Woking. They carry provisional codes (`LGR-EASTSURREY`, `LGR-WESTSURREY`) rather
+than invented GSS codes. Each merge retires itself automatically: as soon as a
+boundary of the same name appears in the ONS layer, the dissolve is skipped and
+the official shape is used.
+
+`REORGANISATIONS` in `build_councils.py` and `MERGES` in `build_boundaries.py`
+must stay in step — the codes are the join. Adding the next reorganisation is a
+matter of adding one entry to each.
+
+Anything the source lists that has no boundary and no successor rule is excluded
+from the map and from every national total, and listed in `meta.notShown`.
 
 ## Map tiers
 
@@ -91,12 +110,40 @@ doesn't mean the same thing.
 ## Colour
 
 * **Solid fill** — one party holds more than half the seats.
-* **Diagonal stripes** — that party leads a minority or coalition administration,
-  or holds a directly elected mayoralty.
-* **Grey** — no overall control with no stated administration.
+* **Paler wash of the same colour** — that party leads a minority or coalition
+  administration, or holds a directly elected mayoralty.
+* **Black** (`rgb(20,20,20)`) — no overall control and no stated administration.
+
+The tiles, side panel and legend all count councils the same way the map colours
+them: by the party leading the administration, whatever its form. Each tile's
+big number is councils run, with outright majorities noted underneath. Only a
+council with no administration at all counts as black.
 
 The *Colour: largest party* toggle ignores administrations and just shows who has
-the most seats.
+the most seats. Where two or more parties are level on seats — nine councils at
+the time of writing, two of them three-way — that council is striped in the tied
+parties' colours rather than being handed to one of them arbitrarily. Stripes are
+drawn as SVG patterns whose transform is rescaled on zoom, and boundary strokes
+use `vector-effect: non-scaling-stroke`, so both stay hairline-fine at any
+zoom level.
+
+### The hover card
+
+Parties are listed largest first, vacancies last. Each party's bar is split by
+when its seats are next up — the soonest cycle in the full party colour, later
+ones progressively paler — with the count up at the next election labelled on
+the bar. The footer names the cycle (All-out, Halves, Thirds) and the next
+polling day.
+
+Those per-cycle counts come from the councillor CSV's Next Election column,
+which can run a seat or two behind the live tables, so each party's live seat
+total is distributed across its own dates by largest remainder. The segments
+always sum to the bar.
+
+Party labels in the chips, control pills and table headers use the ElectionMaps
+abbreviations — LAB, CON, LDM, RFM, GRN, SNP, PLC, SF, DUP, SDLP, ALL, UUP, TUV,
+UKI, Ind, Oth, Vac — set in `ABBREV` in the widget. Full names are used wherever
+there is room.
 
 ## Maintenance
 

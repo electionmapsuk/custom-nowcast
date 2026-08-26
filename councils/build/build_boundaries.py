@@ -117,6 +117,80 @@ def round_coords(obj, dp=4):
     return obj
 
 
+# Councils created by local government reorganisation that ONS has not yet
+# published a boundary for. Their shape is dissolved from the districts they
+# replace. Each entry retires itself automatically as soon as a boundary with
+# the same name appears in the ONS layer.
+MERGES = [
+    {
+        "code": "LGR-EASTSURREY",
+        "name": "East Surrey",
+        "parts": ["Elmbridge", "Epsom and Ewell", "Mole Valley",
+                  "Reigate and Banstead", "Tandridge"],
+        "replaces_upper": ["Surrey"],
+    },
+    {
+        "code": "LGR-WESTSURREY",
+        "name": "West Surrey",
+        "parts": ["Guildford", "Runnymede", "Spelthorne", "Surrey Heath",
+                  "Waverley", "Woking"],
+        "replaces_upper": ["Surrey"],
+    },
+]
+
+
+def _norm(s):
+    return re.sub(r"[^a-z0-9]", "", (s or "").lower().replace("&", " and "))
+
+
+def apply_merges(lower, upper):
+    """Dissolve the constituent districts into their successor unitaries.
+
+    The successor replaces its parts on the lower-tier layer and the county it
+    supersedes on the upper-tier layer, so neither layer gains an overlap.
+    """
+    from shapely.geometry import mapping, shape
+    from shapely.ops import unary_union
+
+    lower_by_name = {_norm(f["properties"]["name"]): f for f in lower}
+    have_lower = {_norm(f["properties"]["name"]) for f in lower}
+    have_upper = {_norm(f["properties"]["name"]) for f in upper}
+    drop_lower, drop_upper, made = set(), set(), []
+
+    for m in MERGES:
+        key = _norm(m["name"])
+        if key in have_lower or key in have_upper:
+            print(f"  {m['name']}: ONS now publishes this - merge skipped",
+                  file=sys.stderr)
+            continue
+        parts = []
+        for part in m["parts"]:
+            f = lower_by_name.get(_norm(part))
+            if f is None:
+                print(f"FAIL: {m['name']} needs {part!r}, not in the layer",
+                      file=sys.stderr)
+                return None
+            parts.append(shape(f["geometry"]))
+            drop_lower.add(_norm(part))
+        geom = unary_union(parts).buffer(0)
+        feat = {"type": "Feature",
+                "properties": {"code": m["code"], "name": m["name"]},
+                "geometry": {"type": geom.geom_type,
+                             "coordinates": round_coords(
+                                 mapping(geom)["coordinates"])}}
+        made.append(feat)
+        for name in m.get("replaces_upper", []):
+            drop_upper.add(_norm(name))
+        print(f"  merged {m['name']} from {len(parts)} districts "
+              f"({geom.geom_type})", file=sys.stderr)
+
+    if not made:
+        return lower, upper
+    lower = [f for f in lower if _norm(f["properties"]["name"]) not in drop_lower] + made
+    upper = [f for f in upper if _norm(f["properties"]["name"]) not in drop_upper] + made
+    return lower, upper
+
+
 def build_layer(key: str, out_dir: str) -> int:
     spec = LAYERS[key]
     print(f"{key} tier:", file=sys.stderr)
@@ -150,27 +224,39 @@ def build_layer(key: str, out_dir: str) -> int:
     n = len(out["features"])
     if not (lo <= n <= hi):
         print(f"FAIL: {key} tier has {n} features, expected {lo}-{hi}", file=sys.stderr)
-        return 1
+        return None
+    print(f"  {n} areas from {service}", file=sys.stderr)
+    return out["features"]
 
+
+def write_layer(key: str, feats: list, out_dir: str) -> int:
     os.makedirs(out_dir, exist_ok=True)
     path = os.path.join(out_dir, f"boundaries-{key}.json")
     with open(path, "w", encoding="utf-8") as fh:
-        json.dump(out, fh, separators=(",", ":"))
-    print(f"  wrote {path} - {n} areas, {os.path.getsize(path)/1e6:.2f} MB "
-          f"(source: {service})", file=sys.stderr)
+        json.dump({"type": "FeatureCollection", "features": feats}, fh,
+                  separators=(",", ":"))
+    print(f"  wrote {path} - {len(feats)} areas, "
+          f"{os.path.getsize(path)/1e6:.2f} MB", file=sys.stderr)
     return 0
 
 
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default=os.path.join(HERE, "..", "data"))
-    ap.add_argument("--tier", choices=["lower", "upper", "both"], default="both")
     args = ap.parse_args()
     out = os.path.abspath(args.out)
-    rc = 0
-    for key in (["lower", "upper"] if args.tier == "both" else [args.tier]):
-        rc |= build_layer(key, out)
-    return rc
+
+    lower = build_layer("lower", out)
+    upper = build_layer("upper", out)
+    if lower is None or upper is None:
+        return 1
+
+    merged = apply_merges(lower, upper)
+    if merged is None:
+        return 1
+    lower, upper = merged
+
+    return write_layer("lower", lower, out) | write_layer("upper", upper, out)
 
 
 if __name__ == "__main__":

@@ -33,7 +33,7 @@ PARTIES = {
 SPECTRUM = ["SF", "GRN", "SNP", "PLC", "SDLP", "LAB", "ALL", "LDM", "IND",
             "OTH", "UKI", "UUP", "CON", "DUP", "TUV", "RFM", "VAC"]
 
-NOC_COLOUR = "#b9b9b3"
+NOC_COLOUR = "rgb(20,20,20)"
 
 # Open Council Data's short party codes (the `code` column of csv3.php)
 # -> our canonical codes. This is the primary lookup.

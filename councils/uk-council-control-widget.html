@@ -78,9 +78,10 @@
   #detail .ctrlrow i{display:inline-block; width:11px; height:11px; border-radius:3px; margin-right:7px; vertical-align:-1px;}
   #detail .ctrlrow b{text-align:right; font-variant-numeric:tabular-nums;}
   #map-container svg{cursor:grab; display:block;} #map-container svg:active{cursor:grabbing;}
-  .cp{stroke:#fff; stroke-width:.3px; cursor:pointer; transition:fill-opacity .15s;}
-  .cp:hover{stroke:#15171a; stroke-width:1.1px;}
-  .cp.pinned{stroke:#15171a; stroke-width:1.4px;}
+  .cp{stroke:#fff; stroke-width:.6px; cursor:pointer; transition:fill-opacity .15s;
+    vector-effect:non-scaling-stroke;}
+  .cp:hover{stroke:#15171a; stroke-width:1.6px;}
+  .cp.pinned{stroke:#15171a; stroke-width:2px;}
   .cp.dim{fill-opacity:.16;}
   .map-hint{position:absolute; left:14px; bottom:12px; font-size:.72rem; color:var(--faint);
     background:rgba(255,255,255,.85); padding:4px 9px; border-radius:8px; pointer-events:none;}
@@ -118,7 +119,13 @@
   .ccard .r{display:grid; grid-template-columns:34px 1fr 30px; align-items:center; gap:6px; margin-bottom:4px;}
   .ccard .r .ab{font-size:.63rem; font-weight:800; text-align:center; padding:2px 0; border-radius:4px;}
   .ccard .r .bar{position:relative; height:16px; background:#eee; border-radius:4px; overflow:hidden;}
-  .ccard .r .bar i{position:absolute; left:0; top:0; height:100%; border-radius:4px;}
+  .ccard .r .bar .fill{position:absolute; left:0; top:0; height:100%; display:flex;
+    border-radius:4px; overflow:hidden;}
+  .ccard .r .bar .fill i{height:100%; flex:none;}
+  .ccard .cyckey{display:flex; flex-wrap:wrap; gap:3px 10px; padding:2px 12px 9px;
+    font-size:.62rem; font-weight:700; color:var(--muted);}
+  .ccard .cyckey span{display:flex; align-items:center; gap:4px;}
+  .ccard .cyckey i{width:9px; height:9px; border-radius:2px; flex:none;}
   .ccard .r .bar span{position:absolute; top:0; height:100%; display:flex; align-items:center;
     font-size:.66rem; font-weight:700; white-space:nowrap; overflow:hidden; right:4px;}
   .ccard .r .bar span.inside{left:7px; color:#fff; text-shadow:0 1px 2px rgba(0,0,0,.45);}
@@ -154,7 +161,7 @@
 
   <div id="app" style="display:none;">
     <div class="panel">
-      <div class="section-h" style="margin:0 0 12px;">Councils controlled</div>
+      <div class="section-h" style="margin:0 0 12px;">Councils run</div>
       <div class="totstrip" id="tiles"></div>
       <div class="section-h" style="margin:22px 0 0;">Councillors across the UK</div>
       <div class="seatbar" id="natbar"></div>
@@ -212,23 +219,101 @@
 
   var DATA = null, GEO = {}, tier = 'lower', colourMode = 'control';
   var byGss = {}, focusParty = null, pinned = null;
-  var svg = null, mapG = null, zoomB = null, path = null, drawnTier = null;
+  var svg = null, svgDefs = null, mapG = null, zoomB = null, path = null, drawnTier = null;
   var sortKey = 'name', sortDir = 1;
 
   function txtOn(c){
-    var h=(c||'#888').replace('#','');
-    if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
-    var r=parseInt(h.slice(0,2),16), g=parseInt(h.slice(2,4),16), b=parseInt(h.slice(4,6),16);
+    c = c || '#888';
+    var r, g, b, m;
+    if(c.indexOf('gradient') >= 0){                 // striped fill: average the stops
+      var cols = c.match(/#[0-9a-f]{6}/gi) || [];
+      if(!cols.length) return '#fff';
+      r = g = b = 0;
+      cols.forEach(function(h){
+        h = h.slice(1);
+        r += parseInt(h.slice(0,2),16); g += parseInt(h.slice(2,4),16); b += parseInt(h.slice(4,6),16);
+      });
+      r /= cols.length; g /= cols.length; b /= cols.length;
+    } else if((m = c.match(/^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/))){
+      r = +m[1]; g = +m[2]; b = +m[3];
+    } else {
+      var h = c.replace('#','');
+      if(h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+      r = parseInt(h.slice(0,2),16); g = parseInt(h.slice(2,4),16); b = parseInt(h.slice(4,6),16);
+    }
+    if(isNaN(r)) return '#fff';
     return (0.299*r+0.587*g+0.114*b)/255 > 0.62 ? '#15171a' : '#fff';
   }
   function pInfo(code){
     var p = DATA && DATA.parties[code];
     return p || {name: code || 'Other', colour:'#9ca3af'};
   }
-  function abbrev(code){
-    var m = {LAB:'Lab',CON:'Con',LDM:'LD',RFM:'Ref',GRN:'Grn',SNP:'SNP',PLC:'PC',IND:'Ind',
-             OTH:'Oth',UKI:'UKIP',VAC:'Vac',SF:'SF',DUP:'DUP',ALL:'All',UUP:'UUP',SDLP:'SDLP',TUV:'TUV'};
-    return m[code] || code;
+  // ElectionMaps party abbreviations
+  var ABBREV = {LAB:'LAB',CON:'CON',LDM:'LDM',RFM:'RFM',GRN:'GRN',SNP:'SNP',PLC:'PLC',
+                SF:'SF',DUP:'DUP',SDLP:'SDLP',ALL:'ALL',UUP:'UUP',TUV:'TUV',UKI:'UKI',
+                IND:'Ind',OTH:'Oth',VAC:'Vac'};
+  function abbrev(code){ return ABBREV[code] || code; }
+
+  // No overall control
+  var NOC_COLOUR = 'rgb(20,20,20)';
+
+  // Where two or more parties are level on seats, the council is striped in
+  // their colours rather than given one of them arbitrarily.
+  var TIE_BAND = 2.2;          // stripe width in map units - deliberately fine
+  var TIE_NEUTRAL = 'repeating-linear-gradient(45deg,#9ca3af 0 4px,#d8d8d4 4px 8px)';
+
+  function topParties(c){
+    var best = -1, top = [];
+    for(var k in c.seats){
+      if(k === 'VAC') continue;
+      var v = c.seats[k];
+      if(v > best){ best = v; top = [k]; }
+      else if(v === best){ top.push(k); }
+    }
+    if(best <= 0) return [];
+    return DATA.spectrum.filter(function(p){ return top.indexOf(p) >= 0; });
+  }
+
+  function tieSvgFill(codes){
+    var id = 'tie-' + codes.join('-');
+    if(svgDefs && svgDefs.select('#' + id).empty()){
+      var pat = svgDefs.append('pattern').attr('id', id)
+        .attr('width', TIE_BAND * codes.length).attr('height', 8)
+        .attr('patternUnits', 'userSpaceOnUse')
+        .attr('patternTransform', 'rotate(45) scale(' + patternScale + ')');
+      codes.forEach(function(code, i){
+        pat.append('rect').attr('x', i * TIE_BAND).attr('width', TIE_BAND + 0.15)
+           .attr('height', 8).attr('fill', pInfo(code).colour);
+      });
+    }
+    return 'url(#' + id + ')';
+  }
+
+  var patternK = 1, patternScale = 1;
+  // Constant-width stripes look too fine once you are zoomed right in, so let
+  // them grow slowly with the zoom level, up to about three times the base.
+  function scalePatterns(k){
+    patternK = k || 1;
+    patternScale = Math.min(Math.pow(patternK, 0.45), 3.2) / patternK;
+    if(svgDefs) svgDefs.selectAll('pattern')
+      .attr('patternTransform', 'rotate(45) scale(' + patternScale + ')');
+  }
+
+  function tieCssFill(codes){
+    var stops = codes.map(function(code, i){
+      return pInfo(code).colour + ' ' + (i*4) + 'px ' + ((i+1)*4) + 'px';
+    }).join(',');
+    return 'repeating-linear-gradient(45deg,' + stops + ')';
+  }
+
+  // A minority, coalition or mayoral administration is shown as a paler wash of
+  // the leading party's colour rather than as a solid fill.
+  function lighten(hex, amount){
+    var h = (hex||'#888').replace('#','');
+    if(h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    var r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+    var mix = function(v){ return Math.round(v + (255 - v) * amount); };
+    return 'rgb('+mix(r)+','+mix(g)+','+mix(b)+')';
   }
   function fmt(n){ return (n||0).toLocaleString('en-GB'); }
 
@@ -238,33 +323,63 @@
   function fillFor(c){
     if(!c) return '#efefec';
     if(colourMode === 'largest'){
-      if(!c.largest || c.largestTied) return DATA.nocColour;
-      return pInfo(c.largest).colour;
+      var top = topParties(c);
+      if(!top.length) return NOC_COLOUR;
+      return top.length === 1 ? pInfo(top[0]).colour : tieSvgFill(top);
     }
     var ct = c.control;
-    if(!ct || ct.type === 'noc' || !ct.parties.length) return DATA.nocColour;
+    if(!ct || ct.type === 'noc' || !ct.parties.length) return NOC_COLOUR;
     var col = pInfo(ct.parties[0]).colour;
-    if(ct.type === 'majority') return col;
-    return 'url(#hatch-' + ct.parties[0] + ')';
+    return ct.type === 'majority' ? col : lighten(col, 0.5);
   }
   function swatchFor(c){
     if(colourMode === 'largest'){
-      return (!c.largest || c.largestTied) ? DATA.nocColour : pInfo(c.largest).colour;
+      var top = topParties(c);
+      if(!top.length) return NOC_COLOUR;
+      return top.length === 1 ? pInfo(top[0]).colour : tieCssFill(top);
     }
     var ct = c.control;
-    if(!ct || ct.type === 'noc' || !ct.parties.length) return DATA.nocColour;
-    return pInfo(ct.parties[0]).colour;
+    if(!ct || ct.type === 'noc' || !ct.parties.length) return NOC_COLOUR;
+    var col = pInfo(ct.parties[0]).colour;
+    return ct.type === 'majority' ? col : lighten(col, 0.5);
   }
   function controlText(c){
     var ct = c.control;
     if(!ct || ct.type === 'noc' || !ct.parties.length){
       return (ct && ct.label === 'TBC') ? 'Administration to be confirmed' : 'No overall control';
     }
-    var names = ct.parties.map(function(p){ return pInfo(p).name; }).join(' + ');
+    var names = ct.parties.map(abbrev).join(' + ');
     if(ct.type === 'mayoral')   return names + ' mayor';
     if(ct.type === 'majority')  return names + ' majority';
     if(ct.type === 'minority')  return names + ' minority';
     return names + ' coalition';
+  }
+
+  // Who runs a council: the lead party of whatever administration exists,
+  // or NOC when there is none. This is the same rule the map colours by, so
+  // the tiles, legend and panel always agree with what you can see.
+  function runsKey(c){
+    var ct = c.control;
+    return (ct && ct.parties && ct.parties.length) ? ct.parties[0] : 'NOC';
+  }
+  function nationalCounts(){
+    var runs = {}, maj = {};
+    DATA.councils.forEach(function(c){
+      var k = runsKey(c);
+      runs[k] = (runs[k]||0) + 1;
+      if(c.control.type === 'majority') maj[k] = (maj[k]||0) + 1;
+    });
+    return {runs: runs, maj: maj};
+  }
+  // National tally of who has the most seats, for the "largest party" mode.
+  function largestCounts(){
+    var out = {};
+    DATA.councils.forEach(function(c){
+      var tp = topParties(c);
+      var k = tp.length === 1 ? tp[0] : (tp.length ? 'TIED' : 'NOC');
+      out[k] = (out[k]||0) + 1;
+    });
+    return out;
   }
 
   // ------------------------------------------------------------------ load --
@@ -297,21 +412,22 @@
 
   // ----------------------------------------------------------------- tiles --
   function buildTiles(){
-    var ct = DATA.meta.controlTotals || {};
-    var entries = Object.keys(ct).filter(function(k){ return k !== 'NOC'; })
-      .map(function(k){ return [k, ct[k]]; })
+    var n = nationalCounts(), runs = n.runs, maj = n.maj;
+    var entries = Object.keys(runs).filter(function(k){ return k !== 'NOC'; })
+      .map(function(k){ return [k, runs[k]]; })
       .sort(function(a,b){ return b[1]-a[1]; }).slice(0,5);
-    entries.push(['NOC', ct.NOC || 0]);
+    entries.push(['NOC', runs.NOC || 0]);
 
     var html = entries.map(function(e){
       var code = e[0];
-      var col  = code === 'NOC' ? DATA.nocColour : pInfo(code).colour;
-      var name = code === 'NOC' ? 'No overall control' : pInfo(code).name;
-      var seats = code === 'NOC' ? null : (DATA.meta.partyTotals[code] || 0);
+      var col  = code === 'NOC' ? NOC_COLOUR : pInfo(code).colour;
+      var name = code === 'NOC' ? 'No administration' : pInfo(code).name;
+      var sub  = code === 'NOC' ? 'of '+fmt(DATA.meta.councils)+' councils'
+                                : fmt(maj[code] || 0)+' with a majority';
       return '<div class="tot" data-p="'+code+'" style="background:'+col+'; color:'+txtOn(col)+'">' +
         '<div class="nm">'+name+'</div>' +
         '<div class="n">'+fmt(e[1])+'</div>' +
-        '<div class="sub">'+(seats===null ? 'of '+fmt(DATA.meta.councils)+' councils' : fmt(seats)+' councillors')+'</div>' +
+        '<div class="sub">'+sub+'</div>' +
         '</div>';
     }).join('');
     $('tiles').innerHTML = html;
@@ -337,11 +453,7 @@
       if(!code) return false;
       var c = byGss[d.properties.code];
       if(!c) return true;
-      if(code === 'NOC'){
-        return !(c.control.type === 'noc' || !c.control.parties.length ||
-                 c.control.type === 'minority' || c.control.type === 'coalition');
-      }
-      return !(c.control.type === 'majority' && c.control.parties[0] === code);
+      return runsKey(c) !== code;
     });
   }
 
@@ -368,7 +480,7 @@
       ' — councillor data CC0, compositions CC BY-SA 4.0. Boundaries: Office for National Statistics ' +
       'licensed under the Open Government Licence v3.0; contains OS data © Crown copyright and database right. ' +
       '<br>Control labels are Open Council Data\'s own. Solid fill = outright majority; ' +
-      'striped = minority or coalition administration; grey = no overall control. ' +
+      'paler shade = minority, coalition or mayoral administration; black = no overall control. ' +
       'Refreshed automatically every Monday.' + notShownNote();
     $('counts').textContent = fmt(DATA.meta.councils) + ' councils · ' +
       fmt(DATA.meta.councillors) + ' councillors' +
@@ -376,10 +488,22 @@
   }
 
   function notShownNote(){
+    var out = '';
     var ns = (DATA.meta && DATA.meta.notShown) || [];
-    if(!ns.length) return '';
-    return '<br>Listed by Open Council Data but not mapped (no published boundary yet): ' +
-           ns.map(function(x){ return x.name; }).join(', ') + '.';
+    if(ns.length){
+      out += '<br>Listed by Open Council Data but not mapped (no published boundary yet): ' +
+             ns.map(function(x){ return x.name; }).join(', ') + '.';
+    }
+    var sup = (DATA.meta && DATA.meta.superseded) || [];
+    if(sup.length){
+      var by = {};
+      sup.forEach(function(x){ (by[x.replacedBy] = by[x.replacedBy] || []).push(x.name); });
+      out += '<br>' + Object.keys(by).map(function(k){
+        return k + ' is shown in place of ' + by[k].join(', ');
+      }).join('; ') + ' — those councils run services until 1 April 2027, ' +
+      'but their successors were the ones elected most recently.';
+    }
+    return out;
   }
 
   // ------------------------------------------------------------------- map --
@@ -404,17 +528,7 @@
         .attr('role','img')
         .attr('aria-label','Map of UK councils coloured by political control. The same data is available in the table below.');
 
-      // striped fills for minority / coalition administrations
-      var defs = svg.append('defs');
-      Object.keys(DATA.parties).forEach(function(code){
-        var col = DATA.parties[code].colour;
-        var p = defs.append('pattern').attr('id','hatch-'+code)
-          .attr('width',5).attr('height',5).attr('patternUnits','userSpaceOnUse')
-          .attr('patternTransform','rotate(45)');
-        p.append('rect').attr('width',5).attr('height',5).attr('fill','#fff');
-        p.append('rect').attr('width',3).attr('height',5).attr('fill',col);
-      });
-
+      svgDefs = svg.append('defs');
       mapG = svg.append('g');
       var proj = d3.geoMercator().fitExtent([[14,14],[w-14,h-14]], g);
       path = d3.geoPath().projection(proj);
@@ -432,10 +546,11 @@
 
       zoomB = d3.zoom().scaleExtent([1,50]).on('zoom', function(e){
         mapG.attr('transform', e.transform);
-        mapG.attr('stroke-width', 0.3/Math.sqrt(e.transform.k));
+        scalePatterns(e.transform.k);
         if(!pinned && !panelOn()) tip.style.display='none';
       });
       svg.call(zoomB);
+      scalePatterns(1);
       recolour();
     });
   }
@@ -447,6 +562,18 @@
     highlight(focusParty);
   }
 
+  // Shading for a party's seats by when they are next up: soonest is the full
+  // party colour, later cycles progressively paler.
+  var CYCLE_STEPS = [0, 0.42, 0.66, 0.8];
+  function cycleShade(colour, i){ return lighten(colour, CYCLE_STEPS[Math.min(i, 3)]); }
+  function shortDate(iso){
+    var d = new Date(iso);
+    return isNaN(d) ? iso : d.toLocaleDateString('en-GB',{month:'short',year:'numeric'});
+  }
+  function cycleWord(n){
+    return n <= 1 ? 'All-out' : n === 2 ? 'Halves' : n === 3 ? 'Thirds' : n + ' cycles';
+  }
+
   // The same card is used by the floating tooltip (narrow screens) and by the
   // side panel (wide screens).
   function cardHtml(c, fallbackName){
@@ -454,11 +581,23 @@
       return '<div class="hd"><div class="nm">'+(fallbackName||'Unknown')+'</div>' +
              '<div class="ty">No council data</div></div>';
     }
-    var seats = c.seats, order = DATA.spectrum.filter(function(p){ return seats[p]; });
+    var seats = c.seats;
+    // Parties ordered by size, vacancies last.
+    var order = Object.keys(seats).filter(function(p){ return seats[p]; })
+      .sort(function(a,b){
+        if(a === 'VAC') return 1;
+        if(b === 'VAC') return -1;
+        if(seats[b] !== seats[a]) return seats[b] - seats[a];
+        return DATA.spectrum.indexOf(a) - DATA.spectrum.indexOf(b);
+      });
     var contested = order.filter(function(p){ return p !== 'VAC'; });
     var max = Math.max.apply(null, contested.map(function(p){ return seats[p]; }).concat([1]));
     var col = swatchFor(c);
     var maj = Math.floor(c.total/2) + 1;
+
+    // cycle: [{date, seats:{party:n}}] in date order
+    var cyc = c.cycle || [];
+    var dates = cyc.map(function(x){ return x.date; });
 
     var stack = order.map(function(p){
       return '<i style="width:'+(100*seats[p]/c.total)+'%; background:'+pInfo(p).colour+'"></i>';
@@ -466,14 +605,51 @@
 
     var rows = order.map(function(p){
       var pc = pInfo(p), pct = 100*seats[p]/max;
-      var inside = pct >= 46;   // short bars get their label outside, in dark ink
+
+      // split this party's bar by when its seats are next up
+      var segs = [], upNext = 0;
+      if(p !== 'VAC' && dates.length){
+        cyc.forEach(function(x, i){
+          var n = x.seats[p] || 0;
+          if(!n) return;
+          if(!segs.length) upNext = n;
+          segs.push('<i title="'+n+' up '+shortDate(x.date)+'" style="width:'+
+            (100*n/seats[p])+'%; background:'+cycleShade(pc.colour, i)+'"></i>');
+        });
+      }
+      if(!segs.length) segs = ['<i style="width:100%; background:'+pc.colour+'"></i>'];
+
+      var label = (p === 'VAC') ? '' : (upNext ? upNext + ' up' : '');
+      // Sit the label inside the first segment when it fits, otherwise just
+      // past that segment's end - never past the whole bar, or it clips.
+      var firstPct = pct * (parseFloat(segs[0].match(/width:([\d.]+)%/)[1]) / 100);
+      var inside = firstPct >= 30;
+      var labelHtml = label
+        ? '<span class="'+(inside?'inside':'outside')+'"'+
+          (inside ? '' : ' style="left:calc('+Math.min(firstPct, 62)+'% + 6px); right:auto"')+
+          '>'+label+'</span>'
+        : '';
+
       return '<div class="r">' +
         '<div class="ab" style="background:'+pc.colour+'; color:'+txtOn(pc.colour)+'">'+abbrev(p)+'</div>' +
-        '<div class="bar"><i style="width:'+pct+'%; background:'+pc.colour+'"></i>' +
-        '<span class="'+(inside?'inside':'outside')+'"'+
-          (inside ? '' : ' style="left:calc('+pct+'% + 6px)"')+'>'+pc.name+'</span></div>' +
+        '<div class="bar"><span class="fill" style="width:'+pct+'%">'+segs.join('')+'</span>' +
+        labelHtml + '</div>' +
         '<div class="n">'+seats[p]+'</div></div>';
     }).join('');
+
+    var key = '';
+    if(dates.length > 1){
+      key = '<div class="cyckey">' + cyc.map(function(x, i){
+        return '<span><i style="background:'+cycleShade('#6b7280', i)+'"></i>'+shortDate(x.date)+'</span>';
+      }).join('') + '</div>';
+    }
+
+    var foot = '';
+    if(c.nextElection){
+      foot = '<div class="ft">' + cycleWord(dates.length) + ' · next ' +
+             new Date(c.nextElection).toLocaleDateString('en-GB',
+               {day:'numeric',month:'short',year:'numeric'}) + '</div>';
+    }
 
     return '<div class="hd">' +
         '<div class="nm">'+c.name+'</div>' +
@@ -484,27 +660,34 @@
           (c.vacant ? ' · <b>'+c.vacant+'</b> vacant' : '')+'</div>' +
       '</div>' +
       '<div class="stack">'+stack+'</div>' +
-      '<div class="bd">'+rows+'</div>' +
-      (c.nextElection ? '<div class="ft">Next election '+
-        new Date(c.nextElection).toLocaleDateString('en-GB',{month:'short',year:'numeric'})+'</div>' : '');
+      '<div class="bd">'+rows+'</div>' + key + foot;
   }
 
   function panelOn(){ return window.innerWidth > 900; }
 
   function panelDefault(){
-    var ct = DATA.meta.controlTotals || {};
-    var keys = Object.keys(ct).filter(function(k){ return k !== 'NOC'; })
+    var largest = colourMode === 'largest';
+    var ct = largest ? largestCounts() : nationalCounts().runs;
+    var keys = Object.keys(ct).filter(function(k){ return k !== 'NOC' && k !== 'TIED'; })
       .sort(function(a,b){ return ct[b]-ct[a]; });
+    if(ct.TIED) keys.push('TIED');
     if(ct.NOC) keys.push('NOC');
     var rows = keys.map(function(k){
-      var col = k==='NOC' ? DATA.nocColour : pInfo(k).colour;
-      var nm  = k==='NOC' ? 'No overall control' : pInfo(k).name;
+      var col = k==='NOC' ? NOC_COLOUR : k==='TIED' ? TIE_NEUTRAL : pInfo(k).colour;
+      var nm  = k==='TIED' ? 'Tied largest'
+              : k==='NOC' ? (largest ? 'No seats' : 'No administration')
+              : pInfo(k).name;
       return '<div class="ctrlrow"><span><i style="background:'+col+'"></i>'+nm+'</span>' +
              '<b>'+ct[k]+'</b></div>';
     }).join('');
     $('detail').innerHTML =
-      '<div class="empty"><h3>Councils by control</h3>' +
-      '<p>Hover a council on the map for its full party breakdown. Click to keep it open.</p>' +
+      '<div class="empty"><h3>'+(largest ? 'Largest party' : 'Who runs the councils')+'</h3>' +
+      '<p>' + (largest
+        ? 'The party with the most seats on each council, regardless of who runs it. ' +
+          'Councils where two or more parties are level are striped in their colours.'
+        : 'The party leading each administration, whether that is an outright majority, ' +
+          'a minority or a coalition.') +
+      ' Hover a council for its full breakdown; click to keep it open.</p>' +
       rows + '</div>';
   }
 
@@ -548,16 +731,19 @@
       var c = byGss[f.properties.code];
       if(!c) return;
       var key;
-      if(colourMode === 'largest') key = (!c.largest || c.largestTied) ? 'NOC' : c.largest;
-      else key = (c.control.type === 'majority') ? c.control.parties[0] : 'NOC';
+      if(colourMode === 'largest'){ var tp = topParties(c); key = tp.length === 1 ? tp[0] : (tp.length ? 'TIED' : 'NOC'); }
+      else key = runsKey(c);
       counts[key] = (counts[key]||0) + 1;
     });
-    var keys = Object.keys(counts).filter(function(k){ return k!=='NOC'; })
+    var keys = Object.keys(counts).filter(function(k){ return k!=='NOC' && k!=='TIED'; })
       .sort(function(a,b){ return counts[b]-counts[a]; });
+    if(counts.TIED) keys.push('TIED');
     if(counts.NOC) keys.push('NOC');
     $('legend').innerHTML = keys.map(function(k){
-      var col = k==='NOC' ? DATA.nocColour : pInfo(k).colour;
-      var nm  = k==='NOC' ? (colourMode==='largest' ? 'No single largest' : 'No overall control') : pInfo(k).name;
+      var col = k==='NOC' ? NOC_COLOUR : k==='TIED' ? TIE_NEUTRAL : pInfo(k).colour;
+      var nm  = k==='TIED' ? 'Tied largest'
+              : k==='NOC' ? (colourMode==='largest' ? 'No seats' : 'No administration')
+              : pInfo(k).name;
       return '<span class="lgd" data-k="'+k+'"><i style="background:'+col+'"></i>'+nm+
              ' <b>'+counts[k]+'</b></span>';
     }).join('');
@@ -661,6 +847,7 @@
         b.classList.add('active');
         colourMode = b.getAttribute('data-colour');
         recolour(); buildTable();
+        if(!pinned) clearCard();
       });
     });
     $('reset').addEventListener('click', function(){
