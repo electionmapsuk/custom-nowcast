@@ -1,0 +1,18 @@
+<!-- Paste THIS (and only this) into a Squarespace Code Block.
+     Same pattern as the Nowcast embed: the iframe auto-resizes to its content
+     height, and width:1px / min-width:100% forces iOS Safari to respect the
+     column width instead of overflowing. -->
+<iframe
+  id="councilMapFrame"
+  src="https://electionmapsuk.github.io/custom-nowcast/councils/uk-council-control-widget.html"
+  title="UK council control map"
+  style="width:1px; min-width:100%; height:1700px; border:0; overflow:hidden;"
+  scrolling="no"
+  loading="lazy"></iframe>
+<script>
+  window.addEventListener('message', function(e){
+    var h = e.data && e.data.councilMapHeight;
+    var f = document.getElementById('councilMapFrame');
+    if (h && f) f.style.height = (h + 20) + 'px';
+  });
+</script>

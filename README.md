@@ -1,61 +1,102 @@
-# ElectionMapsUK Nowcast — client-side build
+# UK council control — map & dashboard
 
-The whole model now runs in the browser. No Google Apps Script backend, no server round-trip — the page fetches static data and computes all 632 seats locally on every slider change.
+An interactive map of every UK principal council, coloured by political control,
+with the full party-by-party councillor breakdown on hover. Data refreshes itself
+every Monday from [Open Council Data UK](https://opencouncildata.co.uk/).
 
-## Files
+## What's here
 
 ```
-electionmaps_nowcast.html      ← the page (drop into a Squarespace code block / embed)
-build/
-  nowcast.browser.js           ← the engine bundle the page loads (auto-generated)
-  nowcast.js                   ← engine source (edit this) — CONFIG block at top
-  tactical.js                  ← tactical-voting transfer matrices (edit this)
-  build_bundle.js              ← run `node build_bundle.js` to regenerate nowcast.browser.js
-  extract_seats.py             ← run on each MRP refresh to rebuild data/seats.json
-  validate.js                  ← `node validate.js` checks output vs the workbook
-  data/
-    seats.json                 ← 632 seats: 2024 base, electorate, turnout, region, YouGov+MiC MRP
-    central.json               ← your central-projection inputs (the headline projection)
-    config_data.json           ← MRP national baselines, regional 2024 aggregates, vote pools
+councils/
+  uk-council-control-widget.html   the widget (GitHub Pages serves it; Squarespace iframes it)
+  squarespace_embed_councils.html  the code block to paste into Squarespace
+  build/
+    build_councils.py              weekly scraper -> data/councils.json
+    build_boundaries.py            one-off ONS boundary fetch -> data/boundaries-*.json
+    parties.py                     party codes, colours, name/PP-code matching
+    tables.py                      minimal HTML table parser (stdlib only)
+    fetch.py                       HTTP helper with retries
+    la_registry.csv                mySociety local-authority register (fallback copy)
+  data/                            generated - committed by the workflow
+    councils.json
+    boundaries-lower.json
+    boundaries-upper.json
+    build-report.json
+.github/workflows/update-councils.yml
 ```
 
-## How it validates
+Everything is stdlib Python and vanilla JS + d3 — no build step, no dependencies
+to install.
 
-| | LAB | CON | RFM | LDM | GRN | SNP | PLC | MIN |
-|---|---|---|---|---|---|---|---|---|
-| engine vs your workbook | 80 | 63 | 285 | 84 | 47 | 45 | 13 | 9 | (95.9% of seats match) |
-| GE2024 preset vs real 2024 | 410 | 113 | 4 | 78 | 4 | 7 | 4 | 6 | (actual: 411/121/5/72/4/9/4) |
+## First run
 
-Feeding the engine the 2024 result reproduces the 2024 election — the best sanity check there is.
+1. Copy `councils/` and `.github/workflows/update-councils.yml` into the
+   `electionmapsuk/custom-nowcast` repo and push.
+2. In the repo, go to **Actions → Update council control data → Run workflow**,
+   tick **refresh_boundaries**, and run it. This first run downloads the ONS
+   boundaries (~30–60s) as well as the council data, and commits all of it.
+3. Check `councils/data/build-report.json` — it lists what was parsed, any
+   councils it could not match, and any warnings.
+4. Paste `squarespace_embed_councils.html` into a Squarespace Code Block.
 
-## Deploying on Squarespace
+After that it runs itself at 06:15 UTC every Monday.
 
-Squarespace can't host data files, so serve the three data files + the bundle from your GitHub raw (same repo as your GeoJSON: `electionmapsuk/custom-nowcast`):
+## The two data sources, and why both
 
-1. Upload `nowcast.browser.js` and the three `data/*.json` files to the repo.
-2. In `electionmaps_nowcast.html`, set:
-   - `DATA_BASE` to `https://raw.githubusercontent.com/electionmapsuk/custom-nowcast/refs/heads/main/data/`
-   - the `<script src>` to the raw URL of `nowcast.browser.js`
-3. Paste the HTML into a Squarespace code block.
+| Source | Gives us |
+|---|---|
+| `councils.php?model=…&y=0` (and `nicouncils.php`) | Open Council Data's **own control label** — `LAB`, `REF min`, `LD/GRN`, `NOC` — plus vacancies. These tables are maintained live, so by-elections and defections show up within days. |
+| `csv2.php?y=YYYY` | Every councillor with their Electoral Commission party code, which is where the **full party breakdown** comes from. The summary tables collapse everything outside the big five into "Oth"; the CSV does not. |
 
-(Locally it works as-is: open `electionmaps_nowcast.html` from a small web server — `python3 -m http.server` in this folder — because browsers block `fetch` over `file://`.)
+The two are cross-checked: if a council's councillor count in the CSV disagrees
+with the total in the summary table, it lands in `build-report.json` as a warning.
 
-## Updating
+Geography is joined via [mySociety's local authority
+register](https://github.com/mysociety/uk_local_authority_names_and_codes),
+which carries an `open-council-data-id` column, so councils match on identifier
+rather than on fuzzy name comparison. Names are only a fallback.
 
-- **Change the central projection:** edit `data/central.json` (or repoint it at a published Google Sheet later). No code change.
-- **Refresh MRPs (every ~3–4 months):** re-run `extract_seats.py` on the new workbook → new `seats.json`; update the `baselines` in `nowcast.js` CONFIG from the MRP sheets.
-- **Tune the model:** everything lives in the `CONFIG` object at the top of `nowcast.js` and the matrices in `tactical.js`. After editing, run `node build_bundle.js` to regenerate the browser bundle.
+## Map tiers
 
-## What's in the engine
+Councils in England overlap: a county council and its districts cover the same
+ground. So there are two layers.
 
-1. Regional allocation of your national inputs (England-ex-London as residual; Scotland/Wales/London direct).
-2. J-curve strong/weak split per seat (Green penalty in the transition model only).
-3. Regional swing + calibration to your targets.
-4. Tactical voting — clarity-weighted transfer matrices, incumbent shields, cross-bloc hijack, national vote conservation (`tactical.js`).
-5. MRP swings (YouGov + More In Common) off their own baselines, per nation, blended `0.67 / 0.165 / 0.165` with MRPs scaled by `(1−RES)`.
-6. Winner, seat totals, Speaker held, Workers/Independent (WPB) split where it won in 2024.
-7. Soft bloc bumpers (off by default in effect — calibration already protects bloc vote shares).
+* **Districts & unitaries** (default) — ONS Local Authority Districts. English
+  districts, unitaries, met boroughs and London boroughs, plus all 32 Scottish,
+  22 Welsh and 11 NI councils. No gaps, no overlaps.
+* **Counties & unitaries** — ONS Counties and Unitary Authorities. The 21 English
+  county councils replace their districts; everything else is unchanged.
 
-## Custom mode
+Combined and strategic authorities are excluded: their members are appointed by
+constituent councils rather than directly elected, so "councillors by party"
+doesn't mean the same thing.
 
-Visitors edit GB-wide shares (incl. Restore) plus SNP-in-Scotland and Plaid-in-Wales. Free entry — the live total is a guide; the engine normalises internally. Regional non-nationalist shares track the GB inputs. "Reset to Central Projection" restores your headline numbers. Scenarios are shareable via URL.
+## Colour
+
+* **Solid fill** — one party holds more than half the seats.
+* **Diagonal stripes** — that party leads a minority or coalition administration.
+* **Grey** — no overall control with no stated administration.
+
+The *Colour: largest party* toggle ignores administrations and just shows who has
+the most seats.
+
+## Maintenance
+
+* **Weekly data** — automatic, nothing to do.
+* **Boundaries** — ONS publishes a new vintage roughly annually, and after local
+  government reorganisation. Re-run the workflow with **refresh_boundaries**
+  ticked; `build_boundaries.py` finds the newest matching ONS service by itself.
+* **If the workflow fails** — it still commits `data/build-report.json` and
+  leaves the previous good `councils.json` in place, so the live widget keeps
+  working while you look at what changed. The report's `problems` array says
+  which validation gate tripped.
+
+Validation gates: at least 350 councils parsed, at most 5 without a GSS code,
+a UK councillor total between 15,000 and 23,000, and a full party breakdown for
+at least 90% of councils.
+
+## Attribution
+
+Councillor data from Open Council Data UK — CC0. Composition tables — CC BY-SA 4.0.
+Boundaries © Office for National Statistics, Open Government Licence v3.0;
+contains OS data © Crown copyright and database right.
