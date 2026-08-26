@@ -1,5 +1,5 @@
 {
- "generated": "2026-08-26T19:14:12+00:00",
+ "generated": "2026-08-26T19:24:25+00:00",
  "year": 2026,
  "csvRows": 19273,
  "councilsParsed": 383,
@@ -131,10 +131,8 @@
   "Wakefield"
  ],
  "warnings": [
-  "1949 councillor rows had a party code missing from the register; fell back to name matching",
-  "East Surrey: no boundary for LGR-EASTSURREY - rebuild boundaries",
-  "West Surrey: no boundary for LGR-WESTSURREY - rebuild boundaries"
+  "1949 councillor rows had a party code missing from the register; fell back to name matching"
  ],
- "warningCount": 3,
+ "warningCount": 1,
  "problems": []
 }
