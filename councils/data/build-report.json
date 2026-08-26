@@ -1,34 +1,34 @@
 {
- "generated": "2026-08-26T21:06:24+00:00",
+ "generated": "2026-08-26T21:15:31+00:00",
  "year": 2026,
  "csvRows": 19273,
- "councilsParsed": 383,
- "councilsOnMap": 371,
- "councilsWithSplitDetail": 280,
+ "councilsParsed": 384,
+ "councilsOnMap": 372,
+ "councilsWithSplitDetail": 281,
  "byGroup": {
   "Scottish unitary authority": 32,
   "Non-metropolitan district": 153,
   "NI district": 11,
   "London borough": 32,
   "Metropolitan district": 36,
-  "Unitary authority": 64,
+  "Unitary authority": 65,
   "Welsh unitary authority": 22,
   "County": 20,
   "City corporation": 1
  },
  "byNation": {
   "Scotland": 32,
-  "England": 306,
+  "England": 307,
   "Northern Ireland": 11,
   "Wales": 22
  },
- "councillors": 18682,
+ "councillors": 18698,
  "partyTotals": {
   "LAB": 4569,
   "CON": 3723,
   "LDM": 3166,
   "RFM": 2326,
-  "IND": 2212,
+  "IND": 2228,
   "GRN": 1329,
   "SNP": 411,
   "OTH": 321,
@@ -42,16 +42,16 @@
   "TUV": 10
  },
  "controlTotals": {
-  "NOC": 208,
-  "LAB": 61,
-  "LDM": 37,
-  "CON": 25,
-  "RFM": 23,
-  "GRN": 6,
-  "IND": 5,
+  "LAB": 122,
+  "LDM": 69,
+  "CON": 67,
+  "RFM": 35,
+  "IND": 26,
+  "GRN": 21,
+  "SNP": 14,
+  "NOC": 12,
   "PLC": 4,
-  "SNP": 1,
-  "OTH": 1
+  "OTH": 2
  },
  "notShown": [],
  "superseded": [
@@ -117,6 +117,9 @@
   }
  ],
  "noElectionCycle": [],
+ "addedManually": [
+  "Isles of Scilly"
+ ],
  "gssReassigned": [
   "Barnsley: E08000016 -> E08000038",
   "Sheffield: E08000019 -> E08000039"
