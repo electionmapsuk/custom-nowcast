@@ -137,20 +137,66 @@ def load_party_register() -> dict:
 
 # ---------------------------------------------------------------- control ----
 
-def parse_control(label: str, seats: dict, total: int) -> dict:
+# Seat buckets rather than single parties. "Ind" on a council is often several
+# unrelated independent groups, so the bucket holding half the seats tells you
+# nothing about whether one group does - never let those trigger an override.
+OVERRIDE_EXCLUDED = {"IND", "OTH", "VAC"}
+
+
+def _outright(seats: dict, total: int, nation: str = ""):
+    """The single party holding more than half of every seat, if any.
+
+    Northern Ireland is exempt: its councils are all recorded as NOC because
+    they do not form single-party administrations, so seat arithmetic there is
+    not a statement about who runs the council.
+    """
+    if not total or nation == "Northern Ireland":
+        return None
+    for p, v in seats.items():
+        if p in OVERRIDE_EXCLUDED:
+            continue
+        if v * 2 > total:
+            return p
+    return None
+
+
+def _apply_outright(ctl: dict, outright, raw: str) -> dict:
+    """A party holding more than half the seats runs the council, whatever the
+    source's label says - Open Council Data sometimes records the coalition that
+    formed rather than the arithmetic (Dorset is LD/GRN with the Lib Dems on 42
+    of 82). A directly elected mayor still outranks it. The source's own label is
+    kept in `sourceLabel`."""
+    if not outright or ctl["mayor"]:
+        return ctl
+    if ctl["type"] == "majority" and ctl["parties"][:1] == [outright]:
+        return ctl
+    ctl["sourceLabel"] = raw or "NOC"
+    ctl["overridden"] = True
+    ctl["type"] = "majority"
+    ctl["parties"] = [outright]
+    ctl["lead"] = outright
+    ctl["majority"] = True
+    ctl["label"] = outright
+    return ctl
+
+
+def parse_control(label: str, seats: dict, total: int, nation: str = "") -> dict:
     """Structure Open Council Data's control string.
 
     Seen in the wild: "LAB", "REF min", "LD/GRN", "NOC", "LAB Mayor", "TBC".
     """
     raw = (label or "").strip()
     up = raw.upper()
+    outright = _outright(seats, total, nation)
 
     if not raw or up in ("NOC", "NONE", "-", "?"):
-        return {"label": raw or "NOC", "type": "noc", "parties": [],
-                "lead": _largest(seats)[0], "mayor": False, "majority": False}
+        return _apply_outright({"label": raw or "NOC", "type": "noc", "parties": [],
+                                "lead": _largest(seats)[0], "mayor": False,
+                                "majority": False}, outright, raw)
     if up == "TBC":
-        return {"label": "TBC", "type": "noc", "parties": [],
-                "lead": _largest(seats)[0], "mayor": False, "majority": False}
+        return _apply_outright({"label": "TBC", "type": "noc", "parties": [],
+                                "lead": _largest(seats)[0], "mayor": False,
+                                "majority": False}, outright, raw)
 
     mayor = bool(re.search(r"\bMAYOR\b", up))
     minority = bool(re.search(r"\bMIN\b", up))
@@ -169,8 +215,9 @@ def parse_control(label: str, seats: dict, total: int) -> dict:
                 parts.append("OTH")
 
     if not parts:
-        return {"label": raw, "type": "noc", "parties": [],
-                "lead": _largest(seats)[0], "mayor": mayor, "majority": False}
+        return _apply_outright({"label": raw, "type": "noc", "parties": [],
+                                "lead": _largest(seats)[0], "mayor": mayor,
+                                "majority": False}, outright, raw)
 
     held = seats.get(parts[0], 0)
     has_majority = bool(total and held * 2 > total)
@@ -186,8 +233,9 @@ def parse_control(label: str, seats: dict, total: int) -> dict:
     else:
         kind = "majority" if has_majority else "minority"
 
-    return {"label": raw, "type": kind, "parties": parts,
-            "lead": parts[0], "mayor": mayor, "majority": has_majority}
+    return _apply_outright({"label": raw, "type": kind, "parties": parts,
+                            "lead": parts[0], "mayor": mayor,
+                            "majority": has_majority}, outright, raw)
 
 
 def _largest(seats: dict):
@@ -507,7 +555,7 @@ def build(year: int, out_dir: str) -> int:
     bcodes, bnames = load_boundaries(out_dir)
 
     councils, not_shown, regssed, split_failed = [], [], [], []
-    superseded, no_cycle = [], []
+    superseded, no_cycle, overrides = [], [], []
     today = dt.date.today().isoformat()
 
     for key, c in sorted(comps.items(), key=lambda kv: kv[1]["ocdName"]):
@@ -542,7 +590,13 @@ def build(year: int, out_dir: str) -> int:
             warn(f"{c['ocdName']}: seats sum to {sum(seats.values())} "
                  f"but total is {c['total']}")
 
-        control = parse_control(c["controlLabel"], seats, c["total"])
+        control = parse_control(c["controlLabel"], seats, c["total"],
+                                (reg.get("nation") if reg else "") or "")
+        if control.get("overridden"):
+            overrides.append({"name": c["ocdName"], "source": control["sourceLabel"],
+                              "shown": control["parties"][0],
+                              "seats": seats.get(control["parties"][0], 0),
+                              "total": c["total"]})
         lead, tied = _largest(seats)
 
         succ = SUCCESSORS.get(key)
@@ -644,6 +698,7 @@ def build(year: int, out_dir: str) -> int:
         "notShown": not_shown,
         "superseded": superseded,
         "noElectionCycle": no_cycle,
+        "controlOverrides": overrides,
         "addedManually": added,
         "gssReassigned": regssed,
         "othNotSplit": split_failed,
