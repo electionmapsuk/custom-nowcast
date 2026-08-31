@@ -14,7 +14,7 @@ PARTIES = {
     "GRN":  ("Green",                "#00A85A"),
     "SNP":  ("SNP",                  "#e6d62e"),
     "PLC":  ("Plaid Cymru",          "#075d55"),
-    "SDLP": ("SDLP",                 "#3A9E84"),
+    "SDLP": ("SDLP",                 "#FF0000"),
     "LAB":  ("Labour",               "#E4003B"),
     "ALL":  ("Alliance",             "#F6CB2F"),
     "LDM":  ("Liberal Democrat",     "#ff6400"),
@@ -26,13 +26,13 @@ PARTIES = {
     "DUP":  ("DUP",                  "#d46a4c"),
     "TUV":  ("TUV",                  "#0C3A6A"),
     "RFM":  ("Reform UK",            "#2BC5DB"),
-    "RB":   ("Restore Britain",      "#051e40"),
+    "RES":  ("Restore Britain",      "#051e40"),
     "VAC":  ("Vacant",               "#d8d8d4"),
 }
 
 # Left-to-right ordering for stacked bars and table columns.
 SPECTRUM = ["SF", "GRN", "SNP", "PLC", "SDLP", "LAB", "ALL", "LDM", "IND",
-            "OTH", "UKI", "UUP", "CON", "DUP", "TUV", "RFM", "RB", "VAC"]
+            "OTH", "UKI", "UUP", "CON", "DUP", "TUV", "RFM", "RES", "VAC"]
 
 NOC_COLOUR = "rgb(20,20,20)"
 
@@ -50,14 +50,14 @@ OCD_CODES = {
 OTH_REFINEMENTS = [
     ("traditional unionist", "TUV"),
     ("tuv", "TUV"),
-    ("restore britain", "RB"),
+    ("restore britain", "RES"),
 ]
 
 # Fallback only: used when a councillor's Electoral Commission code is missing
 # from the register. Ordered most specific first - "Social Democratic and
 # Labour Party" must not be caught by the "labour" rule.
 NAME_RULES = [
-    ("restore britain",              "RB"),
+    ("restore britain",              "RES"),
     ("social democratic and labour", "SDLP"),
     ("sdlp",                         "SDLP"),
     ("sinn",                         "SF"),
@@ -98,7 +98,7 @@ CONTROL_TOKENS = {
     "GRN": "GRN", "GREEN": "GRN", "REF": "RFM", "RFM": "RFM", "SNP": "SNP",
     "PC": "PLC", "PLAID": "PLC", "IND": "IND", "OTH": "OTH", "SF": "SF",
     "DUP": "DUP", "ALLI": "ALL", "ALL": "ALL", "UUP": "UUP", "SDLP": "SDLP",
-    "TUV": "TUV", "UKIP": "UKI", "RB": "RB",
+    "TUV": "TUV", "UKIP": "UKI", "RES": "RES",
     # local parties and residents' groups that run councils
     "RA": "IND", "PIP": "OTH", "CIIP": "OTH", "ASPIRE": "OTH",
 }
