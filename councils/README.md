@@ -67,7 +67,7 @@ the parties that hold seats, so nothing else has to change.
 
 Restore Britain is the first party promoted this way (register id 522,
 `PP18382`, which Open Council Data files under `OTH`). It appears wherever it
-holds seats, ordered to the right of Reform.
+holds seats, ordered to the right of Reform, under the code `RES`.
 
 Two things limit how fine that can go. The tables give a per-council Oth
 *total* and the CSV only gives proportions inside it, so a party's seats on any
