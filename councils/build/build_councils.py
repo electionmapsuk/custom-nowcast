@@ -36,8 +36,15 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 from fetch import get_text  # noqa: E402
-from parties import (CONTROL_TOKENS, NOC_COLOUR, OCD_CODES, PARTIES,  # noqa: E402
-                     SPECTRUM, TABLE_COLUMNS, party_from_name, refine_other)
+from parties import (CONTROL_TOKENS, NOC_COLOUR, OCD_CODES, OTH_REFINEMENTS,  # noqa: E402
+                     PARTIES, SPECTRUM, TABLE_COLUMNS, party_from_name,
+                     refine_other)
+
+# Codes we promote out of the Oth bucket. Counted alongside Oth in the build
+# report so the bucket's raw composition stays visible after promotion - which
+# is what lets you compare a party's raw CSV count against the seats the split
+# actually allocated it.
+REFINED_FROM_OTH = {code for _, code in OTH_REFINEMENTS}
 from tables import largest_table  # noqa: E402
 
 BASE = "https://opencouncildata.co.uk/"
@@ -367,6 +374,11 @@ def scrape_councillors(year: int, register: dict):
     seats: dict[str, Counter] = defaultdict(Counter)
     nxt: dict[str, Counter] = defaultdict(Counter)
     cycle: dict[str, dict[str, Counter]] = defaultdict(lambda: defaultdict(Counter))
+    # What is actually inside the Oth bucket, by the CSV's own party name. Oth is
+    # a residual, so this is the only way to see what could be pulled out of it -
+    # a party here with a workable number of councillors is one OTH_REFINEMENTS
+    # can promote to a column of its own.
+    oth_names: Counter = Counter()
     rows = unmatched_codes = 0
     for r in reader:
         if len(r) <= c_party:
@@ -382,6 +394,8 @@ def scrape_councillors(year: int, register: dict):
             unmatched_codes += 1
             code = party_from_name(r[c_party])
         seats[key][code] += 1
+        if code == "OTH" or code in REFINED_FROM_OTH:
+            oth_names[(r[c_party] or "").strip() or "(blank)"] += 1
         if c_next is not None and c_next < len(r):
             iso = parse_date(r[c_next])
             if iso:
@@ -391,7 +405,7 @@ def scrape_councillors(year: int, register: dict):
         warn(f"{unmatched_codes} councillor rows had a party code missing from "
              f"the register; fell back to name matching")
     print(f"  councillor CSV: {rows} rows, {len(seats)} councils", file=sys.stderr)
-    return seats, nxt, cycle, rows
+    return seats, nxt, cycle, rows, oth_names
 
 
 _ISO = re.compile(r"^(\d{4})-(\d{2})-(\d{2})$")
@@ -543,7 +557,7 @@ def build(year: int, out_dir: str) -> int:
         print(f"  added {', '.join(added)} (absent from the source)", file=sys.stderr)
 
     print("Fetching councillor CSV...", file=sys.stderr)
-    detail, nxt, cycle, csv_rows = scrape_councillors(year, register)
+    detail, nxt, cycle, csv_rows, oth_names = scrape_councillors(year, register)
     for extra in EXTRA_COUNCILS:
         k = norm(extra["name"])
         if extra.get("nextElection") and not nxt.get(k):
@@ -702,6 +716,7 @@ def build(year: int, out_dir: str) -> int:
         "addedManually": added,
         "gssReassigned": regssed,
         "othNotSplit": split_failed,
+        "othBucket": dict(oth_names.most_common(60)),
         "warnings": warnings[:400],
         "warningCount": len(warnings),
     }

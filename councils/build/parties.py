@@ -26,12 +26,13 @@ PARTIES = {
     "DUP":  ("DUP",                  "#d46a4c"),
     "TUV":  ("TUV",                  "#0C3A6A"),
     "RFM":  ("Reform UK",            "#2BC5DB"),
+    "RB":   ("Restore Britain",      "#051e40"),
     "VAC":  ("Vacant",               "#d8d8d4"),
 }
 
 # Left-to-right ordering for stacked bars and table columns.
 SPECTRUM = ["SF", "GRN", "SNP", "PLC", "SDLP", "LAB", "ALL", "LDM", "IND",
-            "OTH", "UKI", "UUP", "CON", "DUP", "TUV", "RFM", "VAC"]
+            "OTH", "UKI", "UUP", "CON", "DUP", "TUV", "RFM", "RB", "VAC"]
 
 NOC_COLOUR = "rgb(20,20,20)"
 
@@ -49,12 +50,14 @@ OCD_CODES = {
 OTH_REFINEMENTS = [
     ("traditional unionist", "TUV"),
     ("tuv", "TUV"),
+    ("restore britain", "RB"),
 ]
 
 # Fallback only: used when a councillor's Electoral Commission code is missing
 # from the register. Ordered most specific first - "Social Democratic and
 # Labour Party" must not be caught by the "labour" rule.
 NAME_RULES = [
+    ("restore britain",              "RB"),
     ("social democratic and labour", "SDLP"),
     ("sdlp",                         "SDLP"),
     ("sinn",                         "SF"),
@@ -95,7 +98,7 @@ CONTROL_TOKENS = {
     "GRN": "GRN", "GREEN": "GRN", "REF": "RFM", "RFM": "RFM", "SNP": "SNP",
     "PC": "PLC", "PLAID": "PLC", "IND": "IND", "OTH": "OTH", "SF": "SF",
     "DUP": "DUP", "ALLI": "ALL", "ALL": "ALL", "UUP": "UUP", "SDLP": "SDLP",
-    "TUV": "TUV", "UKIP": "UKI",
+    "TUV": "TUV", "UKIP": "UKI", "RB": "RB",
     # local parties and residents' groups that run councils
     "RA": "IND", "PIP": "OTH", "CIIP": "OTH", "ASPIRE": "OTH",
 }
