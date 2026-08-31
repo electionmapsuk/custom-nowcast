@@ -1,5 +1,5 @@
 {
- "generated": "2026-08-31T10:46:57+00:00",
+ "generated": "2026-08-31T10:56:03+00:00",
  "year": 2026,
  "csvRows": 19273,
  "councilsParsed": 384,
@@ -39,7 +39,7 @@
   "UUP": 51,
   "VAC": 39,
   "SDLP": 35,
-  "RB": 20,
+  "RES": 20,
   "TUV": 10
  },
  "controlTotals": {
