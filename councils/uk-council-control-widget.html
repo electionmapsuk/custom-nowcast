@@ -28,7 +28,8 @@
   .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:18px;}
 
   /* summary tiles */
-  .totstrip{display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:8px;}
+  .totstrip{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:8px;}
+  @media(max-width:1000px){ .totstrip{grid-template-columns:repeat(4,minmax(0,1fr));} }
   @media(max-width:820px){ .totstrip{grid-template-columns:repeat(3,minmax(0,1fr));} }
   @media(max-width:460px){ .totstrip{grid-template-columns:repeat(2,minmax(0,1fr));} }
   .tot{border-radius:8px; padding:11px 12px; cursor:pointer; border:2px solid transparent; transition:transform .12s;}
@@ -509,7 +510,7 @@
     var n = nationalCounts(), runs = n.runs, maj = n.maj;
     var entries = Object.keys(runs).filter(function(k){ return k !== 'NOC'; })
       .map(function(k){ return [k, runs[k]]; })
-      .sort(function(a,b){ return b[1]-a[1]; }).slice(0,5);
+      .sort(function(a,b){ return b[1]-a[1]; }).slice(0,6);
     entries.push(['NOC', runs.NOC || 0]);
 
     var html = entries.map(function(e){
@@ -554,6 +555,12 @@
   }
 
   // -------------------------------------------------------------- nat. bar --
+  // Parties the key never lists on their own, however many seats they hold:
+  // Restore Britain and the Northern Ireland parties fold into the Oth figure.
+  // The bar still draws them as their own coloured segments.
+  var KEY_ROLLUP = {RES:1, SF:1, DUP:1, SDLP:1, ALL:1, UUP:1, TUV:1};
+  var KEY_MIN = 0.01;   // below this share a party folds into Oth as well
+
   function buildNatBar(){
     var tot = DATA.meta.partyTotals || {};
     var order = DATA.spectrum.filter(function(p){ return tot[p]; });
@@ -562,12 +569,29 @@
       return '<div class="seg" title="'+pInfo(p).name+' '+fmt(tot[p])+'" style="width:'+
         (100*tot[p]/sum)+'%; background:'+pInfo(p).colour+'"></div>';
     }).join('');
-    $('natkey').innerHTML = order.filter(function(p){ return tot[p]/sum > 0.012; })
-      .sort(function(a,b){ return tot[b]-tot[a]; })
-      .map(function(p){
-        return '<span title="'+pInfo(p).name+'"><i style="background:'+pInfo(p).colour+'"></i>'+
-               abbrev(p)+' <b style="color:var(--ink)">'+fmt(tot[p])+'</b></span>';
-      }).join('');
+
+    // Everything not named in the key lands in Oth, so the key accounts for
+    // every seat. Vacancies are not a party and stay out of it entirely.
+    var named = order.filter(function(p){
+      return p !== 'OTH' && p !== 'VAC' && !KEY_ROLLUP[p] && tot[p]/sum > KEY_MIN;
+    }).sort(function(a,b){ return tot[b]-tot[a]; });
+    var oth = order.reduce(function(a,p){
+      return a + (p === 'VAC' || named.indexOf(p) >= 0 ? 0 : tot[p]);
+    }, 0);
+
+    var html = named.map(function(p){
+      return '<span title="'+pInfo(p).name+'"><i style="background:'+pInfo(p).colour+'"></i>'+
+             abbrev(p)+' <b style="color:var(--ink)">'+fmt(tot[p])+'</b></span>';
+    });
+    if(oth){
+      var rolled = order.filter(function(p){
+        return p !== 'VAC' && named.indexOf(p) < 0 && p !== 'OTH';
+      }).map(function(p){ return pInfo(p).name; });
+      html.push('<span title="All other parties'+(rolled.length ? ', including '+rolled.join(', ') : '')+
+        '"><i style="background:'+pInfo('OTH').colour+'"></i>Oth <b style="color:var(--ink)">'+
+        fmt(oth)+'</b></span>');
+    }
+    $('natkey').innerHTML = html.join('');
   }
 
   function buildFoot(){

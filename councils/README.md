@@ -67,7 +67,10 @@ the parties that hold seats, so nothing else has to change.
 
 Restore Britain is the first party promoted this way (register id 522,
 `PP18382`, which Open Council Data files under `OTH`). It appears wherever it
-holds seats, ordered to the right of Reform, under the code `RES`.
+holds seats, ordered to the right of Reform, under the code `RES`. Great
+Yarmouth First (id 530, `PP18235`) is folded in with it — ten councillors, nine
+on Norfolk County Council and one on Great Yarmouth Borough — so `RES` counts
+both.
 
 Two things limit how fine that can go. The tables give a per-council Oth
 *total* and the CSV only gives proportions inside it, so a party's seats on any
@@ -213,7 +216,10 @@ map is in. Only the map, the legend and the dimming follow the toggle.
 The tiles, side panel and legend all count councils the same way the map colours
 them: by the party leading the administration, whatever its form. Each tile's
 big number is councils run, with outright majorities noted underneath. Only a
-council with no administration at all counts as black.
+council with no administration at all counts as black. The strip shows the six
+parties running the most councils plus NOC — six rather than five so the Greens
+make it, and the layout steps down to four, three and two columns as the screen
+narrows.
 
 The *Largest party* toggle ignores administrations and just shows who has
 the most seats. Where two or more parties are level on seats — nine councils at
@@ -242,6 +248,13 @@ Those per-cycle counts come from the councillor CSV's Next Election column,
 which can run a seat or two behind the live tables, so each party's live seat
 total is distributed across its own dates by largest remainder. The segments
 always sum to the bar.
+
+The national bar draws every party as its own coloured segment, but its key
+names only the parties above one per cent, and folds everything else into a
+single Oth figure — Restore Britain and the Northern Ireland parties among them,
+whatever their size, since they are listed in `KEY_ROLLUP`. So the key's numbers
+add up to the councillor total exactly; vacancies are the one thing left out,
+being seats rather than a party. Hovering the Oth entry names what is inside it.
 
 Every party label on screen — tiles, legend, side panel, national bar key, card
 chips, control pills and table headers — uses the ElectionMaps abbreviations,
