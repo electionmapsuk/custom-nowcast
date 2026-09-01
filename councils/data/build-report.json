@@ -1,10 +1,10 @@
 {
- "generated": "2026-08-31T10:56:03+00:00",
+ "generated": "2026-09-01T08:47:45+00:00",
  "year": 2026,
  "csvRows": 19273,
  "councilsParsed": 384,
  "councilsOnMap": 372,
- "councilsWithSplitDetail": 291,
+ "councilsWithSplitDetail": 293,
  "byGroup": {
   "Scottish unitary authority": 32,
   "Non-metropolitan district": 153,
@@ -31,7 +31,7 @@
   "IND": 2230,
   "GRN": 1330,
   "SNP": 411,
-  "OTH": 300,
+  "OTH": 290,
   "PLC": 200,
   "SF": 144,
   "DUP": 120,
@@ -39,7 +39,7 @@
   "UUP": 51,
   "VAC": 39,
   "SDLP": 35,
-  "RES": 20,
+  "RES": 30,
   "TUV": 10
  },
  "controlTotals": {
