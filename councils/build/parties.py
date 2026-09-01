@@ -51,6 +51,9 @@ OTH_REFINEMENTS = [
     ("traditional unionist", "TUV"),
     ("tuv", "TUV"),
     ("restore britain", "RES"),
+    # Great Yarmouth First sits with Restore Britain (OCD register id 530,
+    # PP18235); its ten councillors are counted as theirs.
+    ("great yarmouth first", "RES"),
 ]
 
 # Fallback only: used when a councillor's Electoral Commission code is missing
@@ -58,6 +61,7 @@ OTH_REFINEMENTS = [
 # Labour Party" must not be caught by the "labour" rule.
 NAME_RULES = [
     ("restore britain",              "RES"),
+    ("great yarmouth first",         "RES"),
     ("social democratic and labour", "SDLP"),
     ("sdlp",                         "SDLP"),
     ("sinn",                         "SF"),
