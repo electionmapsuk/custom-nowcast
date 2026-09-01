@@ -1,10 +1,18 @@
 <!-- Paste THIS (and only this) into a Squarespace Code Block.
      Same pattern as the Nowcast embed: the iframe auto-resizes to its content
      height, and width:1px / min-width:100% forces iOS Safari to respect the
-     column width instead of overflowing. -->
+     column width instead of overflowing.
+
+     ABOUT ?v= : GitHub Pages tells browsers they may reuse the widget's HTML
+     for a while, so after you push a new uk-council-control-widget.html your
+     visitors (and you) can keep seeing the old one - running fresh council data
+     through stale code. Changing this number makes it a URL the browser has
+     never seen, so it fetches it again. Bump it whenever you update the widget;
+     the date it was last changed is as good a value as any. Weekly DATA
+     refreshes do NOT need a bump - those are fetched separately at runtime. -->
 <iframe
   id="councilMapFrame"
-  src="https://electionmapsuk.github.io/custom-nowcast/councils/uk-council-control-widget.html"
+  src="https://electionmapsuk.github.io/custom-nowcast/councils/uk-council-control-widget.html?v=20260901"
   title="UK council control map"
   style="width:1px; min-width:100%; height:1700px; border:0; overflow:hidden;"
   scrolling="no"

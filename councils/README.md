@@ -267,6 +267,12 @@ there is room.
 ## Maintenance
 
 * **Weekly data** — automatic, nothing to do.
+* **After changing the widget** — bump the `?v=` number on the iframe URL in
+  `squarespace_embed_councils.html` and re-paste it into the Squarespace Code
+  Block. GitHub Pages lets browsers reuse the widget's HTML for a while, so
+  without a bump a returning visitor can run today's data through last week's
+  code — which looks exactly like the data having failed to update. Data
+  refreshes need no bump; those are fetched at runtime.
 * **Boundaries** — ONS publishes a new vintage roughly annually, and after local
   government reorganisation. Re-run the workflow with **refresh_boundaries**
   ticked; `build_boundaries.py` finds the newest matching ONS service by itself.
