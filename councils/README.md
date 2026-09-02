@@ -267,6 +267,14 @@ there is room.
 ## Maintenance
 
 * **Weekly data** — automatic, nothing to do.
+* **Embed height** — the widget measures its own content and posts the height to
+  the page that frames it, which sizes the iframe to match; the height in the
+  embed's `style` is only a fallback for before the first message arrives. It
+  measures `#cc-app`'s bottom edge rather than the document, deliberately:
+  `documentElement.scrollHeight` is floored at the viewport, so once the iframe
+  has been sized to fit it reports the frame's own height straight back, and
+  every round trip adds the parent's padding again until the frame grows without
+  limit.
 * **After changing the widget** — bump the `?v=` number on the iframe URL in
   `squarespace_embed_councils.html` and re-paste it into the Squarespace Code
   Block. GitHub Pages lets browsers reuse the widget's HTML for a while, so

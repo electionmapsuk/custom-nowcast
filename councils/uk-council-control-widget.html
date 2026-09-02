@@ -1147,6 +1147,52 @@
 
   function gotoCouncil(gss){ zoomTo(gss); }
 })();
+
+// ------------------------------------------------------------- iframe fit --
+// The Squarespace embed sizes its iframe from the height we post here. Without
+// it the iframe is stuck at the fixed fallback in its style attribute: too tall
+// on a wide screen, which leaves a band of empty page under the footer, and far
+// too short on a phone, where the maps stack - the second map gets cut off
+// mid-shape and the footer never appears at all. Since the iframe carries
+// scrolling="no" there is then no way to reach what was clipped.
+(function(){
+  var last = 0, timer = null;
+
+  // Measure the CONTENT, never the document. documentElement.scrollHeight is
+  // floored at the viewport, so once the parent has sized the iframe to fit,
+  // it reports the frame's own height back - and each round trip adds the
+  // parent's padding again, growing the frame forever. #cc-app's bottom edge
+  // is the real end of the widget (#cc-tip lives outside it but is fixed, so
+  // it never contributes).
+  function measure(){
+    var app = document.getElementById('cc-app');
+    if(!app) return 0;
+    var mb = parseFloat(getComputedStyle(document.body).marginBottom) || 0;
+    return Math.ceil(app.getBoundingClientRect().bottom + (window.scrollY || 0) + mb);
+  }
+
+  function send(){
+    var h = measure();
+    if(!h || Math.abs(h - last) < 2) return;   // also stops any resize ping-pong
+    last = h;
+    try{ parent.postMessage({councilMapHeight: h}, '*'); }catch(e){}
+  }
+
+  function ping(){ clearTimeout(timer); timer = setTimeout(send, 60); }
+
+  window.addEventListener('load', ping);
+  window.addEventListener('resize', ping);
+  if(document.fonts && document.fonts.ready) document.fonts.ready.then(ping);
+  // Catches everything that changes height from inside: the data arriving, the
+  // tier toggle refitting the maps, the tables opening, a card rendering.
+  if(window.ResizeObserver){
+    var ro = new ResizeObserver(ping);
+    ro.observe(document.documentElement);
+    if(document.body) ro.observe(document.body);
+  }
+  [150, 600, 1500, 3000].forEach(function(t){ setTimeout(ping, t); });
+  ping();
+})();
 </script>
 </body>
 </html>

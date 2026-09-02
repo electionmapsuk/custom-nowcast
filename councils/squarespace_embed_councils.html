@@ -18,9 +18,12 @@
   scrolling="no"
   loading="lazy"></iframe>
 <script>
+  // The widget measures itself and posts its height; we size the iframe to it.
+  // Only accept that message from the page we actually embedded.
   window.addEventListener('message', function(e){
+    if (e.origin !== 'https://electionmapsuk.github.io') return;
     var h = e.data && e.data.councilMapHeight;
     var f = document.getElementById('councilMapFrame');
-    if (h && f) f.style.height = (h + 20) + 'px';
+    if (h && f) f.style.height = (h + 8) + 'px';   // 8px cushion, no scrollbar
   });
 </script>
