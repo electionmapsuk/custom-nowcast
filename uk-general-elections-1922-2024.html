@@ -169,6 +169,8 @@ tr:last-child td{border-bottom:0}
       <h1>the electionmapsuk archive</h1>
       <div class="sub" id="elmeta"></div>
       <div class="spacer"></div>
+      <button class="iconbtn" id="prevEl" title="Previous election (←)" aria-label="Previous election">‹</button>
+      <button class="iconbtn" id="nextEl" title="Next election (→)" aria-label="Next election">›</button>
       <button class="iconbtn" id="themebtn" title="Toggle light / dark">◐</button>
     </div>
     <div class="strip" id="strip" role="tablist"></div>
@@ -349,7 +351,7 @@ function buildStrip(){
     const win=topParty(el);
     dot.style.background=partyColour(win,'');
     b.appendChild(dot);
-    b.onclick=()=>select(i);
+    b.onclick=()=>select(i, true);   // keep the reader's zoom
     s.appendChild(b);
   });
 }
@@ -361,16 +363,17 @@ function topParty(el){
 }
 
 /* ------------------------------------------------------------- rendering */
-function select(i){
+function select(i, keepView){
   elIdx=i; E=DATA.elections[i]; selected=null;
   [...$('#strip').children].forEach((b,j)=>b.setAttribute('aria-selected', j===i));
   $('#strip').children[i].scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});
   $('#elmeta').textContent = 'UK general elections 1922–2024 · ' + E.d + ' · ' + E.s + ' seats';
-  drawMap(); drawLegend(); showSummary();
+  drawMap(keepView); drawLegend(); showSummary();
 }
 
-function drawMap(){
+function drawMap(keep){
   const svg=$('#map');
+  const prevBox = box;
   let minx=1e9,miny=1e9,maxx=-1e9,maxy=-1e9;
   const items=[];
   for(const r of E.r){
@@ -395,7 +398,18 @@ function drawMap(){
   });
   parts.push('</g>');
   svg.innerHTML=parts.join('');
-  view={x:0,y:0,k:1}; applyView();
+  // Keep the reader where they were. Boundary sets differ slightly between
+  // eras, so carry the geographic centre and zoom across rather than the raw
+  // offsets, which are relative to each set's own bounding box.
+  if(keep && prevBox && view.k > 1){
+    const cx = prevBox[0] + view.x + (prevBox[2]/view.k)/2;
+    const cy = prevBox[1] + view.y + (prevBox[3]/view.k)/2;
+    view.x = cx - box[0] - (box[2]/view.k)/2;
+    view.y = cy - box[1] - (box[3]/view.k)/2;
+  } else {
+    view = {x:0, y:0, k:1};
+  }
+  applyView();
   svg.onmousemove=onHover; svg.onmouseleave=hideTip; svg.onclick=onClick;
 }
 function applyView(){
@@ -657,15 +671,29 @@ function showSeat(r){
     view.x+= (w0-w1)*mx; view.y+= (h0-h1)*my;
     applyView();
   },{passive:false});
+  function step(d){
+    const i = elIdx + d;
+    if(i >= 0 && i < DATA.elections.length) select(i, true);   // true = keep zoom
+  }
+  window.__step = step;
   addEventListener('keydown',e=>{
     if(e.target.tagName==='INPUT') return;
-    if(e.key==='ArrowRight'&&elIdx<DATA.elections.length-1) select(elIdx+1);
-    if(e.key==='ArrowLeft'&&elIdx>0) select(elIdx-1);
+    if(e.key==='ArrowRight'){ e.preventDefault(); step(1); }
+    if(e.key==='ArrowLeft'){ e.preventDefault(); step(-1); }
+  });
+  // Embedded in an iframe the page has no keyboard focus until it is clicked,
+  // so the host forwards arrow keys while the pointer is over the frame.
+  addEventListener('message', e=>{
+    const k = e.data && e.data.archiveKey;
+    if(k === 'ArrowRight') step(1);
+    if(k === 'ArrowLeft') step(-1);
   });
   addEventListener('load',()=>{
     $('#zin').onclick=()=>{ view.k=Math.min(60,view.k*1.4); applyView(); };
     $('#zout').onclick=()=>{ view.k=Math.max(1,view.k/1.4); applyView(); };
     $('#zreset').onclick=()=>{ view={x:0,y:0,k:1}; applyView(); };
+    $('#prevEl').onclick=()=>window.__step(-1);
+    $('#nextEl').onclick=()=>window.__step(1);
     $('#themebtn').onclick=()=>{
       const cur=document.documentElement.getAttribute('data-theme');
       const next = cur==='dark' ? 'light' : cur==='light' ? 'dark'
@@ -703,7 +731,7 @@ addEventListener('resize', queueHeight);
 addEventListener('load', queueHeight);
 if(window.ResizeObserver) new ResizeObserver(queueHeight).observe(document.getElementById('app'));
 const _sel = select;
-select = function(i){ _sel(i); queueHeight(); };
+select = function(){ _sel.apply(null, arguments); queueHeight(); };
 
 boot().then(()=>{ queueHeight(); setTimeout(queueHeight, 500); })
       .catch(e=>console.error(e));
