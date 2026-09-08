@@ -328,6 +328,13 @@ function darken(hex, f){
   const r=Math.round(((n>>16)&255)*f), g=Math.round(((n>>8)&255)*f), b=Math.round((n&255)*f);
   return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join('');
 }
+/* Nudge a colour lighter (f>0) or darker (f<0), for telling apart two lines
+   that would otherwise share the same swatch. */
+function tint(hex, f){
+  const c=hex.replace('#',''); const n=parseInt(c.length===3?c.split('').map(x=>x+x).join(''):c,16);
+  const mix=(v)=> f>=0 ? Math.round(v+(255-v)*f) : Math.round(v*(1+f));
+  return '#'+[(n>>16)&255,(n>>8)&255,n&255].map(v=>mix(v).toString(16).padStart(2,'0')).join('');
+}
 /* ------------------------------------------------------------ projection */
 const D = Math.PI/180;
 function makeLCC(lat1, lat2, lat0, lon0){
@@ -823,18 +830,37 @@ function historyChart(ei, ri){
     return {k, j, nb, sh, tot, win:canon(row[7]<0?'Other':DATA.parties[row[7]]),
             name:row[0], label:DATA.elections[k].l};
   });
-  // the parties worth a line
-  const peak={};
-  for(const p of pts) for(const k in p.sh) peak[k]=Math.max(peak[k]||0, p.sh[k]);
-  for(const p of pts) peak[p.win]=Math.max(peak[p.win]||0, 0.5);
-  const parties=Object.keys(peak).filter(k=>peak[k]>=0.08)
-    .sort((a,b)=>peak[b]-peak[a]).slice(0,7);
+  // The parties worth a line. Anything that ever won the seat, or ever passed
+  // 15% of the vote in it, always gets one — a cap that silently dropped those
+  // made the chart lie about what happened. Smaller parties fill what room is
+  // left, best result first.
+  const peak={}, must=new Set();
+  for(const p of pts){
+    for(const k in p.sh){
+      peak[k]=Math.max(peak[k]||0, p.sh[k]);
+      if(p.sh[k]>=0.15) must.add(k);
+    }
+    if(p.tot) must.add(p.win);
+  }
+  const rest=Object.keys(peak).filter(k=>!must.has(k) && peak[k]>=0.08)
+                              .sort((a,b)=>peak[b]-peak[a]);
+  const parties=[...must, ...rest].slice(0, Math.max(must.size, 9))
+                                  .sort((a,b)=>(peak[b]||0)-(peak[a]||0));
   if(!parties.length) return '';
 
   const W=360, H=196, L0=26, R0=354, T=10, B=150;
   const x=i=>L0+(R0-L0)*(pts.length===1?0.5:i/(pts.length-1));
   const y=v=>B-(B-T)*v;
   const reg=R.region(E.r[ri]);
+  // Several minor parties share the fallback grey; shift each repeat so the
+  // lines can still be told apart.
+  const seenCol=new Map(), colOf={};
+  for(const party of parties){
+    let c=partyColour(party, reg);
+    const n=seenCol.get(c)||0; seenCol.set(c, n+1);
+    if(n) c=tint(c, (n%2 ? 1 : -1) * 0.22 * Math.ceil(n/2));
+    colOf[party]=c;
+  }
   let g='';
   for(const v of [0,.25,.5,.75,1]){
     g+=`<line x1="${L0}" y1="${y(v).toFixed(1)}" x2="${R0}" y2="${y(v).toFixed(1)}" class="gl"/>`
@@ -847,7 +873,7 @@ function historyChart(ei, ri){
   if(here>=0) g+=`<line x1="${x(here).toFixed(1)}" y1="${T-4}" x2="${x(here).toFixed(1)}" y2="${B+4}" class="nowl"/>`;
 
   for(const party of parties){
-    const col=partyColour(party, reg);
+    const col=colOf[party];
     let last=-1;
     pts.forEach((p,i)=>{
       const has=p.tot>0 && p.sh[party]!==undefined;
@@ -888,13 +914,13 @@ function historyChart(ei, ri){
     g+=`<rect x="${(x(i)-w/2).toFixed(1)}" y="${T-4}" width="${w.toFixed(1)}" height="${B-T+8}" `
       +`fill="transparent" class="hit" data-el="${p.k}" data-row="${p.j}"><title>${esc(p.label)} — ${esc(titleCase(p.name))}: ${esc(shortName(p.win))}</title></rect>`;
   });
-  const key=parties.map(p=>`<span class="lgk"><span class="sw" style="background:${partyColour(p,reg)}"></span>${esc(shortName(p))}</span>`).join('');
+  const key=parties.map(p=>`<span class="lgk"><span class="sw" style="background:${colOf[p]}"></span>${esc(shortName(p))}</span>`).join('');
   const changes=pts.filter((p,i)=>p.nb&&i).length;
   return `<div class="sect">Vote share since ${esc(pts[0].label)}</div>
     <svg class="hist" viewBox="0 0 ${W} ${H}" preserveAspectRatio="xMidYMid meet" role="img"
       aria-label="Vote share in this seat at every election since ${esc(pts[0].label)}">${g}</svg>
     <div class="lgks">${key}</div>
-    <div class="note" style="border:0;margin-top:6px">Share of the vote at each election, following the ground this seat covers rather than its name — it was ${esc(titleCase(pts[0].name))} in ${esc(pts[0].label)}. ${changes?'A broken line and a faint rule mark the '+changes+' boundary revision'+(changes>1?'s':'')+' along the way; either side of one it is not quite the same seat. ':''}Click a year to go to it.</div>`;
+    <div class="note" style="border:0;margin-top:6px">Share of the vote at each election, following the ground this seat covers rather than its name — it was ${esc(titleCase(pts[0].name))} in ${esc(pts[0].label)}. ${changes?'A broken line and a faint rule mark the '+changes+' boundary revision'+(changes>1?'s':'')+' along the way; either side of one it is not quite the same seat. ':''}Every party that won the seat or passed 15% here has a line. Click a year to go to it.</div>`;
 }
 
 function showSeat(r){
