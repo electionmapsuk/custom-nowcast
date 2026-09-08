@@ -40,7 +40,7 @@ h1{font-size:1.72rem; font-weight:900; letter-spacing:-.03em; line-height:1.2; m
 .brandlogo{height:1.2em; width:auto; vertical-align:-.08em; display:inline-block}
 :root[data-theme=dark] .brandlogo{filter:brightness(2.35) saturate(.85)}
 .bar{color:var(--faint); font-weight:300; margin:0 .34em 0 .38em; line-height:1}
-.arch{text-transform:uppercase; font-weight:650; font-size:.95em; letter-spacing:.06em;
+.arch{text-transform:uppercase; font-weight:750; font-size:.95em; letter-spacing:.045em;
   color:#8C532B}
 :root[data-theme=dark] .arch{color:#d19a63}
 .sub{font-size:.82rem; color:var(--muted); font-weight:500; line-height:1.2}
@@ -115,7 +115,7 @@ h2{font-size:1.15rem; font-weight:900; letter-spacing:-.025em; margin:0 0 3px}
 .meta{color:var(--muted); font-size:.8rem; font-weight:500; margin-bottom:16px}
 .sect{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint);
   font-weight:700; margin:22px 0 10px}
-.seatbar{display:flex; height:28px; border-radius:7px; overflow:hidden; gap:2px; background:var(--line)}
+.seatbar{display:flex; height:28px; border-radius:7px; overflow:hidden; gap:1px; background:var(--line)}
 .seatbar span{display:block}
 .majline{position:relative; height:16px; margin-top:5px}
 .majline i{position:absolute; top:0; width:1px; height:7px; background:var(--faint)}
@@ -282,7 +282,10 @@ const COL = {
 
 /* Left-to-right political ordering for the seat bar. The table and legend stay
    sorted by seats — easier to read numbers off — but a seat bar only makes
-   sense as a spectrum. Non-partisan and unclassified seats sit at the end. */
+   sense as a spectrum. Within the left it runs biggest-first and within the
+   right biggest-last, so the two big blocs anchor the ends of the bar; the
+   centre keeps strict spectrum order and the non-partisan seats sit in the
+   middle, where they do not break those anchors. */
 const SPECTRUM = {
   'Communist':5, "Workers' Party":6, 'Workers Party':6, 'TUSC':7,
   'People Before Profit Alliance':8,
@@ -757,7 +760,17 @@ function showSummary(){
   // SDP–Liberal Alliance's colour (the source uses one label for both)
   const regionOf = {};
   for(const r of E.r){ const w=R.win(r); if(!(w in regionOf)) regionOf[w]=R.region(r); }
-  const spread = [...arr].sort((a,b)=> spectrumOf(a[0]) - spectrumOf(b[0]) || b[1]-a[1]);
+  // left bloc biggest-first, right bloc biggest-last: the two big parties end
+  // up at the two ends of the bar, which is how a seat bar is read
+  const band = p => { const s=spectrumOf(p);
+    return s>=85 ? 2 : s<33 ? 0 : s<48 ? 1 : 3; };   // 0 left, 1 centre, 2 odds, 3 right
+  const spread = [...arr].sort((a,b)=>{
+    const ba=band(a[0]), bb=band(b[0]);
+    if(ba!==bb) return ba-bb;
+    if(ba===0) return b[1]-a[1] || spectrumOf(a[0])-spectrumOf(b[0]);   // biggest leftmost
+    if(ba===3) return a[1]-b[1] || spectrumOf(a[0])-spectrumOf(b[0]);   // biggest rightmost
+    return spectrumOf(a[0])-spectrumOf(b[0]) || b[1]-a[1];
+  });
   let bar='<div class="seatbar">';
   for(const [p,n] of spread)
     bar+=`<span style="flex:${n};background:${partyColour(p, regionOf[p]||'')}" title="${esc(shortName(p))} ${n}"></span>`;
@@ -794,7 +807,7 @@ function showSummary(){
     <div class="note">Click any constituency for its full result. Use ← → to move between elections.<br><br>
       Results: House of Commons Library — by candidate for 2024, by constituency before that.
       Boundaries: parlconst.org (uMap / OpenStreetMap), clipped to an ONS coastline.<br>
-      <span style="opacity:.7">Build 2026-09-08 22:33</span></div>
+      <span style="opacity:.7">Build 2026-09-08 22:37</span></div>
     <img class="wm" src="${LOGO}" alt="electionmapsuk">`;
   wireSearch();
 }
