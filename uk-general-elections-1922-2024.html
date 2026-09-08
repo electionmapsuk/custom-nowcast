@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>electionmapsuk archive — UK general elections 1922–2024</title>
+<title>electionmapsuk archive — UK General Elections 1922–2024</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -115,7 +115,7 @@ h2{font-size:1.15rem; font-weight:900; letter-spacing:-.025em; margin:0 0 3px}
 .meta{color:var(--muted); font-size:.8rem; font-weight:500; margin-bottom:16px}
 .sect{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint);
   font-weight:700; margin:22px 0 10px}
-.seatbar{display:flex; height:28px; border-radius:7px; overflow:hidden; gap:1px; background:var(--line)}
+.seatbar{display:flex; height:28px; border-radius:7px; overflow:hidden; background:var(--line)}
 .seatbar span{display:block}
 .majline{position:relative; height:16px; margin-top:5px}
 .majline i{position:absolute; top:0; width:1px; height:7px; background:var(--faint)}
@@ -282,10 +282,10 @@ const COL = {
 
 /* Left-to-right political ordering for the seat bar. The table and legend stay
    sorted by seats — easier to read numbers off — but a seat bar only makes
-   sense as a spectrum. Within the left it runs biggest-first and within the
-   right biggest-last, so the two big blocs anchor the ends of the bar; the
-   centre keeps strict spectrum order and the non-partisan seats sit in the
-   middle, where they do not break those anchors. */
+   sense as a spectrum. Everything left of centre runs biggest-first and
+   everything right of centre biggest-last, so the two big blocs anchor the ends
+   of the bar; the non-partisan seats sit in the middle, where they belong to
+   neither side and do not break those anchors. */
 const SPECTRUM = {
   'Communist':5, "Workers' Party":6, 'Workers Party':6, 'TUSC':7,
   'People Before Profit Alliance':8,
@@ -543,7 +543,7 @@ function select(i, keepView, forceRow){
   elIdx=i; E=DATA.elections[i]; selected = carry>=0 ? carry : null;
   [...$('#strip').children].forEach((b,j)=>b.setAttribute('aria-selected', j===i));
   $('#strip').children[i].scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});
-  $('#elmeta').textContent = 'UK general elections 1922–2024 · ' + E.d + ' · ' + E.s + ' seats';
+  $('#elmeta').textContent = 'UK General Elections 1922–2024 · ' + E.d + ' · ' + E.s + ' seats';
   drawMap(keepView);
   if(selected!==null){ markSel(); showSeat(E.r[selected]); }
   else showSummary();
@@ -763,13 +763,12 @@ function showSummary(){
   // left bloc biggest-first, right bloc biggest-last: the two big parties end
   // up at the two ends of the bar, which is how a seat bar is read
   const band = p => { const s=spectrumOf(p);
-    return s>=85 ? 2 : s<33 ? 0 : s<48 ? 1 : 3; };   // 0 left, 1 centre, 2 odds, 3 right
+    return s>=85 ? 1 : s<48 ? 0 : 2; };        // 0 left of centre, 1 non-partisan, 2 right
   const spread = [...arr].sort((a,b)=>{
     const ba=band(a[0]), bb=band(b[0]);
     if(ba!==bb) return ba-bb;
-    if(ba===0) return b[1]-a[1] || spectrumOf(a[0])-spectrumOf(b[0]);   // biggest leftmost
-    if(ba===3) return a[1]-b[1] || spectrumOf(a[0])-spectrumOf(b[0]);   // biggest rightmost
-    return spectrumOf(a[0])-spectrumOf(b[0]) || b[1]-a[1];
+    if(ba===2) return a[1]-b[1] || spectrumOf(a[0])-spectrumOf(b[0]);   // biggest rightmost
+    return b[1]-a[1] || spectrumOf(a[0])-spectrumOf(b[0]);             // biggest leftmost
   });
   let bar='<div class="seatbar">';
   for(const [p,n] of spread)
@@ -794,7 +793,7 @@ function showSummary(){
   }
   const turnout = elect ? tot/elect : 0;
   $('#panel').innerHTML = searchHTML() + `
-    <h2>${esc(E.l)} general election</h2>
+    <h2>${esc(E.l)} General Election</h2>
     <div class="meta">${esc(E.d)}</div>
     ${bar}
     <div class="sect">Seats and vote share</div>
@@ -807,7 +806,7 @@ function showSummary(){
     <div class="note">Click any constituency for its full result. Use ← → to move between elections.<br><br>
       Results: House of Commons Library — by candidate for 2024, by constituency before that.
       Boundaries: parlconst.org (uMap / OpenStreetMap), clipped to an ONS coastline.<br>
-      <span style="opacity:.7">Build 2026-09-08 22:37</span></div>
+      <span style="opacity:.7">Build 2026-09-08 22:44</span></div>
     <img class="wm" src="${LOGO}" alt="electionmapsuk">`;
   wireSearch();
 }
