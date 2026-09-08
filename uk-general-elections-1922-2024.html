@@ -32,14 +32,14 @@ body{margin:0; background:var(--bg); color:var(--ink);
 #app{display:flex; flex-direction:column; height:100vh; min-height:0; outline:none}
 
 header{padding:16px 20px 14px; background:var(--bg); border-bottom:1px solid var(--line)}
-.titlerow{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:12px}
+.titlerow{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:12px}
 h1{font-size:1.55rem; font-weight:900; letter-spacing:-.03em; line-height:1.2; margin:0;
   display:flex; align-items:center}
 .brandlogo{height:1.12em; width:auto; vertical-align:-.08em; display:inline-block}
 :root[data-theme=dark] .brandlogo{filter:brightness(2.35) saturate(.85)}
-.bar{color:var(--faint); font-weight:300; margin:0 .34em 0 .38em}
+.bar{color:var(--faint); font-weight:300; margin:0 .34em 0 .38em; line-height:1}
 .arch{text-transform:uppercase; font-weight:500; font-size:.9em; letter-spacing:.06em}
-.sub{font-size:.82rem; color:var(--muted); font-weight:500}
+.sub{font-size:.82rem; color:var(--muted); font-weight:500; line-height:1.2}
 .spacer{flex:1}
 button,select,input{font-family:inherit; color:inherit}
 .iconbtn{padding:7px 13px; border-radius:7px; border:1px solid var(--line); background:var(--white);
@@ -515,11 +515,13 @@ function lineage(elIdxIn, rowIdx){
 }
 
 /* ------------------------------------------------------------- rendering */
-function select(i, keepView){
+function select(i, keepView, forceRow){
   if(!(i>=0 && i<DATA.elections.length)) return;
-  // keep the reader on the same constituency when they change year
+  // keep the reader on the same constituency when they change year — unless the
+  // caller already knows which row it wants (clicking a year on the chart)
   let carry=-1;
-  if(selected!==null && elIdx!==i) carry=followSeat(elIdx, selected, i);
+  if(forceRow!==undefined && forceRow!==null) carry=forceRow;
+  else if(selected!==null && elIdx!==i) carry=followSeat(elIdx, selected, i);
   elIdx=i; E=DATA.elections[i]; selected = carry>=0 ? carry : null;
   [...$('#strip').children].forEach((b,j)=>b.setAttribute('aria-selected', j===i));
   $('#strip').children[i].scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});
@@ -806,9 +808,11 @@ function historyChart(ei, ri){
   const pts=L.map(([k,j,nb])=>{
     const row=DATA.elections[k].r[j];
     const v=row[8], tot=v.reduce((s,x)=>s+x[1],0);
+    // The same party is spelled differently from era to era ("Liberal Democrats"
+    // then "Liberal Democrat"); canon() keeps it to one line.
     const sh={};
-    if(tot) for(const [pi,n] of v) sh[DATA.parties[pi]]=n/tot;
-    return {k, j, nb, sh, tot, win:(row[7]<0?'Other':DATA.parties[row[7]]),
+    if(tot) for(const [pi,n] of v){ const c=canon(DATA.parties[pi]); sh[c]=(sh[c]||0)+n/tot; }
+    return {k, j, nb, sh, tot, win:canon(row[7]<0?'Other':DATA.parties[row[7]]),
             name:row[0], label:DATA.elections[k].l};
   });
   // the parties worth a line
@@ -855,11 +859,20 @@ function historyChart(ei, ri){
         +`fill="${won?col:'var(--panel)'}" stroke="${col}" stroke-width="1.4"/>`;
     });
   }
-  // x labels — enough to place the eye, not so many they collide
+  // x labels — enough to place the eye, never close enough to collide
   const every=Math.max(1, Math.ceil(pts.length/7));
-  pts.forEach((p,i)=>{
-    if(i%every && i!==pts.length-1 && i!==here) return;
-    g+=`<text x="${x(i).toFixed(1)}" y="${B+13}" class="ax" text-anchor="middle">${esc(p.label.replace(' (Feb)','F').replace(' (Oct)','O'))}</text>`;
+  const wanted=new Set([0, pts.length-1]);
+  for(let i=0;i<pts.length;i+=every) wanted.add(i);
+  if(here>=0) wanted.add(here);
+  const keep=[];
+  const order=[...new Set([here, pts.length-1, 0].filter(i=>i>=0)
+                 .concat([...wanted].sort((a,b)=>a-b)))];
+  for(const i of order){
+    if(keep.some(j=>Math.abs(x(i)-x(j))<28)) continue;
+    keep.push(i);
+  }
+  keep.sort((a,b)=>a-b).forEach(i=>{
+    g+=`<text x="${x(i).toFixed(1)}" y="${B+13}" class="ax" text-anchor="middle">${esc(pts[i].label.replace(' (Feb)','F').replace(' (Oct)','O'))}</text>`;
   });
   // clickable columns
   pts.forEach((p,i)=>{
@@ -948,8 +961,7 @@ function showSeat(r){
   wireSearch();
   $('#back').onclick=()=>{ selected=null; markSel(); showSummary(); };
   document.querySelectorAll('#panel .hist .hit').forEach(h=>{
-    h.onclick=()=>{ const k=+h.dataset.el, j=+h.dataset.row;
-      selected=j; select(k, true); };
+    h.onclick=()=>{ select(+h.dataset.el, true, +h.dataset.row); };
   });
 }
 
