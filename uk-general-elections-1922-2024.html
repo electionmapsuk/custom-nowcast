@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>the electionmapsuk archive — UK general elections 1922–2024</title>
+<title>electionmapsuk archive — UK general elections 1922–2024</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
@@ -29,7 +29,7 @@ html,body{height:100%}
 body{margin:0; background:var(--bg); color:var(--ink);
   font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   -webkit-font-smoothing:antialiased; font-size:16px;}
-#app{display:flex; flex-direction:column; height:100vh; min-height:0}
+#app{display:flex; flex-direction:column; height:100vh; min-height:0; outline:none}
 
 header{padding:16px 20px 0; background:var(--bg); border-bottom:1px solid var(--line)}
 .titlerow{display:flex; align-items:baseline; gap:14px; flex-wrap:wrap; margin-bottom:12px}
@@ -175,10 +175,10 @@ tr.won td:last-child{border-radius:0 4px 4px 0}
 </head>
 <body>
 <div id="loading"><div class="spin"></div><div>Loading two centuries of results…</div></div>
-<div id="app" hidden>
+<div id="app" tabindex="-1" hidden>
   <header>
     <div class="titlerow">
-      <h1>the electionmapsuk <span class="arch">archive</span></h1>
+      <h1>electionmapsuk <span class="arch">archive</span></h1>
       <div class="sub" id="elmeta"></div>
       <div class="spacer"></div>
       <button class="iconbtn" id="prevEl" title="Previous election (←)" aria-label="Previous election">‹</button>
@@ -414,8 +414,7 @@ function buildStrip(){
     const b=document.createElement('button');
     b.className='yr'; b.setAttribute('role','tab'); b.textContent=el.l;
     const dot=document.createElement('span'); dot.className='dot';
-    const win=topParty(el);
-    dot.style.background=partyColour(win,'');
+    dot.style.background=stripColour(el);
     b.appendChild(dot);
     b.onclick=()=>select(i, true);   // keep the reader's zoom
     s.appendChild(b);
@@ -425,6 +424,20 @@ function topParty(el){
   const c=seatCounts(el);
   let best='',n=-1; for(const k in c) if(c[k]>n){n=c[k];best=k;}
   return best;
+}
+/* The strip's colour band marks who took the Commons. A hung parliament has
+   no such party, so it is left grey rather than coloured for the largest. */
+const NOMAJ='#9a9ea4';
+/* The National Liberals took the Conservative whip and sat as one party in
+   government — the 1950 and 1951 sheets are the only ones that column them
+   separately, and 1951 is a Conservative majority only once they are counted
+   together, as every history of it does. */
+const BLOC={'National Liberal/ National Liberal and Conservative':'Conservative'};
+function stripColour(el){
+  const c=seatCounts(el), g={};
+  for(const k in c){ const b=BLOC[k]||k; g[b]=(g[b]||0)+c[k]; }
+  let best='',n=-1; for(const k in g) if(g[k]>n){n=g[k];best=k;}
+  return n > el.s/2 ? partyColour(best,'') : NOMAJ;
 }
 
 /* ------------------------------------------------------------- rendering */
@@ -883,18 +896,57 @@ function showSeat(r){
     if(i >= 0 && i < DATA.elections.length) select(i, true);   // true = keep zoom
   }
   window.__step = step;
+  // Embedded, the arrows belong to the archive only while the reader is
+  // actually on it — pointer over it, or having clicked into it. Standing
+  // alone, they always do.
+  const EMBEDDED = (function(){ try{ return window.top !== window; }catch(e){ return true; } })();
+  let inside = false, engaged = false;
   addEventListener('keydown',e=>{
     if(e.target.tagName==='INPUT') return;
+    if(EMBEDDED && !inside && !engaged) return;
     if(e.key==='ArrowRight'){ e.preventDefault(); step(1); }
     if(e.key==='ArrowLeft'){ e.preventDefault(); step(-1); }
   });
-  // Embedded in an iframe the page has no keyboard focus until it is clicked,
-  // so the host forwards arrow keys while the pointer is over the frame.
+  // Embedded in an iframe the page has no keyboard focus until something in it
+  // is clicked, so the arrows do nothing on load. Take focus as soon as the
+  // pointer is over the archive — preventScroll so the host page never jumps,
+  // and never while the reader is typing in the search box.
+  let grabbed=false;
+  function grabKeys(){
+    if(grabbed) return;
+    const a=document.activeElement;
+    if(a && (a.tagName==='INPUT' || a.tagName==='TEXTAREA')) return;
+    try{ $('#app').focus({preventScroll:true}); grabbed=true; }catch(e){}
+  }
+  addEventListener('pointerover', ()=>{ inside=true; grabKeys(); }, {passive:true});
+  addEventListener('pointerdown', ()=>{ inside=true; engaged=true; grabbed=false; grabKeys(); },
+                   {passive:true});
+  addEventListener('focusout', ()=>{ grabbed=false; });
+  // Belt and braces: the host may also forward the keys itself.
   addEventListener('message', e=>{
     const k = e.data && e.data.archiveKey;
     if(k === 'ArrowRight') step(1);
     if(k === 'ArrowLeft') step(-1);
   });
+  // ...and tell it when the pointer is over us, so it knows when to.
+  let hov=null;
+  function tellHost(v){
+    if(hov===v) return; hov=v;
+    try{ window.parent.postMessage({archiveHover:v}, '*'); }catch(e){}
+  }
+  addEventListener('pointerover', ()=>tellHost(true), {passive:true});
+  addEventListener('pointerout', e=>{
+    if(e.relatedTarget) return;                  // still inside the archive
+    inside=false; tellHost(false);
+    // Hand the keyboard back when the pointer leaves, so arrow keys scroll the
+    // host page again — unless the reader clicked in, or is mid-search.
+    if(engaged) return;
+    const a=document.activeElement;
+    if(a && a.id==='app'){
+      a.blur(); grabbed=false;
+      try{ window.parent.postMessage({archiveBlur:true}, '*'); }catch(err){}
+    }
+  }, {passive:true});
   addEventListener('load',()=>{
     $('#zin').onclick=()=>{ view.k=Math.min(60,view.k*1.4); applyView(); };
     $('#zout').onclick=()=>{ view.k=Math.max(1,view.k/1.4); applyView(); };
