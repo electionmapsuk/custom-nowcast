@@ -31,14 +31,16 @@ body{margin:0; background:var(--bg); color:var(--ink);
   -webkit-font-smoothing:antialiased; font-size:16px;}
 #app{display:flex; flex-direction:column; height:100vh; min-height:0; outline:none}
 
-header{padding:16px 20px 14px; background:var(--bg); border-bottom:1px solid var(--line)}
+header{padding:16px 20px 14px; background:var(--panel); border-bottom:1px solid var(--line)}
 .titlerow{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:12px}
 h1{font-size:1.55rem; font-weight:900; letter-spacing:-.03em; line-height:1.2; margin:0;
   display:flex; align-items:center}
 .brandlogo{height:1.12em; width:auto; vertical-align:-.08em; display:inline-block}
 :root[data-theme=dark] .brandlogo{filter:brightness(2.35) saturate(.85)}
 .bar{color:var(--faint); font-weight:300; margin:0 .34em 0 .38em; line-height:1}
-.arch{text-transform:uppercase; font-weight:500; font-size:.9em; letter-spacing:.06em}
+.arch{text-transform:uppercase; font-weight:500; font-size:.9em; letter-spacing:.06em;
+  color:#8C532B}
+:root[data-theme=dark] .arch{color:#d19a63}
 .sub{font-size:.82rem; color:var(--muted); font-weight:500; line-height:1.2}
 .spacer{flex:1}
 button,select,input{font-family:inherit; color:inherit}
