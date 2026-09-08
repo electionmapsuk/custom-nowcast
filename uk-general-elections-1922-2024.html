@@ -14,7 +14,7 @@
   --ink:#15171a; --muted:#6b7280; --faint:#9ca3af;
   --line:#cbcbc7; --line2:#EAE4DF;
   --accent:#004d4d; --radius:10px;
-  --sea:#E3E3E3; --stroke:#FBF7F4;
+  --sea:#FBF7F4; --stroke:#FBF7F4;
   --shadow:0 2px 8px rgba(0,0,0,.07);
 }
 :root[data-theme=dark]{
@@ -29,16 +29,18 @@ html,body{height:100%}
 body{margin:0; background:var(--bg); color:var(--ink);
   font-family:'Inter',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;
   -webkit-font-smoothing:antialiased; font-size:16px;}
-#app{display:flex; flex-direction:column; height:100vh; min-height:0; outline:none}
+#app{display:flex; flex-direction:column; height:100vh; min-height:0; outline:none;
+  padding:12px; gap:12px}
 
-header{padding:16px 20px 14px; background:var(--panel); border-bottom:1px solid var(--line)}
+header{padding:16px 20px 14px; background:var(--panel); border:1px solid var(--line);
+  border-radius:var(--radius); box-shadow:var(--shadow); flex:0 0 auto}
 .titlerow{display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:12px}
-h1{font-size:1.55rem; font-weight:900; letter-spacing:-.03em; line-height:1.2; margin:0;
+h1{font-size:1.72rem; font-weight:900; letter-spacing:-.03em; line-height:1.2; margin:0;
   display:flex; align-items:center}
-.brandlogo{height:1.12em; width:auto; vertical-align:-.08em; display:inline-block}
+.brandlogo{height:1.2em; width:auto; vertical-align:-.08em; display:inline-block}
 :root[data-theme=dark] .brandlogo{filter:brightness(2.35) saturate(.85)}
 .bar{color:var(--faint); font-weight:300; margin:0 .34em 0 .38em; line-height:1}
-.arch{text-transform:uppercase; font-weight:500; font-size:.9em; letter-spacing:.06em;
+.arch{text-transform:uppercase; font-weight:650; font-size:.95em; letter-spacing:.06em;
   color:#8C532B}
 :root[data-theme=dark] .arch{color:#d19a63}
 .sub{font-size:.82rem; color:var(--muted); font-weight:500; line-height:1.2}
@@ -50,7 +52,10 @@ button,select,input{font-family:inherit; color:inherit}
 
 /* election strip */
 .strip{display:flex; align-items:stretch; overflow-x:auto; padding-bottom:2px;
-  scrollbar-width:thin; scroll-padding-inline:24px}
+  scrollbar-width:thin; scroll-padding-inline:24px;
+  /* fade the ends so a part-scrolled year reads as scrolled, not chopped */
+  -webkit-mask-image:linear-gradient(90deg,transparent 0,#000 16px,#000 calc(100% - 16px),transparent 100%);
+  mask-image:linear-gradient(90deg,transparent 0,#000 16px,#000 calc(100% - 16px),transparent 100%)}
 .strip::after{content:''; flex:0 0 12px}
 .strip::-webkit-scrollbar{height:6px}
 .strip::-webkit-scrollbar-thumb{background:var(--line); border-radius:3px}
@@ -62,8 +67,9 @@ button,select,input{font-family:inherit; color:inherit}
 .yr[aria-selected=true]{color:var(--ink); font-weight:900; border-bottom-color:var(--accent)}
 .yr .dot{display:block; height:3px; border-radius:2px; margin-top:5px}
 
-main{flex:1; display:grid; grid-template-columns:1fr 400px; gap:0; min-height:0}
-#mapwrap{position:relative; background:var(--sea); min-height:0; overflow:hidden}
+main{flex:1; display:grid; grid-template-columns:1fr 400px; gap:12px; min-height:0}
+#mapwrap{position:relative; background:var(--panel); min-height:0; overflow:hidden;
+  border:1px solid var(--line); border-radius:var(--radius); box-shadow:var(--shadow)}
 svg{display:block; width:100%; height:100%; cursor:grab; touch-action:none}
 svg.drag{cursor:grabbing}
 path.c{stroke:var(--stroke); stroke-width:.4; vector-effect:non-scaling-stroke;
@@ -89,8 +95,8 @@ path.sel{stroke:var(--ink); stroke-width:2}
 #tip .tn{font-weight:800; letter-spacing:-.01em; margin-bottom:3px}
 #tip .tw{display:flex; align-items:center; gap:7px; color:var(--muted); font-weight:600}
 
-aside{background:var(--panel); border-left:1px solid var(--line); overflow-y:auto;
-  min-height:0; padding:18px 20px 40px}
+aside{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+  box-shadow:var(--shadow); overflow-y:auto; min-height:0; padding:18px 20px 40px}
 .searchbox{position:relative; margin-bottom:16px}
 .searchbox input{width:100%; padding:10px 13px; border:1px solid var(--line); border-radius:8px;
   font-size:.85rem; font-weight:600; color:var(--ink); background:var(--field); outline:none}
@@ -174,11 +180,11 @@ tr.won td:last-child{border-radius:0 4px 4px 0}
   #app{height:auto}
   main{grid-template-columns:1fr; grid-template-rows:auto auto}
   #mapwrap{height:clamp(320px, 125vw, 560px)}
-  aside{border-left:0; border-top:1px solid var(--line); overflow:visible; min-height:0}
+  aside{overflow:visible; min-height:0}
   .mapctl button{width:40px; height:40px; font-size:17px}   /* finger-sized */
   .titlerow .spacer{display:none}   /* let the controls follow the subtitle */
   .titlerow{gap:10px}
-  h1{font-size:1.3rem}
+  h1{font-size:1.34rem}
 }
 </style>
 </head>
