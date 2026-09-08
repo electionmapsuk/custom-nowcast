@@ -536,6 +536,18 @@ function lineage(elIdxIn, rowIdx){
   return back;
 }
 
+/* Centre the chosen year in its strip WITHOUT scrollIntoView: that walks up
+   the ancestors and scrolls the page too, so on a phone changing election threw
+   the reader back up to the map. Only the strip's own scrollLeft moves here. */
+function centreYear(i){
+  const strip=$('#strip'), btn=strip.children[i];
+  if(!btn) return;
+  const sr=strip.getBoundingClientRect(), br=btn.getBoundingClientRect();
+  const to = strip.scrollLeft + (br.left - sr.left) - (sr.width - br.width)/2;
+  const max = strip.scrollWidth - strip.clientWidth;
+  strip.scrollTo({left: Math.max(0, Math.min(max, to)), behavior:'smooth'});
+}
+
 /* ------------------------------------------------------------- rendering */
 function select(i, keepView, forceRow){
   if(!(i>=0 && i<DATA.elections.length)) return;
@@ -546,7 +558,7 @@ function select(i, keepView, forceRow){
   else if(selected!==null && elIdx!==i) carry=followSeat(elIdx, selected, i);
   elIdx=i; E=DATA.elections[i]; selected = carry>=0 ? carry : null;
   [...$('#strip').children].forEach((b,j)=>b.setAttribute('aria-selected', j===i));
-  $('#strip').children[i].scrollIntoView({block:'nearest',inline:'center',behavior:'smooth'});
+  centreYear(i);
   $('#elmeta').textContent = 'UK General Elections 1922–2024 · ' + E.d + ' · ' + E.s + ' seats';
   drawMap(keepView);
   if(selected!==null){ markSel(); showSeat(E.r[selected]); }
@@ -816,7 +828,7 @@ function showSummary(){
     <div class="note">Click any constituency for its full result. Use ← → to move between elections.<br><br>
       Results: House of Commons Library — by candidate for 2024, by constituency before that.
       Boundaries: parlconst.org (uMap / OpenStreetMap), clipped to an ONS coastline.<br>
-      <span style="opacity:.7">Build 2026-09-08 23:37</span></div>
+      <span style="opacity:.7">Build 2026-09-08 23:46</span></div>
     <img class="wm" src="${LOGO}" alt="electionmapsuk">`;
   wireSearch();
 }
