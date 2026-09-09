@@ -350,10 +350,17 @@ function makeLCC(lat1, lat2, lat0, lon0){
   const n = Math.log(Math.cos(p1)/Math.cos(p2)) / Math.log(t(p2)/t(p1));
   const F = Math.cos(p1)*Math.pow(t(p1),n)/n;
   const r0 = F/Math.pow(t(p0),n);
+  // The raw projection puts the UK inside about a tenth of a unit. Drawn at
+  // that size the SVG needs a scale of ~10,000 just to fill the panel, and
+  // WebKit drops most of the shapes at those scales — Safari rendered a
+  // scattering of constituencies and nothing else. Multiplying up to a
+  // conventional ~1,000-unit canvas costs nothing and fixes it; everything
+  // downstream is relative to the bounding box, so nothing else changes.
+  const K = 10000;
   return (lon,lat)=>{
     const p=lat*D, l=lon*D;
     const r = F/Math.pow(t(p),n);
-    return [ r*Math.sin(n*(l-l0)), r*Math.cos(n*(l-l0)) - r0 ];
+    return [ K*r*Math.sin(n*(l-l0)), K*(r*Math.cos(n*(l-l0)) - r0) ];
   };
 }
 const proj = makeLCC(50, 59, 54.5, -4);
@@ -382,7 +389,7 @@ function geomPath(arcs, g){
     for(const r of poly){
       const pts = ringPts(arcs, r);
       if(pts.length<3) continue;
-      d += 'M' + pts.map(p=>p[0].toFixed(5)+' '+p[1].toFixed(5)).join('L') + 'Z';
+      d += 'M' + pts.map(p=>p[0].toFixed(1)+' '+p[1].toFixed(1)).join('L') + 'Z';
     }
   }
   return d;
@@ -828,7 +835,7 @@ function showSummary(){
     <div class="note">Click any constituency for its full result. Use ← → to move between elections.<br><br>
       Results: House of Commons Library — by candidate for 2024, by constituency before that.
       Boundaries: parlconst.org (uMap / OpenStreetMap), clipped to an ONS coastline.<br>
-      <span style="opacity:.7">Build 2026-09-08 23:46</span></div>
+      <span style="opacity:.7">Build 2026-09-09 16:38</span></div>
     <img class="wm" src="${LOGO}" alt="electionmapsuk">`;
   wireSearch();
 }
