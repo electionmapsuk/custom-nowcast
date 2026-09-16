@@ -218,6 +218,7 @@
   .legend-pill{cursor:pointer; padding:3px 12px; border-radius:8px; font-size:.7rem; font-weight:800; text-transform:uppercase; transition:opacity .2s; user-select:none; border:none; font-family:inherit;}
   .legend-pill.inactive{opacity:.3;}
   .canvas-wrapper{position:relative; height:460px; width:100%;}
+  .watermark-logo{display:block; margin:10px auto 0; height:25px; pointer-events:none;}
   .advanced-panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px; display:none; font-size:.82rem; width:290px; flex-shrink:0; overflow-y:auto;}
   .adv-section h5{margin:0 0 8px; font-weight:700; color:var(--ink); font-size:.8rem; border-bottom:1px solid var(--line); padding-bottom:4px;}
   .adv-section + .adv-section{margin-top:18px;}
@@ -377,6 +378,7 @@
           <div class="canvas-wrapper">
             <canvas id="pollChart" role="img" aria-label="Line chart of Senedd voting intention over time"></canvas>
           </div>
+          <img src="https://i.postimg.cc/j2xcNfzg/2026longlogotrans.png" alt="electionmapsuk" class="watermark-logo">
         </div>
         <div id="advanced-panel" class="advanced-panel">
           <div class="adv-section">
@@ -732,9 +734,12 @@
 const CONFIG = {
   // Same J-curve weak/strong split parameters as the GB engine's CONFIG.jcurve.
   jcurve: { pivot: 0.32, baseMult: 0.30, leftSlope: 1.2, rightSlope: 0.5, floor: 0.10, ceiling: 0.90 },
-  // Same Green-only tactical-style penalty (soft Green vote suppressed where Con+Reform
-  // are strong) — this is part of the J-curve transition model itself, not "tactical voting".
-  greenPenalty: { floor: 0.05, conWeight: 0.9, refWeight: 0.15, satWeight: 0.45, rightPivot: 0.42, rightExtra: 2.0, rightFloorDrop: 1.0 },
+  // NOTE: the GB engine's Green-only penalty (soft Green vote suppressed where Con+Reform are
+  // strong) is deliberately NOT carried over. It models FPTP tactical squeeze, which is the one
+  // thing this engine drops on principle — under D'Hondt a vote is never wasted — and the 2026
+  // Senedd election was fought after the Polanski-era shift in the Green voter base, so the
+  // premise that Green support is soft and defects to block the right no longer holds.
+  // Every party now runs the same J-curve with the same parameters.
   // "Others" suppression exponent — same mechanism as the GB engine's othersExponent.transition,
   // but 3 rather than 10. The exponent sets how hard OTH reacts to the entered mains total moving
   // away from the 2026 total: at 10 the reaction is violent and unbounded, and because it is
@@ -754,25 +759,13 @@ const MAIN = ['LAB','CON','RFM','LDM','GRN','PLC'];   // the 6 parties visitors 
 const sum = a => a.reduce((x,y)=>x+y,0);
 const clamp = (x,lo,hi) => Math.max(lo, Math.min(hi, x));
 
-// J-curve weak-vote portion of a party's base share — identical formula to the GB engine.
-function weakVote(base, opts, cfg) {
+// J-curve weak-vote portion of a party's base share — identical formula to the GB engine,
+// and now applied identically to every party (see the note on greenPenalty in CONFIG).
+function weakVote(base, cfg) {
   const j = cfg.jcurve;
-  let raw = base < j.pivot ? j.baseMult + (j.pivot - base)*j.leftSlope
-                           : j.baseMult + (base - j.pivot)*j.rightSlope;
-  let floor = j.floor;
-  if (opts && opts.greenPenalty) {
-    const g = cfg.greenPenalty;
-    raw = raw - (opts.con*g.conWeight + opts.ref*g.refWeight) - base*g.satWeight;
-    floor = g.floor;
-    if (g.rightExtra) {
-      const over = (opts.con + opts.ref) - g.rightPivot;
-      if (over > 0) {
-        raw   -= over * g.rightExtra;
-        floor  = Math.max(0, g.floor - over * (g.rightFloorDrop || 0));
-      }
-    }
-  }
-  return base * clamp(raw, floor, j.ceiling);
+  const raw = base < j.pivot ? j.baseMult + (j.pivot - base)*j.leftSlope
+                             : j.baseMult + (base - j.pivot)*j.rightSlope;
+  return base * clamp(raw, j.floor, j.ceiling);
 }
 
 // national "others" target, suppressed/relaxed the same way withMinorTargets() does in nowcast.js:
@@ -791,8 +784,7 @@ function swingEngine(seats, target, cfg) {
     const weak={}, strong={};
     PARTIES.forEach(p => {
       const base = s.base[p]||0;
-      const o = (p==='GRN') ? {greenPenalty:true, con:s.base.CON||0, ref:s.base.RFM||0} : null;
-      weak[p] = weakVote(base, o, cfg);
+      weak[p] = weakVote(base, cfg);
       strong[p] = base - weak[p];
     });
     return {s, weak, strong};
