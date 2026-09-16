@@ -988,7 +988,7 @@ document.addEventListener('DOMContentLoaded', function(){
   }
   var MAPNOTE = {
     proj:   'Leading party in the projection.',
-    actual: 'Leading party in the actual 7 May 2026 result — the model\u2019s baseline.',
+    actual: '',
     change: 'Constituencies where the projected leading party differs from 2026; grey where it is unchanged.',
     margin: 'Projected leading party, shaded by how often it finishes top across the simulations: Safe 95%+, Likely 75\u201395, Lean 55\u201375, Tilt under 55.'
   };
@@ -1061,8 +1061,8 @@ document.addEventListener('DOMContentLoaded', function(){
     if (mapMode === 'change' || mapMode === 'margin') {
       note += ' The hex map has no per-seat equivalent of this, so it stays on the projection.';
     }
-    document.getElementById('mapcredit').innerHTML =
-      note + '<br>Hex view: one hex per seat, six per constituency, in D\u2019Hondt allocation order; thicker lines mark constituency borders.';
+    var hexLine = 'Hex view: one hex per seat, six per constituency, in D\u2019Hondt allocation order; thicker lines mark constituency borders.';
+    document.getElementById('mapcredit').innerHTML = note ? (note + '<br>' + hexLine) : hexLine;
   }
   function wireMapModes(){
     var modes = document.getElementById('mapModes');
