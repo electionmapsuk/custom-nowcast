@@ -159,6 +159,8 @@
   .fine-note{margin-top:10px;}
   .members{display:flex; gap:4px; justify-content:center;}
   .mdot{width:15px; height:15px; border-radius:4px; flex:0 0 auto;}
+  /* the seat that isn't real: a 7th member, if there were one */
+  .ndot{width:15px; height:15px; border-radius:4px; display:inline-block; vertical-align:middle;}
   .cbar{display:flex; height:14px; border-radius:4px; overflow:hidden; width:100%; min-width:200px; max-width:320px; margin:0 auto;}
   .cbar div{height:100%;}
   /* map: single view + toggle on narrow screens, both side by side on wide screens */
@@ -177,7 +179,15 @@
 
   /* ---- mobile ---- */
   @media(max-width:880px){ .grid{gap:16px;} }
-  @media(max-width:640px){ .hemi-wrap{flex-direction:column; align-items:center;} }
+  /* Mobile: stack, but let the card grid fill the panel. With align-items:center the grid was
+     shrinking to its content (162px of a 370px panel) and the cards huddled in the middle with
+     dead space each side — stretch makes them fill it, and the hemicycle scales instead of
+     sitting at a fixed 270px inside gutters. */
+  @media(max-width:640px){
+    .hemi-wrap{flex-direction:column; align-items:stretch; gap:4px; margin-top:10px;}
+    svg#hemi{align-self:center; width:100%; max-width:300px; height:auto;}
+    .hemi-wrap .totstrip{flex:0 0 auto;}
+  }
   @media(max-width:600px){
     .wrap{padding:16px 12px 56px;}
     .panel{padding:15px;}
@@ -357,7 +367,7 @@
       </div>
       <div class="table-wrap">
         <table>
-          <thead><tr><th>Constituency</th><th>Vote share</th><th>Elected members (6)</th><th>Quota</th></tr></thead>
+          <thead><tr><th>Constituency</th><th>Vote share</th><th>Elected members (6)</th><th>Next seat</th></tr></thead>
           <tbody id="constitBody"></tbody>
         </table>
       </div>
@@ -1339,6 +1349,19 @@ document.addEventListener('DOMContentLoaded', function(){
   // share/seats — so the lowest share/seats across all parties holding a seat IS that quotient.
   // Any party needs to clear it to have taken the sixth seat instead, which makes it the
   // effective threshold in this constituency.
+  // Who a 7th seat would go to, if the constituency elected one more member: simply the next
+  // D'Hondt quotient after the six are allocated — share/(seats+1), highest wins. Same arithmetic
+  // the count itself would do; nothing hypothetical about the method, only the extra seat.
+  function nextSeatFor(c){
+    var best = null, bestQ = -1;
+    ORDER.forEach(function(p){
+      var v = c.shares[p]||0; if (v <= 0) return;
+      var q = v/((c.seats[p]||0) + 1);
+      if (q > bestQ) { bestQ = q; best = p; }
+    });
+    return best ? { party: best, quotient: bestQ } : null;
+  }
+
   function quotaFor(c){
     var q6 = null;
     ORDER.forEach(function(p){
@@ -1422,7 +1445,11 @@ document.addEventListener('DOMContentLoaded', function(){
       return '<tr><td>'+c.name+'</td>'+
         '<td><div class="cbar">'+bar+'</div></td>'+
         '<td><div class="members">'+dots+'</div></td>'+
-        '<td>'+(quotaFor(c)*100).toFixed(1)+'%</td></tr>';
+        '<td>'+(function(){
+          var nx = nextSeatFor(c); if (!nx) return '&mdash;';
+          return '<span class="ndot" style="background:'+PI[nx.party].c+'" title="Next seat would go to '+
+                 PI[nx.party].n+' (on '+(nx.quotient*100).toFixed(1)+'%)"></span>';
+        })()+'</td></tr>';
     }).join('');
     applyTableSearch();
   }
@@ -1536,6 +1563,7 @@ document.addEventListener('DOMContentLoaded', function(){
       + (mode==='custom' ? '<div class="badge">User Input</div>' : '');
 
     // the six seats in D'Hondt allocation order, numbered — the hovered one ringed on the hex map
+    var nx = nextSeatFor(c);
     html += '<div class="res">' + c.members.map(function(p, i){
       var col = PI[p].c;
       return '<div class="sq'+(hasSeat && i===seatIdx ? ' on' : '')+'" style="background:'+col+'; color:'+textColorFor(col)+'">'+(i+1)+'</div>';
@@ -1545,6 +1573,7 @@ document.addEventListener('DOMContentLoaded', function(){
     html += '<div class="meta">'
       + (hasSeat ? '<b>Seat '+(seatIdx+1)+':</b> '+PI[c.members[seatIdx]].n+'<br>' : '')
       + (q6!==null ? '<b>Quota for 6th seat:</b> '+(q6*100).toFixed(1)+'%' : '')
+      + (nx ? '<br><b>Next seat:</b> '+PI[nx.party].n+' ('+(nx.quotient*100).toFixed(1)+'%)' : '')
       // same "win chance" line the GB card carries, from the same simulations that shade the
       // Margin map — absent until a custom scenario's sims have been run
       + (function(){
