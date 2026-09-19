@@ -161,6 +161,9 @@
   #constitTable th.sorted-desc::after{content:' \2193' attr(data-rank); opacity:1;}
   #constitTable th.sorted-sub::after{opacity:.5; font-size:.9em;}   /* still sorting, not first */
   .winpill{display:inline-block; padding:2px 9px; border-radius:6px; font-weight:800; font-size:.68rem; min-width:42px;}
+  /* region code: never wrap, and the dotted underline says the full name is under the cursor */
+  #constitTable td.rgn{white-space:nowrap; font-weight:700; letter-spacing:.01em;
+    text-decoration:underline dotted rgba(0,0,0,.28); text-underline-offset:3px; cursor:help;}
 
   /* ---- Holyrood-only components ---- */
   /* Two votes means two slider blocks. Side by side once there is room, each with its own
@@ -457,6 +460,7 @@
           <tbody id="constitBody"></tbody>
         </table>
       </div>
+      <p class="fine-note"><b>Regions:</b> C&amp;LW Central Scotland and Lothians West &middot; E&amp;LS Edinburgh and Lothians East &middot; G Glasgow &middot; H&amp;I Highlands and Islands &middot; M&amp;F Mid Scotland and Fife &middot; NE North East Scotland &middot; S South Scotland &middot; W West Scotland. Hovering a code shows its full name, and the filter box still matches on it.</p>
 
       <div class="section-h" style="margin-top:44px;">Opinion polling</div>
       <div id="poll-note-slot"></div>
@@ -670,6 +674,21 @@ document.addEventListener('DOMContentLoaded', function(){
   // down. (Hoisted like everything else start() reaches: in the standalone it runs before a
   // later `var` would have executed, and this one threw on its first outing.)
   var TABLE_COLS = ['SNP','LAB','RFM','CON','LDM','GRN'];
+  // Region codes for the constituency table. "Central Scotland and Lothians West" set on one
+  // line is wider than the four vote columns beside it, and wrapped it makes every row in the
+  // region three lines deep; the code holds the column to a couple of characters. The full name
+  // stays on the cell as a tooltip and in the search haystack, so typing "glasgow" still works.
+  // Anything not listed falls back to its full name rather than rendering blank.
+  var REGION_CODE = {
+    'Central Scotland and Lothians West': 'C&LW',
+    'Edinburgh and Lothians East':        'E&LS',
+    'Glasgow':                            'G',
+    'Highlands and Islands':              'H&I',
+    'Mid Scotland and Fife':              'M&F',
+    'North East Scotland':                'NE',
+    'South Scotland':                     'S',
+    'West Scotland':                      'W'
+  };
   var tableRows = [];                                  // last render's constituency results
   // A STACK of sort keys, most recent first, rather than a single key — so the sort remembers
   // what you asked for before. Sort by Labour share high-to-low, then by region, and you get the
@@ -1345,7 +1364,7 @@ document.addEventListener('DOMContentLoaded', function(){
       cells += '<td'+(othWin ? ' style="font-weight:800; color:'+darkenForText(PI[c.winner].c)+'"' : '')+'>'
              + (oth >= 0.05 ? oth.toFixed(1)+'%' : '&mdash;') + '</td>';
       return '<tr><td>'+c.name+'</td>'+
-        '<td style="white-space:normal; max-width:150px;">'+c.region+'</td>'+
+        '<td class="rgn" title="'+c.region+'" data-region="'+c.region+'">'+(REGION_CODE[c.region] || c.region)+'</td>'+
         '<td><span class="winpill" style="background:'+col+';color:'+textColorFor(col)+'">'+c.winner+'</span></td>'+
         cells +
         '<td>'+(c.margin*100).toFixed(1)+'</td></tr>';
@@ -1375,7 +1394,10 @@ document.addEventListener('DOMContentLoaded', function(){
     var el = document.getElementById('tablesearch');
     var q = (el && el.value || '').trim().toLowerCase();
     document.querySelectorAll('#constitBody tr').forEach(function(tr){
-      var hay = (tr.cells[0].textContent + ' ' + tr.cells[1].textContent).toLowerCase();
+      // the region cell now shows a code, so search the FULL name it carries as well — otherwise
+      // typing "glasgow" or "highlands" stops matching the region it used to
+      var hay = (tr.cells[0].textContent + ' ' + tr.cells[1].textContent + ' ' +
+                 (tr.cells[1].getAttribute('data-region') || '')).toLowerCase();
       tr.style.display = (!q || hay.indexOf(q)>=0) ? '' : 'none';
     });
   }
