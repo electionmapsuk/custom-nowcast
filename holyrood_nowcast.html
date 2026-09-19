@@ -1801,7 +1801,7 @@ document.addEventListener('DOMContentLoaded', function(){
       + '<div class="meta" style="margin-top:7px;">'
       + '<b>Winner:</b> '+PI[c.winner].n+'<br>'
       + '<b>Majority:</b> '+(c.margin*100).toFixed(1)+' pts over '+PI[c.runnerUp].n+'<br>'
-      + '<b>Region:</b> '+c.region
+      + '<b>Region:</b> '+(REGION_CODE[c.region] || c.region)
       + (c.winner2026 && c.winner2026!==c.winner ? '<br><b>2026:</b> '+PI[c.winner2026].n+' (gain)' : '')
       + (function(){
           var w = mcSeatWin && mcSeatWin[name];
@@ -1836,7 +1836,7 @@ document.addEventListener('DOMContentLoaded', function(){
       .map(function(p){ return p+' '+g.totalSeats[p]; }).join(' · ');
     html += '<div class="meta">'
       + '<b>Constituencies:</b> '+(cs||'none')+'<br>'
-      + '<b>Total (of 7 list + const.):</b> '+tt
+      + '<b>Total:</b> '+tt
       + (g.nextSeat ? '<br><b>Next list seat:</b> '+PI[g.nextSeat].n : '')
       + '</div></div>';
     html += shareRows(g.shares, baseRegionByName[name], 45) + tipFooter();
