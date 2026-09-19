@@ -1,0 +1,33 @@
+<!-- Paste THIS (and only this) into a Squarespace Code Block.
+
+     WHICH FILE THIS POINTS AT.
+     It points at holyrood_nowcast.standalone.html, exactly the same way your Senedd and GB
+     embeds point at their standalone files. The standalone has the engine, all three data
+     files, both boundary files and the logo baked inside it, so it is ONE self-contained file
+     that needs no folders and no other uploads.
+
+     Do NOT point this at holyrood_nowcast.html. That version fetches build/holyrood.browser.js
+     and build/data/*.json relative to itself; those aren't in the repo, so it loads and then
+     shows "Could not load model data (SyntaxError: Unexpected token '<' ...)" — that error
+     always means a fetch got GitHub's 404 page instead of the file.
+
+     TO UPDATE THE SITE: re-run `node build_standalone.js` from inside holyrood/build/, then
+     upload the new holyrood_nowcast.standalone.html to the repo root, replacing the old one.
+     One file.
+
+     ABOUT ?v= : GitHub Pages caches aggressively, so without this your visitors keep seeing
+     the old file. Bump it (today's date is fine) every time you upload a new standalone. -->
+<iframe
+  id="holyroodFrame"
+  src="https://electionmapsuk.github.io/custom-nowcast/holyrood_nowcast.standalone.html?v=20260919a"
+  title="Holyrood Nowcast"
+  style="width:1px; min-width:100%; height:2100px; border:0; overflow:hidden;"
+  scrolling="no"
+  loading="lazy"></iframe>
+<script>
+  window.addEventListener('message', function(e){
+    if (e.data && e.data.holyroodHeight && document.getElementById('holyroodFrame')) {
+      document.getElementById('holyroodFrame').style.height = (e.data.holyroodHeight + 20) + 'px';
+    }
+  });
+</script>
