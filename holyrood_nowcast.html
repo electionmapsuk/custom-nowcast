@@ -421,7 +421,7 @@
             <div class="total-line"><span>Total entered</span><b id="totalPctL">100.0%</b></div>
           </div>
         </div>
-        <p class="fine-note">In 2026 the Greens took 2.3% of the constituency vote (they stood in six seats of 73) and 14.0% of the list vote. Their constituency slider stops at 8.5% for that reason: that is every vote cast in those six seats, so it is the most they could win even taking all of them. Neither set needs to total 100%: the model derives an &ldquo;others&rdquo; share from what you enter and rescales to 100%, so the figures in National vote share above won&rsquo;t match these exactly &mdash; below the actual 2026 totals they come out a little higher, above them a little lower, and the further the total sits from the 2026 one the wider the gap.</p>
+        <p class="fine-note">In 2026 the Greens took 2.3% of the constituency vote (they stood in six seats of 73) and 14.0% of the list vote. Their constituency slider stops at 8.5% for that reason: that is every vote cast in those six seats, so it is the most they could win even taking all of them.</p>
         <div class="ctrls">
           <button type="button" class="btn purple" id="btnMode">Switch to Custom Scenario</button>
           <button type="button" class="btn" id="btnShare">Share</button>
@@ -741,7 +741,7 @@ document.addEventListener('DOMContentLoaded', function(){
   var MAPNOTE = {
     proj:   'Winning party in each constituency under the projection.',
     actual: '',
-    change: 'Constituencies where the projected winner differs from 2026; grey where it is unchanged.',
+    change: '',
     margin: 'Projected winner, shaded by how often they finish top across the simulations: Safe 95%+, Likely 75–95, Lean 55–75, Tilt under 55.'
   };
 
@@ -858,31 +858,13 @@ document.addEventListener('DOMContentLoaded', function(){
   // ---------- map chrome ----------
   function updateMapCredit(){
     var note = MAPNOTE[mapMode] || '';
-    // An all-grey Changes map is a real result, not a broken one, so say the count.
-    if (mapMode === 'change' && lastOut) {
-      var n = lastOut.constituencyResults.filter(function(c){
-        var b = base2026ByName[c.name];
-        return b && b.winner !== c.winner;
-      }).length;
-      note += n ? (' <b>' + n + ' of 73</b> change hands.')
-                : ' <b>No constituency changes hands</b> under this projection.';
-    }
-    if (mapMode === 'change' && lastOut) {
-      var rn = lastOut.regionResults.filter(function(g){
-        var b = base2026Region[g.name];
-        return b && leadOf(b.shares) !== leadOf(g.shares);
-      }).length;
-      note += rn ? (' On the region map, <b>' + rn + ' of 8</b> regions change hands.')
-                 : ' <b>No region changes hands</b> on the list vote.';
-    }
     if (mapMode === 'margin') {
       note += ' The region map shades its winner by their lead over second in the list vote.';
     }
-    var regLine = 'Region map: the eight list regions, coloured by the party winning the regional list vote there. '
-      + 'Each cluster of seven hexagons is that region\u2019s seven list seats, in the order the count awarded them.';
+    note = note.replace(/^\s+/, '');
     var zoomLine = 'Drag to pan, or use the + / \u2212 buttons. Scrolling the page still scrolls the page \u2014 hold Ctrl (\u2318 on a Mac) and scroll to zoom, or pinch with two fingers.';
     document.getElementById('mapcredit').innerHTML =
-      (note ? note + '<br>' : '') + regLine + '<br>' + zoomLine;
+      (note ? note + '<br>' : '') + zoomLine;
   }
   function wireMapModes(){
     var modes = document.getElementById('mapModes');
