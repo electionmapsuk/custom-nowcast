@@ -223,27 +223,25 @@
   }
 
   /* ---- sliders beside the map ----
-     The map panel is 1038px of usable width and holds two 519px maps. There is no room for a
-     third column, so "beside" mode spends one of them: only the selected map is drawn and the
-     Custom scenario panel takes the other half. That makes the Constituencies/Regions toggle
-     matter again on a wide screen, where it is normally hidden because both maps are shown, so
-     it comes back too. Inside the slot the two votes stack instead of sitting side by side —
-     six sliders two-across under each heading, the same width they have at the bottom of the
-     page — which lands the column at roughly the map's own height. */
+     The page is 1080px wide and the map panel normally holds two 519px maps. There is no room
+     for a third column, so "beside" mode spends one of them: only the selected map is drawn and
+     the Custom scenario panel takes the other half, as its own card beside the map's rather than
+     a second half of the same one. That makes the Constituencies/Regions toggle matter again on
+     a wide screen, where it is normally hidden because both maps are shown, so it comes back
+     too. Inside the slot the two votes stack instead of sitting side by side — six sliders
+     two-across under each heading, about the width they have at the bottom of the page. */
   .sidetoggle{display:none;}
   .side-slot{display:none;}
+  .map-and-sliders{display:block;}
   @media(min-width:1040px){ .sidetoggle{display:flex;} }
+  body.sliders-beside .map-and-sliders{display:flex; align-items:flex-start; gap:24px;}
+  body.sliders-beside .col-maps{flex:1 1 0; min-width:0;}
+  body.sliders-beside .side-slot{display:block; flex:1 1 0; min-width:0;}
   body.sliders-beside .maplayout{display:flex;}
   body.sliders-beside .map-row .map-col{display:none !important;}
   body.sliders-beside .map-row.mapview-boundary .map-col.col-boundary{display:flex !important;}
   body.sliders-beside .map-row.mapview-region .map-col.col-region{display:flex !important;}
   body.sliders-beside .map-col.col-region{border-left:0; padding-left:0;}
-  body.sliders-beside .map-row{align-items:flex-start;}
-  body.sliders-beside .side-slot{display:block; flex:1 1 0; min-width:0;
-    padding-left:22px; margin-left:22px; border-left:1px solid var(--line);}
-  /* the panel is already inside one, so it drops its own frame in the slot */
-  body.sliders-beside #customPanel{background:none; border:0; border-radius:0; padding:0;}
-  body.sliders-beside #customHead{margin-top:0;}
   body.sliders-beside .votegrid{grid-template-columns:1fr; gap:22px;}
 
   /* ---- mobile ---- */
@@ -397,6 +395,11 @@
         </div>
       </div>
 
+      <!-- Two columns in "beside" mode, one block otherwise. The map keeps its own panel and the
+           sliders keep theirs, so they read as two cards rather than one split down the middle;
+           each column carries its own heading so the two line up. -->
+      <div class="map-and-sliders" id="mapAndSliders">
+      <div class="col-maps">
       <div class="section-h">Maps</div>
       <div class="panel">
         <div class="maprow">
@@ -436,10 +439,12 @@
             </div>
             <svg id="regmap" width="470" height="560" viewBox="0 0 470 560"></svg>
           </div>
-          <!-- where the Custom scenario panel goes in "beside" mode; empty otherwise -->
-          <div class="side-slot" id="sideSlot"></div>
         </div>
         <div class="mapcredit" id="mapcredit"></div>
+      </div>
+      </div>
+      <!-- where the Custom scenario heading and panel go in "beside" mode; empty otherwise -->
+      <div class="side-slot" id="sideSlot"></div>
       </div>
 
       <div id="customAnchor"></div>
@@ -506,8 +511,8 @@
           <button type="button" id="btn-vote-L" class="mtb">Regional list vote</button>
         </div>
         <div class="poll-controls-left">
-          <button type="button" id="btn-todate" class="mtb active">Polls to date</button>
-          <button type="button" id="btn-election" class="mtb">Till next election</button>
+          <button type="button" id="btn-todate" class="mtb">Polls to date</button>
+          <button type="button" id="btn-election" class="mtb active">Till next election</button>
           <button type="button" id="btn-advanced" class="mtb">&#9881; Advanced</button>
         </div>
       </div>
@@ -4681,7 +4686,7 @@ document.addEventListener('DOMContentLoaded', function(){
   };
   var cachedPolls = [], trendCache = { C:{}, L:{} }, chartInstance = null;
   var currentVote = 'C';
-  var currentView = 'todate', currentSort = { key:'date', order:'desc' }, collapsed = {};
+  var currentView = 'election', currentSort = { key:'date', order:'desc' }, collapsed = {};
 
   function $(id){ return document.getElementById(id); }
   function textOn(c){

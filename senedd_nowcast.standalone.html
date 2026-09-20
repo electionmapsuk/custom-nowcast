@@ -183,24 +183,23 @@
   /* ---- sliders beside the map ----
      The map panel holds two maps side by side on a wide screen, so there is no room for a third
      column: "beside" mode spends one of them, drawing only the selected map and giving the other
-     half to the Custom scenario panel. That makes the Boundary/Hex toggle matter again on a wide
+     half to the Custom scenario panel — as its own card beside the map's, rather than a second
+     half of the same one. That makes the Boundary/Hex toggle matter again on a wide
      screen, where it is normally hidden because both are shown, so it comes back too. Inside the
      slot the sliders drop from three across to two, which is about the width they have at the
      bottom of the page. Mirrors the same control on the Holyrood page. */
   .sidetoggle{display:none;}
   .side-slot{display:none;}
+  .map-and-sliders{display:block;}
   @media(min-width:1040px){ .sidetoggle{display:flex;} }
+  body.sliders-beside .map-and-sliders{display:flex; align-items:flex-start; gap:24px;}
+  body.sliders-beside .col-maps{flex:1 1 0; min-width:0;}
+  body.sliders-beside .side-slot{display:block; flex:1 1 0; min-width:0;}
   body.sliders-beside .maplayout{display:flex;}
   body.sliders-beside .map-row .map-col{display:none !important;}
   body.sliders-beside .map-row.mapview-boundary .map-col.col-boundary{display:flex !important;}
   body.sliders-beside .map-row.mapview-hex .map-col.col-hex{display:flex !important;}
   body.sliders-beside .map-col.col-hex{border-left:0; padding-left:0;}
-  body.sliders-beside .map-row{align-items:flex-start;}
-  body.sliders-beside .side-slot{display:block; flex:1 1 0; min-width:0;
-    padding-left:22px; margin-left:22px; border-left:1px solid var(--line);}
-  /* the panel is already inside one, so it drops its own frame in the slot */
-  body.sliders-beside #customPanel{background:none; border:0; border-radius:0; padding:0;}
-  body.sliders-beside #customHead{margin-top:0;}
   body.sliders-beside #sliders{grid-template-columns:repeat(2,minmax(0,1fr));}
 
   /* ---- mobile ---- */
@@ -348,6 +347,11 @@
         <div class="totstrip vsstrip" id="voteshareCards"></div>
       </div>
 
+      <!-- Two columns in "beside" mode, one block otherwise. The map keeps its own panel and the
+           sliders keep theirs, so they read as two cards rather than one split down the middle;
+           each column carries its own heading so the two line up. -->
+      <div class="map-and-sliders" id="mapAndSliders">
+      <div class="col-maps">
       <div class="section-h">Constituency map</div>
       <div class="panel">
         <div class="maprow">
@@ -375,10 +379,12 @@
           <div class="map-col col-hex">
             <svg id="hexmap" width="520" height="470" viewBox="0 0 520 470"></svg>
           </div>
-          <!-- where the Custom scenario panel goes in "beside" mode; empty otherwise -->
-          <div class="side-slot" id="sideSlot"></div>
         </div>
         <div class="mapcredit" id="mapcredit"></div>
+      </div>
+      </div>
+      <!-- where the Custom scenario heading and panel go in "beside" mode; empty otherwise -->
+      <div class="side-slot" id="sideSlot"></div>
       </div>
 
       <div id="customAnchor"></div>
@@ -389,8 +395,7 @@
         <div class="total-line"><span>Total entered</span><b id="totalPct">100.0%</b></div>
         <p class="fine-note">These entries needn&rsquo;t total 100%. The model derives an &ldquo;others&rdquo; share from them and rescales everything to 100%, so figures in National vote share above won&rsquo;t match these exactly: below the 2026 total of about 98% they come out a little higher, above it a little lower, and the further the total sits from 98% the wider the gap.</p>
         <div class="ctrls">
-          <button type="button" class="btn purple" id="btnMode">Switch to custom scenario</button>
-          <button type="button" class="btn" id="btnReset">Reset</button>
+          <button type="button" class="btn purple" id="btnMode">Switch to Custom Scenario</button>
           <button type="button" class="btn" id="btnShare">Share</button>
         </div>
         <div id="copied" style="display:none; text-align:center; font-size:.78rem; color:var(--accent); margin:10px 0 0;">Link copied</div>
@@ -412,8 +417,8 @@
       <div id="poll-note-slot"></div>
       <div class="poll-controls">
         <div class="poll-controls-left">
-          <button type="button" id="btn-todate" class="mtb active">Polls to date</button>
-          <button type="button" id="btn-election" class="mtb">Till next election</button>
+          <button type="button" id="btn-todate" class="mtb">Polls to date</button>
+          <button type="button" id="btn-election" class="mtb active">Till next election</button>
         </div>
         <button type="button" id="btn-advanced" class="mtb">&#9881; Advanced</button>
       </div>
@@ -1244,12 +1249,8 @@ document.addEventListener('DOMContentLoaded', function(){
         schedule();
       }
     });
-    document.getElementById('btnReset').addEventListener('click', function(){
-      setSliderValues(centralShares());
-      setMode('central');
-      render(runCentral());
-      history.replaceState(null,'',location.pathname);
-    });
+    // No separate Reset button: in custom mode the mode button IS the reset, and two controls
+    // that both go back to the central projection only invited the question of how they differed.
     document.getElementById('btnShare').addEventListener('click', function(){
       var shares = readInputs(); pushUrl(shares);
       navigator.clipboard && navigator.clipboard.writeText(location.href);
@@ -1291,8 +1292,13 @@ document.addEventListener('DOMContentLoaded', function(){
     document.getElementById('modepill').textContent = m==='custom' ? 'Custom Scenario' : 'Central Projection';
     var dis = (m!=='custom');
     document.querySelectorAll('#sliders input').forEach(function(inp){ inp.disabled = dis; });
+    // The button always offers the mode you are NOT in, so it takes that mode's colour too:
+    // purple for the custom scenario (matching the panel's purple outline and the mode pill),
+    // the page's dark teal for the central projection. Title case to match the pill either way.
     var btn = document.getElementById('btnMode');
-    btn.textContent = m==='custom' ? 'Back to central projection' : 'Switch to custom scenario';
+    btn.textContent = m==='custom' ? 'Switch to Central Projection' : 'Switch to Custom Scenario';
+    btn.classList.toggle('purple',  m!=='custom');
+    btn.classList.toggle('primary', m==='custom');
   }
 
   // ---------- URL share ----------
@@ -1810,7 +1816,7 @@ document.addEventListener('DOMContentLoaded', function(){
     EXCLUDED_POLLSTERS: new Set(), HIDDEN_PARTIES: new Set()
   };
   var cachedPolls = [], trendCache = {}, chartInstance = null;
-  var currentView = 'todate', currentSort = { key:'date', order:'desc' }, collapsed = {};
+  var currentView = 'election', currentSort = { key:'date', order:'desc' }, collapsed = {};
 
   function $(id){ return document.getElementById(id); }
   function textOn(c){
