@@ -1,20 +1,25 @@
 <!-- Paste THIS (and only this) into a Squarespace Code Block.
-     Same pattern as the GB Nowcast / council widget embeds: the iframe auto-resizes to its
-     content height, and width:1px / min-width:100% forces iOS Safari to respect the column
-     width instead of overflowing.
 
-     Before this works you need to push the senedd/ folder to the custom-nowcast repo (same
-     one your GeoJSON and council widget live in) so it's served from GitHub Pages. Then point
-     the src below at wherever it lands, e.g.:
-       https://electionmapsuk.github.io/custom-nowcast/senedd/senedd_nowcast.html
+     IMPORTANT — WHICH FILE THIS POINTS AT.
+     It points at senedd_nowcast.standalone.html, exactly the same way your GB embed points at
+     electionmaps_nowcast.standalone.html. The standalone has the engine, all five data files
+     and the logo baked inside it, so it is ONE self-contained file that needs no folders and
+     no other uploads. That is why the custom-nowcast repo has no build/ folder and the GB page
+     still works.
 
-     ABOUT ?v= : GitHub Pages caches aggressively, so after you push an updated
-     senedd_nowcast.html your visitors can keep seeing the old one. Bump this number (the date
-     you last changed it is fine) whenever you edit the page or engine. Updating just
-     build/data/central.json does NOT need a bump — that's fetched fresh at runtime. -->
+     Do NOT point this at senedd_nowcast.html. That version fetches build/senedd.browser.js and
+     build/data/*.json relative to itself; those aren't in the repo, so it loads and then shows
+     "Could not load model data (SyntaxError: Unexpected token '<' ...)" — that error always
+     means a fetch got GitHub's 404 page instead of the file.
+
+     TO UPDATE THE SITE: re-run `node build_standalone.js` from inside senedd/build/, then upload
+     the new senedd_nowcast.standalone.html to the repo root, replacing the old one. One file.
+
+     ABOUT ?v= : GitHub Pages caches aggressively, so without this your visitors keep seeing the
+     old file. Bump it (today's date is fine) every time you upload a new standalone. -->
 <iframe
   id="seneddFrame"
-  src="https://electionmapsuk.github.io/custom-nowcast/senedd/senedd_nowcast.html?v=20260916"
+  src="https://electionmapsuk.github.io/custom-nowcast/senedd_nowcast.standalone.html?v=20260920a"
   title="Senedd Nowcast"
   style="width:1px; min-width:100%; height:1900px; border:0; overflow:hidden;"
   scrolling="no"

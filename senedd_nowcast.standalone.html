@@ -40,6 +40,9 @@
   body:not(.custom) .sld{opacity:.55;}
   .sld .top{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
   .sld .lab{display:flex; align-items:center; gap:8px; font-weight:600; font-size:.88rem;}
+  /* projected seats for this party, filled in on every render. Dimmer and lighter than the
+     party name so the label still reads as a label. */
+  .sld .lab .sseat{margin-left:-4px; color:var(--faint); font-weight:700; font-variant-numeric:tabular-nums;}
   .dot{width:11px; height:11px; border-radius:3px; flex:none;}
   .sld .val{display:flex; align-items:center; gap:2px;}
   .sld .val input{width:62px; border:1px solid var(--line); border-radius:7px; padding:4px 7px; text-align:right; font-weight:700; font-size:.9rem; font-family:inherit; font-variant-numeric:tabular-nums; color:var(--ink); background:#fff;}
@@ -176,6 +179,29 @@
     .map-col.col-boundary{padding-left:0;}
     .map-col.col-hex{padding-right:0; border-left:1px solid var(--line);}
   }
+
+  /* ---- sliders beside the map ----
+     The map panel holds two maps side by side on a wide screen, so there is no room for a third
+     column: "beside" mode spends one of them, drawing only the selected map and giving the other
+     half to the Custom scenario panel. That makes the Boundary/Hex toggle matter again on a wide
+     screen, where it is normally hidden because both are shown, so it comes back too. Inside the
+     slot the sliders drop from three across to two, which is about the width they have at the
+     bottom of the page. Mirrors the same control on the Holyrood page. */
+  .sidetoggle{display:none;}
+  .side-slot{display:none;}
+  @media(min-width:1040px){ .sidetoggle{display:flex;} }
+  body.sliders-beside .maplayout{display:flex;}
+  body.sliders-beside .map-row .map-col{display:none !important;}
+  body.sliders-beside .map-row.mapview-boundary .map-col.col-boundary{display:flex !important;}
+  body.sliders-beside .map-row.mapview-hex .map-col.col-hex{display:flex !important;}
+  body.sliders-beside .map-col.col-hex{border-left:0; padding-left:0;}
+  body.sliders-beside .map-row{align-items:flex-start;}
+  body.sliders-beside .side-slot{display:block; flex:1 1 0; min-width:0;
+    padding-left:22px; margin-left:22px; border-left:1px solid var(--line);}
+  /* the panel is already inside one, so it drops its own frame in the slot */
+  body.sliders-beside #customPanel{background:none; border:0; border-radius:0; padding:0;}
+  body.sliders-beside #customHead{margin-top:0;}
+  body.sliders-beside #sliders{grid-template-columns:repeat(2,minmax(0,1fr));}
 
   /* ---- mobile ---- */
   @media(max-width:880px){ .grid{gap:16px;} }
@@ -335,6 +361,12 @@
             <button type="button" class="mtb active" data-view="boundary">Boundary</button>
             <button type="button" class="mtb" data-view="hex">Hex &mdash; by seat</button>
           </div>
+          <!-- Wide screens only: moves the Custom scenario panel up beside the map, so a slider
+               and the seat it changes are in view at once. Hidden below 1040px, where there is
+               no room for two columns and the panel belongs back under the map. -->
+          <div class="maplayout sidetoggle" id="sideToggle">
+            <button type="button" class="mtb" id="btnSide">Sliders beside map</button>
+          </div>
         </div>
         <div class="map-row mapview-boundary" id="mapWrap">
           <div class="map-col col-boundary">
@@ -343,12 +375,15 @@
           <div class="map-col col-hex">
             <svg id="hexmap" width="520" height="470" viewBox="0 0 520 470"></svg>
           </div>
+          <!-- where the Custom scenario panel goes in "beside" mode; empty otherwise -->
+          <div class="side-slot" id="sideSlot"></div>
         </div>
         <div class="mapcredit" id="mapcredit"></div>
       </div>
 
-      <div class="section-h">Custom scenario</div>
-      <div class="panel">
+      <div id="customAnchor"></div>
+      <div class="section-h" id="customHead">Custom scenario</div>
+      <div class="panel" id="customPanel">
         <h2>National vote share</h2>
         <div id="sliders"></div>
         <div class="total-line"><span>Total entered</span><b id="totalPct">100.0%</b></div>
@@ -1026,6 +1061,7 @@ document.addEventListener('DOMContentLoaded', function(){
     if (!geo && !hexGeo) { var mp=document.getElementById('map'); if(mp) mp.closest('.panel').style.display='none'; }
     else { wireMapToggle(); }
     wireMapModes();
+    wireSideToggle();
     buildCustomInputs();
     var ts = document.getElementById('tablesearch');
     if (ts) ts.addEventListener('input', applyTableSearch);
@@ -1129,6 +1165,45 @@ document.addEventListener('DOMContentLoaded', function(){
     var pct = Math.max(0, Math.min(100, (parseFloat(el.value)||0)/mx*100));
     el.style.background = 'linear-gradient(90deg,'+c+' '+pct+'%, var(--line) '+pct+'%)';
   }
+  // Projected seats in brackets beside each party on its slider, refreshed on every render so
+  // it tracks a drag. Blank until there is a result.
+  function paintSliderSeats(seats){
+    MAIN.forEach(function(p){
+      var el = document.getElementById('s_'+p);
+      if (el) el.textContent = seats ? (' (' + (seats[p]||0) + ')') : '';
+    });
+  }
+  // Moves the whole Custom scenario block into the slot beside the map and back. The panel is
+  // relocated rather than duplicated, so there is only ever one set of sliders and no state to
+  // keep in sync; #customAnchor marks where it came from.
+  function setSideSliders(on){
+    var slot = document.getElementById('sideSlot'),
+        anchor = document.getElementById('customAnchor'),
+        head = document.getElementById('customHead'),
+        panel = document.getElementById('customPanel'),
+        btn = document.getElementById('btnSide');
+    if (on) { slot.appendChild(head); slot.appendChild(panel); }
+    else {
+      anchor.parentNode.insertBefore(head, anchor.nextSibling);
+      anchor.parentNode.insertBefore(panel, head.nextSibling);
+    }
+    document.body.classList.toggle('sliders-beside', on);
+    btn.classList.toggle('active', on);
+    btn.textContent = on ? 'Sliders below map' : 'Sliders beside map';
+  }
+  function wireSideToggle(){
+    var btn = document.getElementById('btnSide');
+    btn.addEventListener('click', function(){
+      setSideSliders(!document.body.classList.contains('sliders-beside'));
+    });
+    // Narrowing the window past the breakpoint hides the button; without this the page would be
+    // stuck in a two-column layout it no longer has the width for, with no way back.
+    window.addEventListener('resize', function(){
+      if (window.innerWidth < 1040 && document.body.classList.contains('sliders-beside')) {
+        setSideSliders(false);
+      }
+    });
+  }
   function buildCustomInputs(){
     var grid = document.getElementById('sliders');
     // Slider order: the parties' actual May 2026 vote share, largest first (so Plaid leads).
@@ -1139,7 +1214,8 @@ document.addEventListener('DOMContentLoaded', function(){
     grid.innerHTML = sliderOrder.map(function(p){
       var c = PI[p].c, v = (central[p]).toFixed(1);
       return '<div class="sld"><div class="top">'+
-        '<span class="lab"><span class="dot" style="background:'+c+'"></span>'+PI[p].n+'</span>'+
+        '<span class="lab"><span class="dot" style="background:'+c+'"></span>'+PI[p].n+
+          '<span class="sseat" id="s_'+p+'"></span></span>'+
         '<span class="val"><input class="num" id="n_'+p+'" type="number" step="0.1" min="0" max="60" value="'+v+'" disabled aria-label="'+PI[p].n+' vote share, percent"><small>%</small></span>'+
         '</div>'+
         '<input type="range" id="in_'+p+'" data-p="'+p+'" min="0" max="60" step="0.1" value="'+v+'" disabled style="--c:'+c+'" aria-label="'+PI[p].n+' vote share, percent"></div>';
@@ -1207,7 +1283,11 @@ document.addEventListener('DOMContentLoaded', function(){
   }
   function setMode(m){
     mode = m;
-    document.body.className = m;
+    // toggle the two mode classes rather than assigning className, which used to wipe every
+    // other class on the body — including sliders-beside, which hid the slot the sliders had
+    // just been moved into
+    document.body.classList.toggle('custom',  m === 'custom');
+    document.body.classList.toggle('central', m !== 'custom');
     document.getElementById('modepill').textContent = m==='custom' ? 'Custom Scenario' : 'Central Projection';
     var dis = (m!=='custom');
     document.querySelectorAll('#sliders input').forEach(function(inp){ inp.disabled = dis; });
@@ -1393,6 +1473,8 @@ document.addEventListener('DOMContentLoaded', function(){
     var mj = document.getElementById('hl-maj');
     if (maxN>=49) { mj.textContent = 'Majority of '+(2*maxN-96); mj.className='maj gov'; }
     else { mj.textContent = (49-maxN)+' short'; mj.className='maj'; }
+
+    paintSliderSeats(seats);
 
     var wrap = document.getElementById('totstrip'); wrap.innerHTML='';
     var shown = (order||ORDER).slice().sort(function(a,b){return (seats[b]||0)-(seats[a]||0);}).filter(function(p){ return (seats[p]||0)>0; });
