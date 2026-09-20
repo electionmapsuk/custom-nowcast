@@ -230,6 +230,17 @@
      a wide screen, where it is normally hidden because both maps are shown, so it comes back
      too. Inside the slot the two votes stack instead of sitting side by side — six sliders
      two-across under each heading, about the width they have at the bottom of the page. */
+  /* ---- the sliders only exist once you ask for them ----
+     In the central projection there is nothing to set, so the Custom scenario heading, panel and
+     sliders are all hidden and the one button that turns them on sits at the foot of the map
+     panel instead. "Sliders beside map" goes with them — it is a control for sliders that are
+     not on screen yet. */
+  body.central #customHead, body.central #customPanel{display:none;}
+  body.central .sidetoggle{display:none !important;}
+  .modeslot:empty{display:none;}
+  .modeslot{display:flex; margin-top:16px; padding-top:16px; border-top:1px solid var(--line);}
+  .modeslot .btn{flex:0 1 340px; margin:0 auto;}
+
   .sidetoggle{display:none;}
   .side-slot{display:none;}
   .map-and-sliders{display:block;}
@@ -441,6 +452,10 @@
           </div>
         </div>
         <div class="mapcredit" id="mapcredit"></div>
+        <!-- In the central projection the whole Custom scenario block is hidden and the mode
+             button lives HERE, at the foot of the map panel: nothing to configure until you ask
+             for it. The button itself is moved, not duplicated. -->
+        <div class="modeslot" id="modeSlot"></div>
       </div>
       </div>
       <!-- where the Custom scenario heading and panel go in "beside" mode; empty otherwise -->
@@ -463,7 +478,7 @@
           </div>
         </div>
         <p class="fine-note">In 2026 the Greens took 2.3% of the constituency vote (they stood in six seats of 73) and 14.0% of the list vote. Their constituency slider stops at 8.5% for that reason: that is every vote cast in those six seats, so it is the most they could win even taking all of them.</p>
-        <div class="ctrls">
+        <div class="ctrls" id="customCtrls">
           <button type="button" class="btn purple" id="btnMode">Switch to Custom Scenario</button>
           <button type="button" class="btn" id="btnShare">Share</button>
         </div>
@@ -1113,6 +1128,14 @@ document.addEventListener('DOMContentLoaded', function(){
     btn.textContent = m==='custom' ? 'Switch to Central Projection' : 'Switch to Custom Scenario';
     btn.classList.toggle('purple',  m!=='custom');
     btn.classList.toggle('primary', m==='custom');
+    // and it changes address with the mode: foot of the map panel while there is nothing to
+    // configure, back beside Share once the sliders are on screen
+    var home = document.getElementById(m==='custom' ? 'customCtrls' : 'modeSlot');
+    if (btn.parentElement !== home) {
+      if (m==='custom') home.insertBefore(btn, home.firstChild); else home.appendChild(btn);
+    }
+    // leaving custom mode with the sliders parked beside the map would leave an empty column
+    if (m!=='custom' && document.body.classList.contains('sliders-beside')) setSideSliders(false);
   }
 
   // ---------- URL share ----------
