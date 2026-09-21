@@ -6,9 +6,7 @@ on:
     # the weekend after Thursday by-elections are declared. (Minute changed from
     # :15 so GitHub re-registers the schedule when this file is committed.)
     - cron: "23 6 * * 1"
-    # TEMPORARY - proves the schedule fires. Delete this line and the one above
-    # it once one hourly run has appeared under Actions with event "schedule".
-    - cron: "40 * * * *"
+
   workflow_dispatch:
     inputs:
       refresh_boundaries:
