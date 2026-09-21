@@ -1,5 +1,5 @@
 {
- "generated": "2026-09-21T09:53:47+00:00",
+ "generated": "2026-09-21T10:13:35+00:00",
  "year": 2026,
  "csvRows": 19273,
  "councilsParsed": 384,
@@ -28,7 +28,7 @@
   "CON": 3728,
   "LDM": 3162,
   "RFM": 2313,
-  "IND": 2247,
+  "IND": 2245,
   "GRN": 1333,
   "SNP": 413,
   "OTH": 289,
@@ -39,7 +39,7 @@
   "UUP": 51,
   "VAC": 38,
   "SDLP": 34,
-  "RES": 30,
+  "RES": 32,
   "TUV": 11
  },
  "controlTotals": {
@@ -130,6 +130,17 @@
  "addedManually": [
   "Isles of Scilly"
  ],
+ "manualMoves": [
+  {
+   "council": "Plymouth",
+   "from": "IND",
+   "to": "RES",
+   "seats": 2,
+   "note": "Mark Hadfield (St Budeaux) and Andrew Crumplin (Moor View), Reform UK to Restore Britain, 4 September 2026",
+   "status": "applied - moved 2"
+  }
+ ],
+ "indReassigned": [],
  "gssReassigned": [
   "Barnsley: E08000016 -> E08000038",
   "Sheffield: E08000019 -> E08000039"
