@@ -73,6 +73,25 @@ EXTRA_COUNCILS = [
      "nextElection": "2029-05-03"},
 ]
 
+# Defections the source has not caught up with yet. Open Council Data can take
+# weeks to move a councillor who has changed party, and the composition tables
+# are the source of truth here, so without this they keep showing under their
+# old party. Each entry moves seats between two parties on one council, after
+# the live table has been read.
+#
+# Entries retire themselves. Once the source already shows the destination party
+# with `seats` or more on that council, nothing is moved and the report lists
+# the entry under manualMoves as "retired - delete me". If the source has caught
+# up only partly, only the difference is moved. If the source party no longer
+# holds enough seats to give (the source may have filed them somewhere else,
+# e.g. as independents), nothing is moved and it is reported, not guessed at.
+MANUAL_MOVES = [
+    # Open Council Data counts these two in Plymouth's Ind column.
+    {"council": "Plymouth", "from": "IND", "to": "RES", "seats": 2,
+     "note": "Mark Hadfield (St Budeaux) and Andrew Crumplin (Moor View), "
+             "Reform UK to Restore Britain, 4 September 2026"},
+]
+
 # Rows that are page furniture, not councils.
 FOOTER_RE = re.compile(r"^(total|totals|sum|all councils|average)\b|:$", re.I)
 
@@ -393,6 +412,13 @@ def scrape_councillors(year: int, register: dict):
         if code is None:
             unmatched_codes += 1
             code = party_from_name(r[c_party])
+        # The register files some parties' councillors under Ind rather than Oth
+        # (Plymouth's two Restore Britain councillors are the case in point), so
+        # promoted parties are recognised by name on Ind rows too.
+        if code in ("OTH", "IND"):
+            promoted = refine_other(r[c_party])
+            if promoted != "OTH":
+                code = promoted
         seats[key][code] += 1
         if code == "OTH" or code in REFINED_FROM_OTH:
             oth_names[(r[c_party] or "").strip() or "(blank)"] += 1
@@ -425,6 +451,50 @@ def parse_date(raw: str):
     if re.match(r"^\d{4}$", v):          # bare year
         return f"{v}-05-01"
     return None
+
+
+def apply_moves(key: str, name: str, seats: dict, party_dates: dict, log: list) -> dict:
+    """Apply any MANUAL_MOVES for this council. Seats move between parties; their
+    election-cycle dates move with them, taken from the donor party's most
+    recently elected seats - a defector keeps the term they were elected to."""
+    for m in MANUAL_MOVES:
+        if norm(m["council"]) != key:
+            continue
+        src, dst, want = m["from"], m["to"], m["seats"]
+        have = seats.get(dst, 0)
+        entry = {"council": name, "from": src, "to": dst, "seats": want,
+                 "note": m.get("note", "")}
+        if have >= want:
+            entry["status"] = f"retired - source already shows {have} {dst}; delete me"
+            log.append(entry)
+            continue
+        need = want - have
+        if seats.get(src, 0) < need:
+            entry["status"] = (f"NOT applied - source shows only {seats.get(src, 0)} "
+                               f"{src}; they may have been filed elsewhere")
+            log.append(entry)
+            warn(f"{name}: manual move {src}->{dst} not applied ({entry['status']})")
+            continue
+        seats[src] -= need
+        if not seats[src]:
+            del seats[src]
+        seats[dst] = have + need
+
+        donor = party_dates.get(src)
+        if donor:
+            left = need
+            for d in sorted(donor, reverse=True):     # latest term first
+                take = min(left, donor[d])
+                if not take:
+                    continue
+                donor[d] -= take
+                party_dates.setdefault(dst, Counter())[d] += take
+                left -= take
+                if not left:
+                    break
+        entry["status"] = f"applied - moved {need}" + (f" ({have} already in source)" if have else "")
+        log.append(entry)
+    return seats
 
 
 def split_other(oth: int, csv_other: dict) -> dict:
@@ -569,7 +639,8 @@ def build(year: int, out_dir: str) -> int:
     bcodes, bnames = load_boundaries(out_dir)
 
     councils, not_shown, regssed, split_failed = [], [], [], []
-    superseded, no_cycle, overrides = [], [], []
+    superseded, no_cycle, overrides, moves_log = [], [], [], []
+    ind_reassigned = []
     today = dt.date.today().isoformat()
 
     for key, c in sorted(comps.items(), key=lambda kv: kv[1]["ocdName"]):
@@ -599,6 +670,24 @@ def build(year: int, out_dir: str) -> int:
             seats[k] = seats.get(k, 0) + v
         if c["vacant"]:
             seats["VAC"] = c["vacant"]
+
+        # A promoted party can also be sitting inside the table's Ind column: the
+        # CSV names them, the table counts them as independents. Pull them out
+        # only as far as the Ind column has people the CSV says are NOT
+        # independents - never below the CSV's own independent count.
+        for p in sorted(REFINED_FROM_OTH):
+            short = csv_seats.get(p, 0) - seats.get(p, 0)
+            spare = seats.get("IND", 0) - csv_seats.get("IND", 0)
+            take = min(short, spare)
+            if take > 0:
+                seats["IND"] -= take
+                if not seats["IND"]:
+                    del seats["IND"]
+                seats[p] = seats.get(p, 0) + take
+                ind_reassigned.append({"council": c["ocdName"], "party": p, "seats": take})
+
+        party_dates = cycle.get(key) or {}
+        seats = apply_moves(key, c["ocdName"], seats, party_dates, moves_log)
 
         if sum(seats.values()) != c["total"]:
             warn(f"{c['ocdName']}: seats sum to {sum(seats.values())} "
@@ -632,7 +721,7 @@ def build(year: int, out_dir: str) -> int:
         future = sorted(d for d in (nxt.get(key) or {}) if d >= today)
         next_election = future[0] if future else None
         cyc = election_cycle({k: v for k, v in seats.items() if v},
-                             cycle.get(key) or {}, next_election, today)
+                             party_dates, next_election, today)
         if not cyc:
             no_cycle.append(c["ocdName"])
 
@@ -696,6 +785,12 @@ def build(year: int, out_dir: str) -> int:
         "councils": councils,
     }
 
+    seen = {norm(e["council"]) for e in moves_log}
+    for m in MANUAL_MOVES:
+        if norm(m["council"]) not in seen:
+            moves_log.append({**m, "status": "NOT applied - no council of that name in the source"})
+            warn(f"manual move for {m['council']!r} matched no council")
+
     os.makedirs(out_dir, exist_ok=True)
     report = {
         "generated": payload["meta"]["generated"],
@@ -714,6 +809,8 @@ def build(year: int, out_dir: str) -> int:
         "noElectionCycle": no_cycle,
         "controlOverrides": overrides,
         "addedManually": added,
+        "manualMoves": moves_log,
+        "indReassigned": ind_reassigned,
         "gssReassigned": regssed,
         "othNotSplit": split_failed,
         "othBucket": dict(oth_names.most_common(60)),
