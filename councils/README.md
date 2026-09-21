@@ -41,20 +41,38 @@ to install.
 
 After that it runs itself at 06:15 UTC every Monday.
 
-## The three data sources, and how they fit together
+## The data sources, and how they fit together
 
 | Source | Role |
 |---|---|
 | `councils.php?model=…&y=0` and `nicouncils.php` | **Source of truth.** Open Council Data's own control label — `LAB`, `REF min`, `LD/GRN`, `NOC`, `LAB Mayor` — plus vacancies, seat totals, and every party that has its own column. Maintained live, so by-elections and defections show up within days. |
-| `csv2.php?y=YYYY` | Every councillor with their Electoral Commission party code. Used **only** to split the tables' "Oth" column into named parties. |
+| `council.php?c=N&y=0` | Each council's own page: every councillor, their party by name, ward and end of term. **Splits the tables' "Oth" column** into independents, Restore Britain, local parties and so on, and supplies each seat's election year. The most current thing the site publishes — defections appear here first. |
+| `csv2.php?y=YYYY` | Every councillor with their Electoral Commission party code. **Fallback only**, for any council whose page could not be read. A weekly snapshot that runs behind the council pages. |
 | `csv3.php` | The party register: Electoral Commission code → Open Council Data's own short party code. Drives all party identification. |
 
 The split matters. The summary tables are live but collapse everything outside
-the big five into "Oth". The councillor CSV names every party but is a snapshot,
-and in practice runs one to three seats behind the tables on about one council
-in six. So the tables' numbers are taken verbatim and the CSV is used only for
-proportions inside the Oth bucket, allocated by largest remainder. Every
-council's party numbers therefore add up to its live total, exactly.
+the big parties into "Oth" — independents, residents' groups, Restore Britain
+and the rest. The tables' numbers are taken verbatim; the council pages say who
+is inside Oth, allocated by largest remainder so every council's party numbers
+add up to its live total exactly. Because the pages are current, that split is
+normally exact rather than proportional.
+
+The build reads around 420 council pages, four at a time with a short pause
+between requests, which takes a couple of minutes. Each council's page is found
+from the link in the composition table where there is one, otherwise by trying
+every `c` number up to `PAGE_SCAN_MAX` and matching the council name in the
+page's heading. A page's party names are matched against the party register by
+name, falling back to `NAME_RULES`; `Independent / Other` is how the site writes
+a true independent. Election dates come from each seat's end-of-term year, taken
+as the first Thursday in May. If the site is down, the page scrape gives up after
+a couple of dozen straight failures and the CSV covers everything.
+
+The report's `councilPages` block says how many pages were read, which party
+names the register did not recognise (`partyNamesNotInRegister` — worth a glance
+when a new party appears), and any page that could not be matched to a council.
+`othSplitFromCsv` lists councils that fell back to the CSV. One real page is
+saved as `data/council-page-sample.html` so the parser can be checked against
+the site's actual markup; it is safe to delete.
 
 Because Oth is a residual rather than a party, the build report lists what is
 actually inside it: `othBucket` counts the CSV's own party names for every
@@ -125,6 +143,34 @@ matter of adding one entry to each.
 
 Anything the source lists that has no boundary and no successor rule is excluded
 from the map and from every national total, and listed in `meta.notShown`.
+
+### Defections the source hasn't caught up with
+
+Open Council Data can take weeks to record a councillor changing party, and
+since its composition tables are the source of truth, a defector keeps showing
+under their old party until it does. `MANUAL_MOVES` in `build_councils.py`
+bridges that: each entry moves a number of seats between two parties on one
+council, and the seats' election dates go with them (taken from the donor
+party's most recently elected seats, since a defector keeps the term they won).
+
+Entries clean up after themselves. Once the source shows the destination party
+with enough seats, nothing is moved and the build report's `manualMoves` marks
+the entry "retired - delete me"; if it has caught up only partly, only the
+difference is moved. If the donor party no longer has the seats to give — the
+source may have filed the defectors as independents instead — nothing is moved
+and the report says so. Because these seats come out of a named party's column
+rather than Oth, they are not subject to the Oth headroom limit described
+above.
+
+The first entry is Plymouth: Mark Hadfield and Andrew Crumplin, who left Reform
+UK for Restore Britain on 4 September 2026. The composition table counts
+them in Plymouth's Oth column, but the councillor CSV used to split Oth still
+lists them as independents, so they land in Ind - hence the move is from Ind,
+not Reform. Get the donor party right before adding an entry: a move from the
+wrong party double-counts. Once the CSV catches up the entry reports itself
+retired. Independent rows whose party name is a promoted party are also counted
+as that party, which catches the case where the CSV has the right name but an
+independent's code.
 
 ### Gaps in the source
 
