@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/> <meta http-equiv="Content-Language" content="en" />
+<meta name="viewport" content="width=device-width, initial-scale=0.7">
+<meta name="description" content="Free: UK councillors 2016-2026, upcoming by-elections, maps, party trackers. Paid: stakeholder communications services.">
+<meta name="keywords" content="council composition uk local email role portfolio stakeholder communications contact download database county district unitary metropolitan london email wards ons gss dataset emails by-elections ">
+
+
+        <style>
+        .ward {
+            
+            transition: fill 0.3s;
+            cursor: pointer;
+        }
+        .ward:hover {
+            opacity: 0.8;
+        }
+        #map {
+            background: white;
+            border: none;
+            overflow: hidden;
+            text-align: center;
+            display: inline-block;
+        }    
+        .chart-wrap{
+            position: relative;
+            width: 400px;
+            height: 240px;
+        }  
+        @media (max-width: 768px){
+            .chart-wrap{
+            width: 280px;
+            height: 168px;
+            }
+        }
+        .map-wrap {
+            text-align:center;
+        }
+        .table-wrap {
+            display: flex;
+            justify-content: center;
+        }
+        </style>
+        
+        <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@3.1.0/dist/chartjs-plugin-annotation.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.2.0/dist/chartjs-plugin-datalabels.min.js"></script>
+<title>Open Council Data UK - Cambridgeshire Council Composition 2026</title><link rel="icon" type="image/x-icon" href="favicon.ico">
+<link rel="stylesheet" href="ukpol.css?v=2">
+<link rel="stylesheet" href="public.css?v=2">
+<link href='https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css' rel='stylesheet'>
+
+<script src="https://code.jquery.com/jquery-latest.js"></script>
+<script src="sorttable.js"></script>
+
+<script type="text/javascript">
+$(document).ready(function() {
+    $("[href]").each(function() {
+    if (this.href == window.location.href) {
+        $(this).addClass("active");
+        }
+    });
+});
+</script>
+
+<style>
+/* style.css */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@200;300;400;500;600;700&display=swap");
+
+* {
+  margin: 0 auto;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Inter", sans-serif;
+}
+
+:root {
+  --dark-grey: #333333;
+  --medium-grey: #636363;
+  --light-grey: #eeeeee;
+  --ash: #f4f4f4;
+  --primary-color: #2b72fb;
+  --white: white;
+  --border: 1px solid var(--light-grey);
+  --shadow: rgba(0, 0, 0, 0.05) 0px 6px 24px 0px,
+    rgba(0, 0, 0, 0.08) 0px 0px 0px 1px;
+}
+
+body {
+  font-family: inherit;
+  background-color: var(--white);
+  color: var(--dark-grey);
+  letter-spacing: -0.4px;
+}
+
+ul {
+  list-style: none;
+}
+
+a {
+  text-decoration: none;
+  color: var(--dark-grey);
+}
+
+a:hover {
+  color: var(--primary-color);
+}
+
+button {
+  border: none;
+  background-color: transparent;
+  cursor: pointer;
+  color: inherit;
+}
+
+.btn {
+  display: block;
+  background-color: var(--primary-color);
+  color: var(--white);
+  text-align: center;
+  padding: 0.6rem 1.4rem;
+  font-size: 1rem;
+  font-weight: 500;
+  border-radius: 5px;
+}
+
+.icon {
+  padding: 0.5rem;
+  background-color: var(--light-grey);
+  border-radius: 10px;
+}
+
+.logo {
+  margin-right: 1.5rem;
+}
+
+#nav-menu {
+  border-bottom: var(--border);
+}
+
+.container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  column-gap: 2rem;
+  height: 90px;
+  padding: 1.2rem 3rem;
+}
+
+.menu {
+  position: relative;
+  background: var(--white);
+}
+
+.menu-bar li:first-child .dropdown {
+  flex-direction: initial;
+  min-width: 480px;
+}
+
+.menu-bar li:first-child ul:nth-child(1) {
+  border-right: var(--border);
+}
+
+.menu-bar li:nth-child(n + 2) ul:nth-child(1) {
+  border-bottom: var(--border);
+}
+
+.menu-bar .dropdown-link-title {
+  font-weight: 600;
+}
+
+.menu-bar .nav-link {
+  font-size: 1rem;
+  font-weight: 500;
+  letter-spacing: -0.6px;
+  padding: 0.3rem;
+  min-width: 60px;
+  margin: 0 0.6rem;
+}
+
+.menu-bar .nav-link:hover,
+.dropdown-link:hover {
+  color: var(--primary-color);
+}
+
+.nav-start,
+.nav-end,
+.menu-bar,
+.right-container,
+.right-container .search {
+  display: flex;
+  align-items: center;
+}
+
+.dropdown {
+  display: flex;
+  flex-direction: column;
+  min-width: 230px;
+  background-color: var(--white);
+  border-radius: 10px;
+  position: absolute;
+  top: 36px;
+  visibility: hidden;
+  z-index: 10;
+  opacity: 0;
+  transform: scale(0.97) translateX(-5px);
+  transition: 0.1s ease-in-out;
+  box-shadow: var(--shadow);
+}
+
+.dropdown.active {
+  visibility: visible;
+  opacity: 1;
+  transform: scale(1) translateX(5px);
+}
+
+.dropdown ul {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 1.2rem;
+  font-size: 0.95rem;
+}
+
+.dropdown-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.15rem;
+}
+
+.dropdown-link {
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.5rem 0;
+  border-radius: 7px;
+  transition: 0.1s ease-in-out;
+}
+
+.dropdown-link p {
+  font-size: 0.8rem;
+  color: var(--medium-grey);
+}
+
+.right-container {
+  display: flex;
+  align-items: center;
+  column-gap: 1rem;
+}
+
+.right-container .search {
+  position: relative;
+}
+
+.right-container img {
+  border-radius: 10px;
+  border: 1px solid black;
+}
+
+.search input {
+  background-color: var(--ash);
+  border: none;
+  border-radius: 6px;
+  padding: 0.7rem;
+  padding-left: 2.4rem;
+  font-size: 16px;
+  width: 100%;
+  border: var(--border);
+}
+
+.search .bx-search {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  font-size: 1.3rem;
+  transform: translateY(-50%);
+  opacity: 0.6;
+}
+
+#hamburger {
+  display: none;
+  padding: 0.1rem;
+  margin-left: 1rem;
+  font-size: 1.9rem;
+}
+
+@media (max-width: 1100px) {
+  #hamburger {
+    display: block;
+  }
+
+  .container {
+    padding: 1.2rem;
+  }
+
+  .menu {
+    display: none;
+    position: absolute;
+    top: 87px;
+    right: 0;
+    z-index: 10;
+  }
+
+  .menu-bar li:first-child ul:nth-child(1) {
+    border-right: none;
+    border-bottom: var(--border);
+  }
+
+  .dropdown {
+    display: none;
+    min-width: 100%;
+    border: none !important;
+    border-radius: 5px;
+    position: static;
+    top: 0;
+    left: 0;
+    visibility: visible;
+    opacity: 1;
+    transform: none;
+    box-shadow: none;
+  }
+
+  .menu.show,
+  .dropdown.active {
+    display: block;
+  }
+
+  .dropdown ul {
+    padding-left: 0.3rem;
+  }
+
+  .menu-bar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    row-gap: 1rem;
+    padding: 1rem;
+  }
+
+  .menu-bar .nav-link {
+    display: flex;
+    justify-content: space-between;
+    width: 100%;
+    font-weight: 600;
+    font-size: 1.2rem;
+    margin: 0;
+  }
+
+  .menu-bar li:first-child .dropdown {
+    min-width: 100%;
+  }
+
+  .menu-bar > li:not(:last-child) {
+    padding-bottom: 0.5rem;
+    border-bottom: var(--border);
+  }
+}
+
+@media (max-width: 600px) {
+  .right-container {
+    display: none;
+  }
+}
+
+#contact {
+    display: inline;
+    position:relative;
+    background: ddd;
+    color: #000;
+    z-index: 3001;
+    padding:10px;
+     border-radius: 15px;
+}
+
+.button-8 {
+  background-color: #e1ecf4;
+  border-radius: 3px;
+  border: 1px solid #7aa7c7;
+  box-shadow: rgba(255, 255, 255, .7) 0 1px 0 0 inset;
+  box-sizing: border-box;
+  color: #39739d;
+  cursor: pointer;
+  display: inline-block;
+  font-family: -apple-system,system-ui,"Segoe UI","Liberation Sans",sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.15385;
+  margin: 0;
+  outline: none;
+  padding: 8px .8em;
+  position: relative;
+  text-align: center;
+  text-decoration: none;
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: manipulation;
+  vertical-align: baseline;
+  white-space: nowrap;
+}
+
+.button-8:hover,
+.button-8:focus {
+  background-color: #b3d3ea;
+  color: #2c5777;
+}
+
+.button-8:focus {
+  box-shadow: 0 0 0 4px rgba(0, 149, 255, .15);
+}
+
+.button-8:active {
+  background-color: #a0c7e4;
+  box-shadow: none;
+  color: #2c5777;
+}
+
+@layer bs-component {
+	:where(.ui-number-card) {
+		aspect-ratio: 1/1;
+		background-color: var(--ButtonFace);
+		padding-block-end: 2ch;
+		padding-inline: 2ch; 
+		text-align: center;
+		& p { margin: 0; }
+		& ui-number {
+			font-size: 500%;
+			font-variant-numeric: tabular-nums;
+			font-weight: 900;
+			&::part(number) {
+				--playstate: var(--scroll-trigger, running);
+			}
+			&::part(suffix) {
+				font-size: 75%;
+			}
+		}
+	}
+	@keyframes trigger {
+		to { --scroll-trigger: running; }
+	}
+	@supports (animation-timeline: view()) {
+		:where(.ui-number-card) {
+			--scroll-trigger: paused;
+			animation: trigger linear;
+			animation-range: cover;
+			animation-timeline: view();
+		}
+	}
+}
+
+.ui-number-card{max-width:320px}
+
+</style> 
+</head>
+
+<body translate="no" onload="runAnimations()">
+  <header id="nav-menu" aria-label="navigation bar">
+  <div class="container">
+    <div class="nav-start">
+      <a class="logo" href="/">
+        <img src="newlogo.png" height="80" alt="Open Council Data UK Logo" />
+      </a>
+      <nav class="menu">
+        <ul class="menu-bar">
+          <li>
+            <button class="nav-link dropdown-btn" data-dropdown="dropdown1" aria-haspopup="true" aria-expanded="false" aria-label="council compositions">
+              Councils
+              <i class="bx bx-chevron-down" aria-hidden="true"></i>
+            </button>
+            <div id="dropdown1" class="dropdown">
+              <ul role="menu">
+                <li class="dropdown-title">
+                  <span class="dropdown-link-title">By Type of Authority</span>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="councils.php?model=C&y=0">
+                    <img src="bullet.png" style="height:0.8em;" />
+                    County Councils
+                  </a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="councils.php?model=D&y=0">
+                    <img src="bullet.png" style="height:0.8em;" />
+                    District Councils
+                  </a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="councils.php?model=M&y=0">
+                    <img src="bullet.png" style="height:0.8em;" />
+                    Metropolitan Boroughs
+                  </a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="councils.php?model=U&y=0">
+                    <img src="bullet.png" style="height:0.8em;" />
+                    Unitary Authorities
+                  </a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="councils.php?model=L&y=0">
+                    <img src="bullet.png" style="height:0.8em;" />
+                    London
+                  </a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="nicouncils.php?y=0">
+                    <img src="bullet.png" style="height:0.8em;" />
+                    Northern Ireland
+                  </a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="councils.php?model=W&y=0">
+                    <img src="bullet.png" style="height:0.8em;" />
+                    Wales
+                  </a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="councils.php?model=S&y=0">
+                    <img src="bullet.png" style="height:0.8em;" />
+                    Scotland
+                  </a>
+                </li>
+              </ul>
+              <ul role="menu">
+                <li class="dropdown-title">
+                  <span class="dropdown-link-title">Other Categories</span>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="councils.php?model=&y=0">
+                    <img src="bullet.png" style="height:0.8em;" />
+                    All GB
+                  </a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="councils.php?model=E&y=0">
+                    <img src="bullet.png" style="height:0.8em;" />
+                    England
+                  </a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="abolishedcouncils.php">
+                    <img src="bullet.png" style="height:0.8em;" />
+                    Abolished
+                  </a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="governance.php?model=MC">
+                  <img src="bullet.png" style="height:0.8em;" />
+                  By Governance Model
+                  </a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="combinedAuthorities.php?y=0">
+                  <img src="bullet.png" style="height:0.8em;" />
+                  Regional Authorities
+                  </a>
+                </li>
+              </ul>
+            </div>
+          </li>
+          <li>
+            <button class="nav-link dropdown-btn" data-dropdown="dropdown2" aria-haspopup="true" aria-expanded="false" aria-label="trends and analysis">
+              Trends & Analysis
+              <i class="bx bx-chevron-down" aria-hidden="true"></i>
+            </button>
+            <div id="dropdown2" class="dropdown">
+              <ul role="menu">
+                <li>
+                  <span class="dropdown-link-title">Trends & Trackers</span>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="changes.php?y=2026">Councillor Changes 2020-26</a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="changesCtrl.php?y=2026">Council Changes 2026-</a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="tracker.php">Parties Monthly Tracker 2025-26</a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="councillors2.php?y=0">Parties Annnual Archive 2016-26</a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="history.php">GB Compositions 1973-2026</a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="nihistory.php">NI Compositions 2014-2026</a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="changesC.php?y=2026">By-election Archive 2021-26</a>
+                </li>
+              </ul>
+            </div>
+          </li>
+          <li><a class="nav-link" href="byelections.php">By-elections</a></li>
+          <li><a class="nav-link" href="elections.php">2027 Elections</a></li>
+          <li><a class="nav-link" href="news.php">News</a></li>
+          <li><a class="nav-link" href="maps.php">Maps</a></li>
+<li>
+            <button class="nav-link dropdown-btn" data-dropdown="dropdown3" aria-haspopup="true" aria-expanded="false" aria-label="products and downloads">
+              Products & Downloads
+              <i class="bx bx-chevron-down" aria-hidden="true"></i>
+            </button>
+            <div id="dropdown3" class="dropdown">
+              <ul role="menu">
+                <li role="menuitem">
+                  <a class="dropdown-link" href="datasets.php">Paid Dataset Services</a>
+                </li>
+                <li role="menuitem">
+                  <a class="dropdown-link" href="productsAndDownloads.php">Free CSV Downloads</a>
+                </li>
+              </ul>
+            </div>
+          </li>
+          
+        </ul>
+      </nav>
+    </div>
+
+    <button id="hamburger" aria-label="hamburger" aria-haspopup="true" aria-expanded="false">
+        <i class="bx bx-menu" aria-hidden="true"></i>
+      </button>
+    </div>
+  </div>
+</header>
+
+<style>
+:root {
+  --base-hue: 210deg;
+}
+
+.my-dialog {
+  animation: fadeOut 0.5s forwards;
+
+  &[open] {
+    animation: fadeIn 0.5s forwards;
+
+    &::backdrop {
+      animation: backdropFadeIn 0.5s forwards;
+    }
+  }
+
+  &::backdrop {
+    animation: backdropFadeOut 0.5s forwards;
+  }
+}
+
+.my-popover {
+  animation: fadeOut 0.5s forwards;
+  top: 10% !important;
+  border-radius: 0.5em;
+  padding: 8px;
+  background-color: ffeecc;
+  &:popover-open {
+    animation: fadeIn 0.5s forwards;
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    translate: 0 -1em;
+  }
+
+  to {
+    opacity: 1;
+    translate: 0 0;
+  }
+}
+
+@keyframes fadeOut {
+  from {
+    opacity: 1;
+    translate: 0 0;
+  }
+
+  to {
+    opacity: 0;
+    translate: 0 1em;
+  }
+}
+
+@keyframes backdropFadeIn {
+  from {
+    background: hsl(0 0% 0% / 0%);
+  }
+
+  to {
+    background: hsl(0 0% 0% / 50%);
+  }
+}
+
+@keyframes backdropFadeOut {
+  from {
+    background: hsl(0 0% 0% / 50%);
+  }
+
+  to {
+    background: hsl(0 0% 0% / 0%);
+  }
+}
+
+.my-popover {
+  transition: display 0.5s allow-discrete, overlay 0.5s allow-discrete;
+  text-align:left;
+}
+</style>
+
+<div style="max-width:1000px;"><br><br><h2 style="text-align:center; font-size: 27px;">Cambridgeshire Council</h2><h2 style="text-align:center; font-size: 22x;">Composition - 2026 Latest</h2><div><table style="border:none; hover:none;"><tr><td style="vertical-align:top;"><table style="text-align:center; border:0;"><tr><td><span style="padding:12px; border-radius:10px;" class="libdem-main">Lib Dem Majority<br>(Committee)</span></th></tr><tr><td>Total Seats: 61</td></tr><tr><td>Majority Required: 31</td></tr><tr><td>East of England Region</td></tr><tr><td><a href="combinedAuthorities2.php?cacode=CPCA&y=0">Cambridgeshire and Peterborough Combined Authority</a></td></tr><tr><td><a href="councils.php?model=C&y=0">County</a></td></tr></table>
+    <div class="page-container" style="text-align:center;">
+    <button id="myPopoverTrigger" popovertarget="myPopover" class="nav-link dropdown-btn" style="font-size:1rem;">
+    More Council Details
+    <i class="bx bx-chevron-down" aria-hidden="true"></i>
+    </button>
+    <div id="myPopover" class="my-popover" popover style="position:relative; right:0;">
+    <p><table style="text-align:center; border:0;"><tr><td>Total Seats: 61</td></tr><tr><td>Majority Required: 31</td></tr><tr><td>East of England Region</td></tr><tr><td><a href="combinedAuthorities2.php?cacode=CPCA&y=0">Cambridgeshire and Peterborough Combined Authority</a></td></tr><tr><td><a href="councils.php?model=C&y=0">County</a></td></tr> <tr><td title="All members elect a leader. All members appointed proportionally to policy committees. Disagreements moved to full council meetings.">Committee System</td></tr><tr><td title="All seats elect every 4 years.">All seats elected at once</td></tr><tr><td>E10000003</td></tr><tr><td>New authority elections 2027.<br>To be abolished 2028.</td></tr></table></p></div></div></td><td style="vertical-align:middle;">
+<form style="text-align:center; width:90%;">
+    <select name="yearSelect" onchange="this.options[this.selectedIndex].value && (window.location = this.options[this.selectedIndex].value);">
+        <option value="" disabled selected hidden>Select Year:</option>
+        <option value="council.php?c=2&y=0">Latest Composition</option>
+        <option value="council.php?c=2&y=2026">2026</option>
+        <option value="council.php?c=2&y=2025">2025</option>
+        <option value="council.php?c=2&y=2024">2024</option>
+        <option value="council.php?c=2&y=2023">2023</option>
+        <option value="council.php?c=2&y=2022">2022</option>
+        <option value="council.php?c=2&y=2021">2021</option>
+        <option value="council.php?c=2&y=2020">2020</option>
+        <option value="council.php?c=2&y=2019">2019</option>
+        <option value="council.php?c=2&y=2018">2018</option>
+        <option value="council.php?c=2&y=2017">2017</option>
+        <option value="council.php?c=2&y=2016">2016</option>
+    </select>
+</form>
+
+<div class="chart-wrap">
+  <canvas id="myChart"></canvas>
+</div>
+
+<script>
+Chart.register(ChartDataLabels);
+
+const canvas = document.getElementById('myChart');
+const ctx = canvas.getContext('2d');
+
+const myChart = new Chart(ctx, {
+  type: 'bar',
+  data: {
+    labels: ["Lab","Con","LD","Grn","Ref","Oth"],
+    datasets: [{
+      data: [5,11,32,3,9,1],
+      backgroundColor: ['#e4003b','#0087dc','#ff6400','#00a85a','#00bed6','#808080']
+    }]
+  },
+  options: {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: { enabled: false },
+      annotation: {
+        annotations: {
+          line1: {
+            type: 'line',
+            xMin: 31,
+            xMax: 31,
+            borderColor: '#333',
+            borderWidth: 2,
+            borderDash: [10, 10]
+          }
+        }
+      },
+      datalabels: {
+        clip: false,
+        anchor: 'end',
+        align: 'start',
+        offset: 0,
+        formatter: Math.round,
+        color: '#000000',
+        font: {
+          size: 20,
+          weight: 'bold'
+        }
+      }
+    }
+  }
+});
+</script>
+
+</td></tr></table></div><div class="map-wrap"><div id="map" name=2></div></div><table style="text-align:left; border-collapse:collapse;"><caption><p style="font-size: 27px">Cambridgeshire Councillors: 2026 Latest</p></caption>
+<thead><tr><th style="text-align:center; padding:2px;">Name</th><th style="text-align:center; padding:2px;">Party</th><th style="text-align:center; padding:2px;">Ward</th><th style="text-align:center; padding:2px;">End of Term</th></tr></thead><tbody><tr><td class="cllrname"><b>Elliot Tong</b></td><td  class="green-main">Green Party (E&W)</td><td>Abbey</td><td>2029</td></tr><tr><td class="cllrname"><b>Ian Gardener</b></td><td  class="conservative-main">Conservative and Unionist</td><td>Alconbury & Kimbolton</td><td>2029</td></tr><tr><td class="cllrname"><b>Mike Black</b></td><td  class="labour-main">Labour Party</td><td>Arbury</td><td>2029</td></tr><tr><td class="cllrname"><b>Edna Murphy</b></td><td  class="libdem-main">Liberal Democrats</td><td>Bar Hill</td><td>2029</td></tr><tr><td class="cllrname"><b>Liam Dewey-Beckett</b></td><td  class="libdem-main">Liberal Democrats</td><td>Brampton & Buckden</td><td>2029</td></tr><tr><td class="cllrname"><b>Yannifer Malinowski</b></td><td  class="libdem-main">Liberal Democrats</td><td>Burwell</td><td>2029</td></tr><tr><td class="cllrname"><b>Lucy Nethsingha</b></td><td  class="libdem-main">Liberal Democrats</td><td>Cambourne</td><td>2029</td></tr><tr><td class="cllrname"><b>Rory Clark</b></td><td  class="libdem-main">Liberal Democrats</td><td>Castle</td><td>2029</td></tr><tr><td class="cllrname"><b>Daniel Divine</b></td><td  class="reform-main">Reform UK</td><td>Chatteris</td><td>2029</td></tr><tr><td class="cllrname"><b>Bryony Goodliffe</b></td><td  class="labour-main">Labour Party</td><td>Cherry Hinton</td><td>2029</td></tr><tr><td class="cllrname"><b>Ian Manning</b></td><td  class="libdem-main">Liberal Democrats</td><td>Chesterton</td><td>2029</td></tr><tr><td class="cllrname"><b>Yasmin Deter</b></td><td  class="libdem-main">Liberal Democrats</td><td>Cottenham & Willingham</td><td>2029</td></tr><tr><td class="cllrname"><b>Peter McDonald</b></td><td  class="libdem-main">Liberal Democrats</td><td>Duxford</td><td>2029</td></tr><tr><td class="cllrname"><b>Alison Whelan</b></td><td  class="libdem-main">Liberal Democrats</td><td>Ely North</td><td>2029</td></tr><tr><td class="cllrname"><b>Christine Whelan</b></td><td  class="libdem-main">Liberal Democrats</td><td>Ely South</td><td>2029</td></tr><tr><td class="cllrname"><b>Matthew Morgan</b></td><td  class="libdem-main">Liberal Democrats</td><td>Fulbourn</td><td>2029</td></tr><tr><td class="cllrname"><b>James Stuart</b></td><td  class="libdem-main">Liberal Democrats</td><td>Gamlingay</td><td>2029</td></tr><tr><td class="cllrname"><b>Graham Wilson</b></td><td  class="libdem-main">Liberal Democrats</td><td>Godmanchester & Huntingdon South</td><td>2029</td></tr><tr><td class="cllrname"><b>Christopher Morris</b></td><td  class="libdem-main">Liberal Democrats</td><td>Hardwick</td><td>2029</td></tr><tr><td class="cllrname"><b>Ros Hathorn</b></td><td  class="libdem-main">Liberal Democrats</td><td>Histon & Impington</td><td>2029</td></tr><tr><td class="cllrname"><b>Leedo George</b></td><td  class="conservative-main">Conservative and Unionist</td><td>Huntingdon North & Hartford</td><td>2029</td></tr><tr><td class="cllrname"><b>Tom Sanderson</b></td><td  class="libdem-main">Liberal Democrats</td><td>Huntingdon West</td><td>2029</td></tr><tr><td class="cllrname"><b>Elisa Meschini</b></td><td  class="labour-main">Labour Party</td><td>King's Hedges</td><td>2029</td></tr><tr><td class="cllrname"><b>Henry Batchelor</b></td><td  class="libdem-main">Liberal Democrats</td><td>Linton</td><td>2029</td></tr><tr><td class="cllrname"><b>John Wells</b></td><td  class="reform-main">Reform UK</td><td>Littleport</td><td>2029</td></tr><tr><td class="cllrname"><b>Luis Navarro</b></td><td  class="libdem-main">Liberal Democrats</td><td>Longstanton, Northstowe & Over</td><td>2029</td></tr><tr><td class="cllrname"><b>Stefan Fisher</b></td><td  class="reform-main">Reform UK</td><td>March North & Waldersey</td><td>2029</td></tr><tr><td class="cllrname"><b>Colin Galbraith</b></td><td  class="reform-main">Reform UK</td><td>March North & Waldersey</td><td>2029</td></tr><tr><td class="cllrname"><b>Christopher Thornhill</b></td><td  class="reform-main">Reform UK</td><td>March South & Rural</td><td>2029</td></tr><tr><td class="cllrname"><b>Alex Beckett</b></td><td  class="libdem-main">Liberal Democrats</td><td>Market</td><td>2029</td></tr><tr><td class="cllrname"><b>Adam Bostanci</b></td><td  class="libdem-main">Liberal Democrats</td><td>Melbourn & Bassingbourn</td><td>2029</td></tr><tr><td class="cllrname"><b>Peter Rees</b></td><td  class="green-main">Green Party (E&W)</td><td>Newnham</td><td>2029</td></tr><tr><td class="cllrname"><b>Chris Poulton</b></td><td  class="libdem-main">Liberal Democrats</td><td>Papworth & Swavesey</td><td>2029</td></tr><tr><td class="cllrname"><b>Richard Howitt</b></td><td  class="labour-main">Labour Party</td><td>Petersfield</td><td>2029</td></tr><tr><td class="cllrname"><b>Karen Young</b></td><td  class="libdem-main">Liberal Democrats</td><td>Queen Edith's</td><td>2029</td></tr><tr><td class="cllrname"><b>Howard Tobias</b></td><td  class="reform-main">Reform UK</td><td>Ramsey & Bury</td><td>2029</td></tr><tr><td class="cllrname"><b>Chris Tirrell</b></td><td  class="reform-main">Reform UK</td><td>Roman Bank & Peckover</td><td>2029</td></tr><tr><td class="cllrname"><b>Darren Green</b></td><td  class="green-main">Green Party (E&W)</td><td>Romsey</td><td>2029</td></tr><tr><td class="cllrname"><b>Peter Fane</b></td><td  class="libdem-main">Liberal Democrats</td><td>Sawston & Shelford</td><td>2029</td></tr><tr><td class="cllrname"><b>Laurence Damary-Homan</b></td><td  class="libdem-main">Liberal Democrats</td><td>Sawston & Shelford</td><td>2029</td></tr><tr><td class="cllrname"><b>Simon Bywater</b></td><td  class="conservative-main">Conservative and Unionist</td><td>Sawtry & Stilton</td><td>2029</td></tr><tr><td class="cllrname"><b>Mark Goldsack</b></td><td  class="conservative-main">Conservative and Unionist</td><td>Soham North & Isleham</td><td>2029</td></tr><tr><td class="cllrname"><b>Tom Hawker-Dawson</b></td><td  class="libdem-main">Liberal Democrats</td><td>Soham South & Haddenham</td><td>2029</td></tr><tr><td class="cllrname"><b>Charlotte Lowe</b></td><td  class="conservative-main">Conservative and Unionist</td><td>Somersham & Earith</td><td>2029</td></tr><tr><td class="cllrname"><b>Julie Kerr</b></td><td  class="ind">Independent / Other</td><td>St. Ives North & Wyton</td><td>2029</td></tr><tr><td class="cllrname"><b>Alex Bulat</b></td><td  class="labour-main">Labour Party</td><td>St. Ives South & Needingworth</td><td>2029</td></tr><tr><td class="cllrname"><b>Sarah Caine</b></td><td  class="libdem-main">Liberal Democrats</td><td>St. Neots East & Gransden</td><td>2029</td></tr><tr><td class="cllrname"><b>Ricky Ioannides</b></td><td  class="reform-main">Reform UK</td><td>St. Neots Eynesbury</td><td>2029</td></tr><tr><td class="cllrname"><b>Robin Wyatt</b></td><td  class="libdem-main">Liberal Democrats</td><td>St. Neots Priory Park & Little Paxton</td><td>2029</td></tr><tr><td class="cllrname"><b>Geoffrey Seeff</b></td><td  class="libdem-main">Liberal Democrats</td><td>St. Neots The Eatons</td><td>2029</td></tr><tr><td class="cllrname"><b>Lorna Dupre</b></td><td  class="libdem-main">Liberal Democrats</td><td>Sutton</td><td>2029</td></tr><tr><td class="cllrname"><b>David Keane</b></td><td  class="conservative-main">Conservative and Unionist</td><td>The Hemingfords & Fenstanton</td><td>2029</td></tr><tr><td class="cllrname"><b>David Levien</b></td><td  class="libdem-main">Liberal Democrats</td><td>Trumpington</td><td>2029</td></tr><tr><td class="cllrname"><b>Ross Martin</b></td><td  class="conservative-main">Conservative and Unionist</td><td>Warboys & The Stukeleys</td><td>2029</td></tr><tr><td class="cllrname"><b>Anna Bradnam</b></td><td  class="libdem-main">Liberal Democrats</td><td>Waterbeach</td><td>2029</td></tr><tr><td class="cllrname"><b>Chris Boden</b></td><td  class="conservative-main">Conservative and Unionist</td><td>Whittlesey North</td><td>2029</td></tr><tr><td class="cllrname"><b>Michael Fisher</b></td><td  class="reform-main">Reform UK</td><td>Whittlesey South</td><td>2029</td></tr><tr><td class="cllrname"><b>Samantha Hoy</b></td><td  class="conservative-main">Conservative and Unionist</td><td>Wisbech East</td><td>2029</td></tr><tr><td class="cllrname"><b>Steve Tierney</b></td><td  class="conservative-main">Conservative and Unionist</td><td>Wisbech West</td><td>2029</td></tr><tr><td class="cllrname"><b>Jonny Edge</b></td><td  class="libdem-main">Liberal Democrats</td><td>Woodditton</td><td>2029</td></tr><tr><td class="cllrname"><b>Des Watt</b></td><td  class="conservative-main">Conservative and Unionist</td><td>Yaxley & Farcet</td><td>2029</td></tr></tbody></table></div></div><svg height="10" width="10" xmlns="http://www.w3.org/2000/svg" version="1.1"><defs><pattern id="PE58000050" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#00a85a"/></pattern><pattern id="PE58000051" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#0087dc"/></pattern><pattern id="PE58000052" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#e4003b"/></pattern><pattern id="PE58000053" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000054" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000055" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58001771" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000057" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000058" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#00bed6"/></pattern><pattern id="PE58000059" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#e4003b"/></pattern><pattern id="PE58000060" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58001761" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000062" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000063" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000064" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000065" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000066" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000067" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58001772" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000069" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000070" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#0087dc"/></pattern><pattern id="PE58000071" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000072" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#e4003b"/></pattern><pattern id="PE58000073" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000074" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#00bed6"/></pattern><pattern id="PE58001762" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000076" patternUnits="userSpaceOnUse" width=30 height="20" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#00bed6"/><rect y=10 width=30 height=10 fill="#00bed6"/></pattern><pattern id="PE58000077" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#00bed6"/></pattern><pattern id="PE58000078" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000079" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000080" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#00a85a"/></pattern><pattern id="PE58001773" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000082" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#e4003b"/></pattern><pattern id="PE58000083" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000084" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#00bed6"/></pattern><pattern id="PE58000085" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#00bed6"/></pattern><pattern id="PE58000086" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#00a85a"/></pattern><pattern id="PE58001774" patternUnits="userSpaceOnUse" width=30 height="20" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/><rect y=10 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000088" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#0087dc"/></pattern><pattern id="PE58000089" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#0087dc"/></pattern><pattern id="PE58000090" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000091" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#0087dc"/></pattern><pattern id="PE58000092" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#666666"/></pattern><pattern id="PE58000093" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#e4003b"/></pattern><pattern id="PE58000094" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000095" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#00bed6"/></pattern><pattern id="PE58000096" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000097" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000098" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000099" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#0087dc"/></pattern><pattern id="PE58000100" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000101" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#0087dc"/></pattern><pattern id="PE58000102" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000103" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#0087dc"/></pattern><pattern id="PE58000104" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#00bed6"/></pattern><pattern id="PE58000105" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#0087dc"/></pattern><pattern id="PE58000106" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#0087dc"/></pattern><pattern id="PE58000107" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#ff6400"/></pattern><pattern id="PE58000108" patternUnits="userSpaceOnUse" width=30 height="10" patternTransform="rotate(45)"><rect y=0 width=30 height=10 fill="#0087dc"/></pattern></defs></svg>
+<script type="module">
+// MAPPING SETUP
+const width = 400;
+const height = 400;
+
+// Data source handling
+var mapDataArray = {"E58000050":"#00a85a","E58000051":"#0087dc","E58000052":"#e4003b","E58000053":"#ff6400","E58000054":"#ff6400","E58000055":"#ff6400","E58001771":"#ff6400","E58000057":"#ff6400","E58000058":"#00bed6","E58000059":"#e4003b","E58000060":"#ff6400","E58001761":"#ff6400","E58000062":"#ff6400","E58000063":"#ff6400","E58000064":"#ff6400","E58000065":"#ff6400","E58000066":"#ff6400","E58000067":"#ff6400","E58001772":"#ff6400","E58000069":"#ff6400","E58000070":"#0087dc","E58000071":"#ff6400","E58000072":"#e4003b","E58000073":"#ff6400","E58000074":"#00bed6","E58001762":"#ff6400","E58000076":"#00bed6#00bed6","E58000077":"#00bed6","E58000078":"#ff6400","E58000079":"#ff6400","E58000080":"#00a85a","E58001773":"#ff6400","E58000082":"#e4003b","E58000083":"#ff6400","E58000084":"#00bed6","E58000085":"#00bed6","E58000086":"#00a85a","E58001774":"#ff6400#ff6400","E58000088":"#0087dc","E58000089":"#0087dc","E58000090":"#ff6400","E58000091":"#0087dc","E58000092":"#666666","E58000093":"#e4003b","E58000094":"#ff6400","E58000095":"#00bed6","E58000096":"#ff6400","E58000097":"#ff6400","E58000098":"#ff6400","E58000099":"#0087dc","E58000100":"#ff6400","E58000101":"#0087dc","E58000102":"#ff6400","E58000103":"#0087dc","E58000104":"#00bed6","E58000105":"#0087dc","E58000106":"#0087dc","E58000107":"#ff6400","E58000108":"#0087dc"};
+
+// Load map data, define projection, create pathgenerator
+d3.json("geojson2026/E10000003.geojson")
+ .then(function(data) {
+  var projection = d3.geoMercator().fitSize([width, height], data);
+  var pathGenerator = d3.geoPath().projection(projection);
+   
+// Append SVG inside div
+  var svg = d3.select("#map")
+   .append("svg")
+   .attr("width", width)
+   .attr("height", height);
+
+// Draw all paths, add class tag saying ward, add title tag for ward name, add id tag for ward code
+  svg.selectAll("path")
+   .data(data.features)
+   .enter()
+   .append("path")
+   .attr("d", pathGenerator)
+   .style("stroke", "black")
+   .style("stroke-opacity", "0.5")
+   .attr("class", "ward")
+   .attr("id", function(d) { return d.properties.CED25CD; })
+   .append("title")
+   .text(function(d) { return d.properties.CED25NM; });
+
+for (var ons in mapDataArray) {
+    var colour = mapDataArray[ons];
+    svg.select(`path#${ons}`)
+        .style('fill', `url(#P${ons})`);
+    }
+  })
+
+
+</script>
+
+<script>
+// MAPPING COLOURS AND STYLES    
+var svg = d3.select("svg"),
+        margin = 200,
+        width = svg.attr("width") - margin,
+        height = svg.attr("height") - margin;
+
+
+    var xScale = d3.scaleBand().range ([0, width]).padding(0.4),
+        yScale = d3.scaleLinear().range ([height, 0]);
+
+    var g = svg.append("g")
+               .attr("transform", "translate(" + 100 + "," + 100 + ")");
+</script>
+
+<center>
+			  &nbsp;&nbsp;
+			  <script type='text/javascript' src='https://storage.ko-fi.com/cdn/widget/Widget_2.js'></script>
+			  <script type='text/javascript'>kofiwidget2.init('Support Me on Ko-fi', '#29abe0', 'N4N1LQ8UE');kofiwidget2.draw();</script><br><br>
+ 
+  <p xmlns:dct="http://purl.org/dc/terms/" xmlns:vcard="http://www.w3.org/2001/vcard-rdf/3.0#">
+  <a class="nav-link" href="mailto:jon@jonlawson.com">Email Me</a>&nbsp;&nbsp;&nbsp;
+  <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/"><img alt="Creative Commons Licence: Attribution ShareAlike" title="Creative Commons Licence: Attribution ShareAlike" style=" height:1.6em; vertical-align:middle; border-width:0;" src="https://i.creativecommons.org/l/by-sa/4.0/88x31.png" /></a>
+  &nbsp;&nbsp;&nbsp;
+  <a class="nav-link" href="aboutthissite.php">About This Site</a>
+  <br>
+  Provided by Lawson Data Services Ltd. (Company No. 15322169)
+</p>
+<br>
+</center>
+
+<script>
+// Source - https://stackoverflow.com/a/49041392
+// Posted by Nick Grealy, modified by community. See post 'Timeline' for change history
+// Retrieved 2026-06-17, License - CC BY-SA 4.0
+
+const getCellValue = (tr, idx) => tr.children[idx].innerText || tr.children[idx].textContent;
+
+const comparer = (idx, asc) => (a, b) => ((v1, v2) => 
+    v1 !== '' && v2 !== '' && !isNaN(v1) && !isNaN(v2) ? v1 - v2 : v1.toString().localeCompare(v2)
+    )(getCellValue(asc ? a : b, idx), getCellValue(asc ? b : a, idx));
+
+// do the work...
+// Source - https://stackoverflow.com/a/53880407
+// Posted by jedwards
+// Retrieved 2026-06-17, License - CC BY-SA 4.0
+if(!$("table").hasClass("nosort")) {
+  document.querySelectorAll('th').forEach(th => th.addEventListener('click', (() => {
+    const table = th.closest('table');
+    const tbody = table.querySelector('tbody');
+    Array.from(tbody.querySelectorAll('tr'))
+      .sort(comparer(Array.from(th.parentNode.children).indexOf(th), this.asc = !this.asc))
+      .forEach(tr => tbody.appendChild(tr) );
+
+    })));
+}
+</script>
+
+      <script id="rendered-js" >
+const dropdownBtn = document.querySelectorAll(".dropdown-btn");
+const dropdown = document.querySelectorAll(".dropdown");
+const hamburgerBtn = document.getElementById("hamburger");
+const navMenu = document.querySelector(".menu");
+const links = document.querySelectorAll(".dropdown a");
+
+function setAriaExpandedFalse() {
+  dropdownBtn.forEach(btn => btn.setAttribute("aria-expanded", "false"));
+}
+
+function closeDropdownMenu() {
+  dropdown.forEach(drop => {
+    drop.classList.remove("active");
+    drop.addEventListener("click", e => e.stopPropagation());
+  });
+}
+
+function toggleHamburger() {
+  navMenu.classList.toggle("show");
+}
+
+dropdownBtn.forEach(btn => {
+  btn.addEventListener("click", function (e) {
+    const dropdownIndex = e.currentTarget.dataset.dropdown;
+    const dropdownElement = document.getElementById(dropdownIndex);
+
+    dropdownElement.classList.toggle("active");
+    dropdown.forEach(drop => {
+      if (drop.id !== btn.dataset["dropdown"]) {
+        drop.classList.remove("active");
+      }
+    });
+    e.stopPropagation();
+    btn.setAttribute(
+    "aria-expanded",
+    btn.getAttribute("aria-expanded") === "false" ? "true" : "false");
+
+  });
+});
+
+// close dropdown menu when the dropdown links are clicked
+links.forEach((link) =>
+link.addEventListener("click", () => {
+  closeDropdownMenu();
+  setAriaExpandedFalse();
+  toggleHamburger();
+}));
+
+
+// close dropdown menu when you click on the document body
+document.documentElement.addEventListener("click", () => {
+  closeDropdownMenu();
+  setAriaExpandedFalse();
+});
+
+// close dropdown when the escape key is pressed
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") {
+    closeDropdownMenu();
+    setAriaExpandedFalse();
+  }
+});
+
+// toggle hamburger menu
+hamburgerBtn.addEventListener("click", toggleHamburger);
+//# sourceURL=pen.js
+
+	function contactClose() {
+		document.getElementById("contact").style.display = "none";
+	}
+
+    </script>
+</body>
+</html>
