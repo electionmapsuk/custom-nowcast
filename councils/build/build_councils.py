@@ -30,7 +30,9 @@ import json
 import os
 import re
 import sys
+import time
 from collections import Counter, defaultdict
+from concurrent.futures import ThreadPoolExecutor
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
@@ -45,7 +47,7 @@ from parties import (CONTROL_TOKENS, NOC_COLOUR, OCD_CODES, OTH_REFINEMENTS,  # 
 # is what lets you compare a party's raw CSV count against the seats the split
 # actually allocated it.
 REFINED_FROM_OTH = {code for _, code in OTH_REFINEMENTS}
-from tables import largest_table  # noqa: E402
+from tables import largest_table, parse_tables  # noqa: E402
 
 BASE = "https://opencouncildata.co.uk/"
 
@@ -86,11 +88,21 @@ EXTRA_COUNCILS = [
 # holds enough seats to give (the source may have filed them somewhere else,
 # e.g. as independents), nothing is moved and it is reported, not guessed at.
 MANUAL_MOVES = [
-    # Open Council Data counts these two in Plymouth's Ind column.
+    # The table counts these two in Plymouth's Oth column; the councillor CSV
+    # that splits Oth still lists them as independents, so they land in Ind.
     {"council": "Plymouth", "from": "IND", "to": "RES", "seats": 2,
      "note": "Mark Hadfield (St Budeaux) and Andrew Crumplin (Moor View), "
              "Reform UK to Restore Britain, 4 September 2026"},
 ]
+
+# Each council's own page (council.php?c=N) lists every councillor by name and
+# party. It is the most current thing Open Council Data publishes - defections
+# show there first - so it, rather than the weekly councillor CSV, is what splits
+# each council's Oth column. The CSV is kept as a per-council fallback.
+COUNCIL_PAGE = BASE + "council.php?c={c}&y=0"
+PAGE_SCAN_MAX = 460     # c numbers ran to 421 (East Surrey) in 2026
+PAGE_WORKERS = 4        # ~460 small pages, a couple of minutes, gently
+PAGE_DELAY = 0.25       # seconds each worker waits between requests
 
 # Rows that are page furniture, not councils.
 FOOTER_RE = re.compile(r"^(total|totals|sum|all councils|average)\b|:$", re.I)
@@ -140,6 +152,7 @@ def load_party_register() -> dict:
 
     out: dict[str, str] = {}
     unknown: Counter = Counter()
+    REGISTER_NAMES.clear()
     n = 0
     for row in reader:
         ref = (row.get(f_ref) or "").strip().upper()
@@ -155,6 +168,8 @@ def load_party_register() -> dict:
         elif code == "OTH":
             code = refine_other(name)
         out[ref] = code
+        if name:
+            REGISTER_NAMES.setdefault(_pname(name), code)
     if unknown:
         warn(f"party register had short codes we don't map: {dict(unknown)}")
     print(f"  party register: {n} parties, {len(out)} codes", file=sys.stderr)
@@ -318,7 +333,8 @@ def scrape_compositions() -> dict:
             continue
 
         n_before = len(out)
-        for r in rows[head_idx + 1:]:
+        hrefs = table.get("hrefs") or []
+        for ri, r in enumerate(rows[head_idx + 1:], start=head_idx + 1):
             if len(r) <= total_col:
                 continue
             name = r[name_col].strip()
@@ -361,9 +377,176 @@ def scrape_compositions() -> dict:
                 "oth": oth,
                 "vacant": vac,
                 "total": total,
+                "c": _c_number(hrefs[ri][name_col] if ri < len(hrefs)
+                               and name_col < len(hrefs[ri]) else None),
             }
         print(f"  {group:16s} {len(out) - n_before:3d} councils", file=sys.stderr)
     return out
+
+
+# ------------------------------------------------------------ council pages --
+
+REGISTER_NAMES: dict[str, str] = {}      # party name (normalised) -> our code
+_C_RE = re.compile(r"council\.php\?(?:[^\"'#]*&)?c=(\d+)")
+_HEAD_RE = re.compile(r">\s*([^<>]{2,120}?)\s+Councillors\s*:", re.I)
+_TITLE_RE = re.compile(r"<title[^>]*>\s*([^<]+?)\s*</title>", re.I | re.S)
+
+
+def _pname(name: str) -> str:
+    return re.sub(r"\s+", " ", (name or "").replace("\u2019", "'")).strip().lower()
+
+
+def _c_number(href) -> int | None:
+    m = _C_RE.search(href or "")
+    return int(m.group(1)) if m else None
+
+
+def may_poll(year: int) -> str:
+    """Ordinary local elections fall on the first Thursday in May."""
+    d = dt.date(year, 5, 1)
+    return (d + dt.timedelta(days=(3 - d.weekday()) % 7)).isoformat()
+
+
+def party_code_for(name: str) -> tuple[str, bool]:
+    """Our code for a party as a council page writes it, and whether the
+    register knew the name (False = fell back to the name rules)."""
+    code = REGISTER_NAMES.get(_pname(name))
+    known = code is not None
+    if code is None:
+        code = party_from_name(name)
+    if code in ("OTH", "IND"):
+        promoted = refine_other(name)
+        if promoted != "OTH":
+            code = promoted
+    return code, known
+
+
+def parse_council_page(html: str):
+    """(council name or None, [(party, end-of-term year or None), ...])."""
+    name = None
+    m = _HEAD_RE.search(html)
+    if m:
+        name = m.group(1).strip()
+    else:
+        t = _TITLE_RE.search(html)
+        if t and "councillor" in t.group(1).lower():
+            name = re.split(r"\s+Councillors", t.group(1), flags=re.I)[0].strip()
+
+    members = []
+    for t in parse_tables(html):
+        rows = t["rows"]
+        if not rows:
+            continue
+        head = [c.strip().lower() for c in rows[0]]
+        if "party" not in head or not any(h.startswith("name") for h in head):
+            continue
+        pc = head.index("party")
+        tc = next((i for i, h in enumerate(head) if "term" in h or "election" in h), None)
+        for r in rows[1:]:
+            if len(r) <= pc or not r[pc].strip():
+                continue
+            yr = None
+            if tc is not None and tc < len(r):
+                y = re.search(r"(20\d\d)", r[tc])
+                yr = int(y.group(1)) if y else None
+            members.append((r[pc].strip(), yr))
+        break
+    return name, members
+
+
+_page_tally = {"ok": 0, "fail": 0}
+
+
+def _fetch_page(c: int):
+    # If the site is down, stop after a couple of dozen straight failures rather
+    # than spending hours on retries; the CSV fallback then covers every council.
+    if _page_tally["fail"] >= 25 and not _page_tally["ok"]:
+        return c, None
+    time.sleep(PAGE_DELAY)
+    try:
+        html = get_text(COUNCIL_PAGE.format(c=c), tries=2, timeout=40)
+        _page_tally["ok"] += 1
+        return c, html
+    except Exception:  # noqa: BLE001 - a missing page is just a gap
+        _page_tally["fail"] += 1
+        return c, None
+
+
+def scrape_council_pages(comps: dict, out_dir: str):
+    """Per-council party counts from each council's own page.
+
+    Returns (seats, nxt, cycle, oth_names, stats) keyed like the CSV scrape, for
+    every council whose page could be read and matched. The composition table
+    links each council to its page where it can; otherwise every c number up to
+    PAGE_SCAN_MAX is tried and the page is matched by the name in its heading.
+    """
+    by_c = {c["c"]: k for k, c in comps.items() if c.get("c")}
+    linked = len(by_c) >= 0.8 * max(1, len(comps))
+    targets = sorted(by_c) if linked else list(range(1, PAGE_SCAN_MAX + 1))
+
+    seats: dict[str, Counter] = defaultdict(Counter)
+    nxt: dict[str, Counter] = defaultdict(Counter)
+    cycle: dict[str, dict[str, Counter]] = defaultdict(lambda: defaultdict(Counter))
+    oth_names: Counter = Counter()
+    unknown_names: Counter = Counter()
+    unmatched, unnamed, failed = [], [], 0
+    sample_saved = False
+
+    _page_tally.update(ok=0, fail=0)
+    with ThreadPoolExecutor(max_workers=PAGE_WORKERS) as pool:
+        pages = list(pool.map(_fetch_page, targets))
+
+    for c, html in pages:
+        if not html:
+            failed += 1
+            continue
+        name, members = parse_council_page(html)
+        if not members:
+            continue
+        if linked:
+            key = by_c.get(c)
+        else:
+            if not name:
+                unnamed.append(c)
+                continue
+            key = norm(name)
+            if key not in comps:
+                unmatched.append(f"c={c} {name}")
+                continue
+        if key in seats:
+            continue
+        if not sample_saved and out_dir:
+            # One real page kept beside the data, so the parser can be checked
+            # against the actual markup. Safe to delete.
+            with open(os.path.join(out_dir, "council-page-sample.html"), "w",
+                      encoding="utf-8") as f:
+                f.write(html)
+            sample_saved = True
+        for party, yr in members:
+            code, known = party_code_for(party)
+            if not known:
+                unknown_names[party] += 1
+            seats[key][code] += 1
+            if code == "OTH" or code in REFINED_FROM_OTH:
+                oth_names[party] += 1
+            if yr:
+                iso = may_poll(yr)
+                nxt[key][iso] += 1
+                cycle[key][code][iso] += 1
+
+    stats = {
+        "mode": "linked from the composition table" if linked else f"scanned c=1..{PAGE_SCAN_MAX}",
+        "pagesRequested": len(targets),
+        "pagesFailed": failed,
+        "councilsRead": len(seats),
+        "councillors": sum(sum(v.values()) for v in seats.values()),
+        "unnamedPages": unnamed[:40],
+        "unmatchedPages": unmatched[:60],
+        "partyNamesNotInRegister": dict(unknown_names.most_common(40)),
+    }
+    print(f"  council pages: {stats['councilsRead']} councils, "
+          f"{stats['councillors']} councillors ({stats['mode']})", file=sys.stderr)
+    return seats, nxt, cycle, oth_names, stats
 
 
 # ------------------------------------------------------------ councillors ----
@@ -412,9 +595,8 @@ def scrape_councillors(year: int, register: dict):
         if code is None:
             unmatched_codes += 1
             code = party_from_name(r[c_party])
-        # The register files some parties' councillors under Ind rather than Oth
-        # (Plymouth's two Restore Britain councillors are the case in point), so
-        # promoted parties are recognised by name on Ind rows too.
+        # A councillor coded as an independent but whose party name is a
+        # promoted party (Restore Britain, say) is counted as that party.
         if code in ("OTH", "IND"):
             promoted = refine_other(r[c_party])
             if promoted != "OTH":
@@ -626,8 +808,34 @@ def build(year: int, out_dir: str) -> int:
     if added:
         print(f"  added {', '.join(added)} (absent from the source)", file=sys.stderr)
 
-    print("Fetching councillor CSV...", file=sys.stderr)
-    detail, nxt, cycle, csv_rows, oth_names = scrape_councillors(year, register)
+    print("Fetching council pages...", file=sys.stderr)
+    try:
+        p_seats, p_nxt, p_cycle, p_oth, page_stats = scrape_council_pages(comps, out_dir)
+    except Exception as exc:  # noqa: BLE001 - the CSV still covers everything
+        warn(f"council pages could not be read ({exc}); using the councillor CSV only")
+        p_seats, p_nxt, p_cycle, p_oth = {}, {}, {}, Counter()
+        page_stats = {"error": str(exc)}
+
+    print("Fetching councillor CSV (fallback)...", file=sys.stderr)
+    try:
+        detail, nxt, cycle, csv_rows, oth_names = scrape_councillors(year, register)
+    except Exception as exc:  # noqa: BLE001
+        if not p_seats:
+            raise
+        warn(f"councillor CSV could not be read ({exc}); council pages only")
+        detail, nxt = defaultdict(Counter), defaultdict(Counter)
+        cycle = defaultdict(lambda: defaultdict(Counter))
+        csv_rows, oth_names = 0, Counter()
+
+    # A council read from its own page uses it; any other keeps the CSV.
+    csv_fallback = []
+    for k, comp in comps.items():
+        if k in p_seats:
+            detail[k], nxt[k], cycle[k] = p_seats[k], p_nxt[k], p_cycle[k]
+        elif comp.get("oth"):
+            csv_fallback.append(comp["ocdName"])
+    if p_seats:
+        oth_names = p_oth
     for extra in EXTRA_COUNCILS:
         k = norm(extra["name"])
         if extra.get("nextElection") and not nxt.get(k):
@@ -640,7 +848,6 @@ def build(year: int, out_dir: str) -> int:
 
     councils, not_shown, regssed, split_failed = [], [], [], []
     superseded, no_cycle, overrides, moves_log = [], [], [], []
-    ind_reassigned = []
     today = dt.date.today().isoformat()
 
     for key, c in sorted(comps.items(), key=lambda kv: kv[1]["ocdName"]):
@@ -670,21 +877,6 @@ def build(year: int, out_dir: str) -> int:
             seats[k] = seats.get(k, 0) + v
         if c["vacant"]:
             seats["VAC"] = c["vacant"]
-
-        # A promoted party can also be sitting inside the table's Ind column: the
-        # CSV names them, the table counts them as independents. Pull them out
-        # only as far as the Ind column has people the CSV says are NOT
-        # independents - never below the CSV's own independent count.
-        for p in sorted(REFINED_FROM_OTH):
-            short = csv_seats.get(p, 0) - seats.get(p, 0)
-            spare = seats.get("IND", 0) - csv_seats.get("IND", 0)
-            take = min(short, spare)
-            if take > 0:
-                seats["IND"] -= take
-                if not seats["IND"]:
-                    del seats["IND"]
-                seats[p] = seats.get(p, 0) + take
-                ind_reassigned.append({"council": c["ocdName"], "party": p, "seats": take})
 
         party_dates = cycle.get(key) or {}
         seats = apply_moves(key, c["ocdName"], seats, party_dates, moves_log)
@@ -810,7 +1002,8 @@ def build(year: int, out_dir: str) -> int:
         "controlOverrides": overrides,
         "addedManually": added,
         "manualMoves": moves_log,
-        "indReassigned": ind_reassigned,
+        "councilPages": page_stats,
+        "othSplitFromCsv": csv_fallback,
         "gssReassigned": regssed,
         "othNotSplit": split_failed,
         "othBucket": dict(oth_names.most_common(60)),
