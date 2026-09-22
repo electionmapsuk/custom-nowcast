@@ -38,7 +38,7 @@ jobs:
         run: python councils/build/build_boundaries.py --out councils/data
 
       - name: Build ward boundaries
-        # Splits the ONS ward and division files in councils/sources into one
+        # Splits the ONS ward and division files in councils/Sources into one
         # small file per council. Only files whose content changed are
         # rewritten, so most runs commit nothing here.
         run: python councils/build/build_wards.py --sources councils/Sources --data councils/data
@@ -71,7 +71,15 @@ jobs:
             echo "No change in council data."
           else
             git commit -m "Council data refresh $(date -u +%Y-%m-%d)"
-            git push
+            # Other workflows can push to main while this one runs; take
+            # their commits first, then push. Only councils/data is ours,
+            # so the rebase never conflicts.
+            for attempt in 1 2 3 4 5; do
+              git pull --rebase origin main && git push && exit 0
+              echo "push attempt $attempt rejected - retrying"
+              sleep $((attempt * 5))
+            done
+            exit 1
           fi
 
       - name: Fail the run if the build did not validate
