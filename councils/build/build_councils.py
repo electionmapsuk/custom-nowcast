@@ -437,7 +437,10 @@ def parse_council_page(html: str):
         if t and "councillor" in t.group(1).lower():
             name = re.split(r"\s+Councillors", t.group(1), flags=re.I)[0].strip()
 
-    members = []
+    # Mayoral councils list the mayor in a small table of their own ahead of
+    # the councillors, with the same Name/Party headings. The councillors are
+    # the largest such table - and the mayor is not one of the seats.
+    best = None
     for t in parse_tables(html):
         rows = t["rows"]
         if not rows:
@@ -445,11 +448,17 @@ def parse_council_page(html: str):
         head = [c.strip().lower() for c in rows[0]]
         if "party" not in head or not any(h.startswith("name") for h in head):
             continue
+        if best is None or len(rows) > len(best[0]):
+            best = (rows, head)
+
+    members = []
+    if best:
+        rows, head = best
         pc = head.index("party")
         tc = next((i for i, h in enumerate(head) if "term" in h or "election" in h), None)
         nc = next((i for i, h in enumerate(head) if h.startswith("name")), None)
-        wc = next((i for i, h in enumerate(head) if h in ("ward", "division", "electoral division",
-                                                          "dea", "ward/division")), None)
+        wc = next((i for i, h in enumerate(head)
+                   if "ward" in h or "division" in h or h == "dea"), None)
         for r in rows[1:]:
             if len(r) <= pc or not r[pc].strip():
                 continue
@@ -459,7 +468,6 @@ def parse_council_page(html: str):
                 yr = int(y.group(1)) if y else None
             cell = lambda i: r[i].strip() if i is not None and i < len(r) else ""
             members.append((r[pc].strip(), yr, cell(nc), cell(wc)))
-        break
     return name, members
 
 
@@ -484,6 +492,16 @@ def _wkey(s: str) -> str:
 
 def _wloose(s: str) -> str:
     return re.sub(r"\band\b|\s", "", _wkey(s))
+
+
+# Words a fuzzy match must never change: "Banstead North" is not "Banstead
+# South" however similar the strings are.
+_WDISTINCT = re.compile(r"\b(north|south|east|west|central|upper|lower|inner|outer|"
+                        r"old|new|great|little|[0-9]+|i{1,3}|iv|v)\b")
+
+
+def _wdistinct(s: str) -> set:
+    return set(_WDISTINCT.findall(_wkey(s)))
 
 
 def match_wards(names, entries):
@@ -511,7 +529,9 @@ def match_wards(names, entries):
         keys = [k for k, v in exact.items() if len(v) == 1]
         scored = sorted(((difflib.SequenceMatcher(None, _wkey(n), k).ratio(), k) for k in keys),
                         reverse=True)[:2]
-        if scored and scored[0][0] >= 0.88 and (len(scored) == 1 or scored[0][0] - scored[1][0] >= 0.05):
+        if (scored and scored[0][0] >= 0.88
+                and (len(scored) == 1 or scored[0][0] - scored[1][0] >= 0.05)
+                and _wdistinct(n) == _wdistinct(scored[0][1])):
             out[n] = (next(iter(exact[scored[0][1]])), "fuzzy")
     return out
 
