@@ -41,7 +41,7 @@ jobs:
         # Splits the ONS ward and division files in councils/sources into one
         # small file per council. Only files whose content changed are
         # rewritten, so most runs commit nothing here.
-        run: python councils/build/build_wards.py --sources councils/sources --data councils/data
+        run: python councils/build/build_wards.py --sources councils/Sources --data councils/data
 
       - name: Build council data
         id: build
