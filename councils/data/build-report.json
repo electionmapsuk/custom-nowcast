@@ -1,5 +1,5 @@
 {
- "generated": "2026-09-21T17:12:11+00:00",
+ "generated": "2026-09-22T23:32:18+00:00",
  "year": 2026,
  "csvRows": 19273,
  "councilsParsed": 384,
@@ -22,12 +22,12 @@
   "Northern Ireland": 11,
   "Wales": 22
  },
- "councillors": 18701,
+ "councillors": 18700,
  "partyTotals": {
   "LAB": 4562,
   "CON": 3728,
   "LDM": 3162,
-  "RFM": 2313,
+  "RFM": 2312,
   "IND": 2191,
   "GRN": 1331,
   "SNP": 413,
@@ -37,7 +37,7 @@
   "DUP": 119,
   "ALL": 65,
   "UUP": 51,
-  "VAC": 38,
+  "VAC": 39,
   "RES": 38,
   "SDLP": 34,
   "TUV": 10
@@ -130,16 +130,7 @@
  "addedManually": [
   "Isles of Scilly"
  ],
- "manualMoves": [
-  {
-   "council": "Plymouth",
-   "from": "IND",
-   "to": "RES",
-   "seats": 2,
-   "note": "Mark Hadfield (St Budeaux) and Andrew Crumplin (Moor View), Reform UK to Restore Britain, 4 September 2026",
-   "status": "retired - source already shows 2 RES; delete me"
-  }
- ],
+ "manualMoves": [],
  "councilPages": {
   "mode": "linked from the composition table",
   "pagesRequested": 383,
@@ -148,10 +139,163 @@
   "councillors": 18585,
   "unnamedPages": [],
   "unmatchedPages": [],
-  "partyNamesNotInRegister": {
-   "Independent / Other": 1959,
-   "Vacant": 41
-  }
+  "partyNamesNotInRegister": {}
+ },
+ "wardMatch": {
+  "councils": 360,
+  "withWardView": 346,
+  "partial": [
+   {
+    "council": "Bradford",
+    "placed": 0.967,
+    "unmatchedWards": [
+     "Wibsey & Wrose"
+    ]
+   },
+   {
+    "council": "City of London",
+    "placed": 0.976,
+    "unmatchedWards": [
+     "Bridge and Bridge Without"
+    ]
+   },
+   {
+    "council": "Essex",
+    "placed": 0.987,
+    "unmatchedWards": [
+     "Loughton Central"
+    ]
+   },
+   {
+    "council": "West Surrey",
+    "placed": 0.911,
+    "unmatchedWards": [
+     "Camberley West & Frimley",
+     "Englefield Green & Virginia Water",
+     "Stanwell, Stanwell Moor & Ashford North",
+     "Thorpe, Longcross & Ottershaw"
+    ]
+   }
+  ],
+  "noWardView": [
+   {
+    "council": "Bedford",
+    "placed": 0.0,
+    "unmatchedWards": [
+     "(no ward)"
+    ]
+   },
+   {
+    "council": "Croydon",
+    "placed": 0.0,
+    "unmatchedWards": [
+     "(no ward)"
+    ]
+   },
+   {
+    "council": "Doncaster",
+    "placed": 0.0,
+    "unmatchedWards": [
+     "(no ward)"
+    ]
+   },
+   {
+    "council": "East Surrey",
+    "placed": 0.806,
+    "unmatchedWards": [
+     "Cobham & Oxshott South",
+     "Dorking",
+     "Esher, Claygate & Oxshott North",
+     "Ewell Village, Stoneleigh & Nonsuch",
+     "Long Ditton, Hinchley Wood & Western Green",
+     "Redhill East & North Earlswood",
+     "Thames Ditton & East Molesey"
+    ]
+   },
+   {
+    "council": "Hackney",
+    "placed": 0.0,
+    "unmatchedWards": [
+     "(no ward)"
+    ]
+   },
+   {
+    "council": "Leicester",
+    "placed": 0.0,
+    "unmatchedWards": [
+     "(no ward)"
+    ]
+   },
+   {
+    "council": "Lewisham",
+    "placed": 0.0,
+    "unmatchedWards": [
+     "(no ward)"
+    ]
+   },
+   {
+    "council": "Mansfield",
+    "placed": 0.0,
+    "unmatchedWards": [
+     "(no ward)"
+    ]
+   },
+   {
+    "council": "Middlesbrough",
+    "placed": 0.0,
+    "unmatchedWards": [
+     "(no ward)"
+    ]
+   },
+   {
+    "council": "Newham",
+    "placed": 0.0,
+    "unmatchedWards": [
+     "(no ward)"
+    ]
+   },
+   {
+    "council": "North Tyneside",
+    "placed": 0.0,
+    "unmatchedWards": [
+     "(no ward)"
+    ]
+   },
+   {
+    "council": "Salford",
+    "placed": 0.0,
+    "unmatchedWards": [
+     "(no ward)"
+    ]
+   },
+   {
+    "council": "Tower Hamlets",
+    "placed": 0.0,
+    "unmatchedWards": [
+     "(no ward)"
+    ]
+   },
+   {
+    "council": "Watford",
+    "placed": 0.0,
+    "unmatchedWards": [
+     "(no ward)"
+    ]
+   }
+  ],
+  "fuzzy": [
+   "East Surrey: Banstead, Woodmanshire & Chipstead -> Banstead, Woodmansterne and Chipstead ED",
+   "East Surrey: Merstham & Banstead North -> Merstham and Banstead South ED",
+   "East Surrey: Ewell Court, Auriol & Chuddington -> Ewell Court, Auriol and Cuddington ED",
+   "Essex: Harlow Parndon & Toddbrook -> Harlow Parndon & Todbrook ED",
+   "Essex: Harlow Nettleswell -> Harlow Netteswell ED",
+   "Gloucestershire: Fairford & Lechland on Thames -> Fairford & Lechlade on Thames ED",
+   "Kirklees: Liversedge & Gomersall -> Liversedge & Gomersal",
+   "Oxfordshire: Cropredy & Hook Launton -> Cropredy & Hook Norton ED",
+   "Staffordshire: Great Wurley & Essington -> Great Wyrley & Essington ED",
+   "Worcestershire: Chaddersley -> Chaddesley ED",
+   "Worcestershire: Breddon -> Bredon ED"
+  ]
  },
  "othSplitFromCsv": [],
  "gssReassigned": [
