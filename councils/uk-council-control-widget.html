@@ -505,7 +505,12 @@
   function focusCounts(){ return colourMode === 'largest' ? largestCounts() : nationalCounts().runs; }
 
   // ------------------------------------------------------------------ load --
+  // The data files are rebuilt daily, but browsers and GitHub Pages will
+  // happily serve an old copy. An hourly query key means no one ever sees
+  // data more than an hour staler than what is published.
+  var FRESH = 'v=' + Math.floor(Date.now() / 36e5);
   function loadJson(name, keepBase){
+    name = name + (name.indexOf('?') < 0 ? '?' : '&') + FRESH;
     return fetch(DATA_BASE + name)
       .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
       .catch(function(){
