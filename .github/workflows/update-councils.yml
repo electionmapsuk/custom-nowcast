@@ -5,7 +5,7 @@ on:
     # 06:23 UTC every Monday. Open Council Data UK is usually refreshed over
     # the weekend after Thursday by-elections are declared. (Minute changed from
     # :15 so GitHub re-registers the schedule when this file is committed.)
-    - cron: "23 6 * * 1"
+    - cron: "23 6 * * *"
 
   workflow_dispatch:
     inputs:
