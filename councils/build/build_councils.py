@@ -31,6 +31,8 @@ import os
 import re
 import sys
 import time
+import difflib
+import unicodedata
 from collections import Counter, defaultdict
 from concurrent.futures import ThreadPoolExecutor
 
@@ -88,11 +90,9 @@ EXTRA_COUNCILS = [
 # holds enough seats to give (the source may have filed them somewhere else,
 # e.g. as independents), nothing is moved and it is reported, not guessed at.
 MANUAL_MOVES = [
-    # The table counts these two in Plymouth's Oth column; the councillor CSV
-    # that splits Oth still lists them as independents, so they land in Ind.
-    {"council": "Plymouth", "from": "IND", "to": "RES", "seats": 2,
-     "note": "Mark Hadfield (St Budeaux) and Andrew Crumplin (Moor View), "
-             "Reform UK to Restore Britain, 4 September 2026"},
+    # Example (Plymouth, Sept 2026 - since retired once the source caught up):
+    # {"council": "Plymouth", "from": "IND", "to": "RES", "seats": 2,
+    #  "note": "Hadfield and Crumplin, Reform UK to Restore Britain, 4 Sep 2026"},
 ]
 
 # Each council's own page (council.php?c=N) lists every councillor by name and
@@ -407,10 +407,14 @@ def may_poll(year: int) -> str:
     return (d + dt.timedelta(days=(3 - d.weekday()) % 7)).isoformat()
 
 
+# The site's own labels for seats with no party behind them.
+_PAGE_LABELS = {"independent / other": "IND", "independent": "IND", "vacant": "VAC"}
+
+
 def party_code_for(name: str) -> tuple[str, bool]:
     """Our code for a party as a council page writes it, and whether the
     register knew the name (False = fell back to the name rules)."""
-    code = REGISTER_NAMES.get(_pname(name))
+    code = REGISTER_NAMES.get(_pname(name)) or _PAGE_LABELS.get(_pname(name))
     known = code is not None
     if code is None:
         code = party_from_name(name)
@@ -422,7 +426,8 @@ def party_code_for(name: str) -> tuple[str, bool]:
 
 
 def parse_council_page(html: str):
-    """(council name or None, [(party, end-of-term year or None), ...])."""
+    """(council name or None, [(party, end-of-term year or None, councillor
+    name, ward), ...])."""
     name = None
     m = _HEAD_RE.search(html)
     if m:
@@ -442,6 +447,9 @@ def parse_council_page(html: str):
             continue
         pc = head.index("party")
         tc = next((i for i, h in enumerate(head) if "term" in h or "election" in h), None)
+        nc = next((i for i, h in enumerate(head) if h.startswith("name")), None)
+        wc = next((i for i, h in enumerate(head) if h in ("ward", "division", "electoral division",
+                                                          "dea", "ward/division")), None)
         for r in rows[1:]:
             if len(r) <= pc or not r[pc].strip():
                 continue
@@ -449,9 +457,92 @@ def parse_council_page(html: str):
             if tc is not None and tc < len(r):
                 y = re.search(r"(20\d\d)", r[tc])
                 yr = int(y.group(1)) if y else None
-            members.append((r[pc].strip(), yr))
+            cell = lambda i: r[i].strip() if i is not None and i < len(r) else ""
+            members.append((r[pc].strip(), yr, cell(nc), cell(wc)))
         break
     return name, members
+
+
+# ------------------------------------------------------------ ward matching --
+# Council pages name each councillor's ward; the boundary files (built by
+# build_wards.py) carry ONS codes and names. Match on name within the council.
+
+WARD_VIEW_MIN = 0.9     # share of councillors placed before a council gets the ward view
+
+
+def _wkey(s: str) -> str:
+    s = unicodedata.normalize("NFKD", s or "")
+    s = "".join(ch for ch in s if not unicodedata.combining(ch)).lower()
+    s = s.replace("&", " and ").replace("\u2019", "'").replace("'", "")
+    s = re.sub(r"^ward\s*\d+\s*[-:\u2013]\s*", "", s.strip())
+    s = re.sub(r"[^a-z0-9 ]", " ", s)
+    s = re.sub(r"\s+(ed|ward|division)$", "", s.strip())
+    s = re.sub(r"\bsaint\b", "st", s)
+    s = re.sub(r"\bthe\b", " ", s)
+    return re.sub(r"\s+", " ", s).strip()
+
+
+def _wloose(s: str) -> str:
+    return re.sub(r"\band\b|\s", "", _wkey(s))
+
+
+def match_wards(names, entries):
+    """{page ward name: (ward id, "exact"|"loose"|"fuzzy")} for every name that
+    can be placed; entries are [id, name, welsh name] from the ward index."""
+    exact, loose = {}, {}
+    for wid, nm, alt in entries:
+        for v in (nm, alt):
+            if not v:
+                continue
+            exact.setdefault(_wkey(v), set()).add(wid)
+            loose.setdefault(_wloose(v), set()).add(wid)
+    out = {}
+    for n in names:
+        if not n:
+            continue
+        hit = exact.get(_wkey(n))
+        if hit and len(hit) == 1:
+            out[n] = (next(iter(hit)), "exact")
+            continue
+        hit = loose.get(_wloose(n))
+        if hit and len(hit) == 1:
+            out[n] = (next(iter(hit)), "loose")
+            continue
+        keys = [k for k, v in exact.items() if len(v) == 1]
+        scored = sorted(((difflib.SequenceMatcher(None, _wkey(n), k).ratio(), k) for k in keys),
+                        reverse=True)[:2]
+        if scored and scored[0][0] >= 0.88 and (len(scored) == 1 or scored[0][0] - scored[1][0] >= 0.05):
+            out[n] = (next(iter(exact[scored[0][1]])), "fuzzy")
+    return out
+
+
+def write_members(out_dir, gss, people, entries):
+    """Write members/<gss>.json and return (coverage, unmatched ward names,
+    fuzzy matches)."""
+    placed = match_wards({p["w"] for p in people}, entries)
+    wards, unmatched = {}, {}
+    for p in people:
+        rec = {"n": p["n"], "p": p["p"], "pn": p["pn"], "y": p["y"]}
+        hit = placed.get(p["w"])
+        if hit:
+            wards.setdefault(hit[0], []).append(rec)
+        else:
+            unmatched.setdefault(p["w"] or "(no ward)", []).append(rec)
+    for lst in list(wards.values()) + list(unmatched.values()):
+        lst.sort(key=lambda r: (r["y"] or 9999, r["n"]))
+    names = {wid: nm for wid, nm, _alt in entries}
+    doc = {"code": gss, "wards": dict(sorted(wards.items())),
+           "unmatched": dict(sorted(unmatched.items()))}
+    d = os.path.join(out_dir, "members")
+    os.makedirs(d, exist_ok=True)
+    path = os.path.join(d, f"{gss}.json")
+    text = json.dumps(doc, separators=(",", ":"), ensure_ascii=False)
+    if not os.path.exists(path) or open(path, encoding="utf-8").read() != text:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+    n_placed = sum(len(v) for v in wards.values())
+    fuzzy = [f"{w} -> {names.get(v[0], v[0])}" for w, v in placed.items() if v[1] == "fuzzy"]
+    return (n_placed / len(people) if people else 0.0), sorted(unmatched), fuzzy
 
 
 _page_tally = {"ok": 0, "fail": 0}
@@ -489,6 +580,7 @@ def scrape_council_pages(comps: dict, out_dir: str):
     cycle: dict[str, dict[str, Counter]] = defaultdict(lambda: defaultdict(Counter))
     oth_names: Counter = Counter()
     unknown_names: Counter = Counter()
+    roster: dict[str, list] = defaultdict(list)
     unmatched, unnamed, failed = [], [], 0
     sample_saved = False
 
@@ -522,8 +614,9 @@ def scrape_council_pages(comps: dict, out_dir: str):
                       encoding="utf-8") as f:
                 f.write(html)
             sample_saved = True
-        for party, yr in members:
+        for party, yr, person, ward in members:
             code, known = party_code_for(party)
+            roster[key].append({"n": person, "p": code, "pn": party, "y": yr, "w": ward})
             if not known:
                 unknown_names[party] += 1
             seats[key][code] += 1
@@ -546,7 +639,7 @@ def scrape_council_pages(comps: dict, out_dir: str):
     }
     print(f"  council pages: {stats['councilsRead']} councils, "
           f"{stats['councillors']} councillors ({stats['mode']})", file=sys.stderr)
-    return seats, nxt, cycle, oth_names, stats
+    return seats, nxt, cycle, oth_names, stats, roster
 
 
 # ------------------------------------------------------------ councillors ----
@@ -810,10 +903,10 @@ def build(year: int, out_dir: str) -> int:
 
     print("Fetching council pages...", file=sys.stderr)
     try:
-        p_seats, p_nxt, p_cycle, p_oth, page_stats = scrape_council_pages(comps, out_dir)
+        p_seats, p_nxt, p_cycle, p_oth, page_stats, roster = scrape_council_pages(comps, out_dir)
     except Exception as exc:  # noqa: BLE001 - the CSV still covers everything
         warn(f"council pages could not be read ({exc}); using the councillor CSV only")
-        p_seats, p_nxt, p_cycle, p_oth = {}, {}, {}, Counter()
+        p_seats, p_nxt, p_cycle, p_oth, roster = {}, {}, {}, Counter(), {}
         page_stats = {"error": str(exc)}
 
     print("Fetching councillor CSV (fallback)...", file=sys.stderr)
@@ -848,6 +941,9 @@ def build(year: int, out_dir: str) -> int:
 
     councils, not_shown, regssed, split_failed = [], [], [], []
     superseded, no_cycle, overrides, moves_log = [], [], [], []
+    ward_report = {"councils": 0, "withWardView": 0, "partial": [], "noWardView": [], "fuzzy": []}
+    wi_path = os.path.join(out_dir, "wards", "index.json")
+    ward_index = json.load(open(wi_path, encoding="utf-8")) if os.path.exists(wi_path) else {}
     today = dt.date.today().isoformat()
 
     for key, c in sorted(comps.items(), key=lambda kv: kv[1]["ocdName"]):
@@ -939,6 +1035,19 @@ def build(year: int, out_dir: str) -> int:
             "cycle": cyc,
         })
 
+        # --- ward drill-down: place this council's councillors on its wards ---
+        people, entries = roster.get(key), ward_index.get(gss)
+        if people and entries:
+            cov, unplaced, fuzzy = write_members(out_dir, gss, people, entries)
+            councils[-1]["wards"] = cov >= WARD_VIEW_MIN
+            ward_report["councils"] += 1
+            ward_report["withWardView"] += int(cov >= WARD_VIEW_MIN)
+            if cov < 1:
+                ward_report["partial" if cov >= WARD_VIEW_MIN else "noWardView"].append(
+                    {"council": c["ocdName"], "placed": round(cov, 3),
+                     "unmatchedWards": unplaced[:12]})
+            ward_report["fuzzy"].extend(f"{c['ocdName']}: {f}" for f in fuzzy)
+
     seen_gss: Counter = Counter(c["gss"] for c in councils)
     for g, n in seen_gss.items():
         if n > 1:
@@ -1003,6 +1112,7 @@ def build(year: int, out_dir: str) -> int:
         "addedManually": added,
         "manualMoves": moves_log,
         "councilPages": page_stats,
+        "wardMatch": ward_report,
         "othSplitFromCsv": csv_fallback,
         "gssReassigned": regssed,
         "othNotSplit": split_failed,
