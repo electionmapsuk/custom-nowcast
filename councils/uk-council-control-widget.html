@@ -161,7 +161,29 @@
     transition:fill-opacity .15s;}
   .wd:hover{stroke:#15171a; stroke-width:1.8px;}
   .wd.dim{fill-opacity:.16;}
-  .wd.pinned{stroke:#15171a; stroke-width:2.2px;}
+  .wd.pinned, .wd.hl{stroke:#15171a; stroke-width:2.2px;}
+  /* council boundaries in the ward view: black, three times the ward lines */
+  .cp.bg{stroke:#15171a; stroke-width:2.1px; stroke-opacity:.35;}
+  .wbound{fill:none; stroke:#15171a; stroke-width:2.1px; vector-effect:non-scaling-stroke;
+    pointer-events:none;}
+  /* side panel in the ward view: the card on top, every ward listed below */
+  #detail.hasw{display:flex; flex-direction:column; height:700px;}
+  #detail.hasw #dcard{flex:none;}
+  .wlist{flex:1 1 auto; min-height:0; overflow-y:auto; border-top:1px solid var(--line);
+    background:#fff;}
+  .wlist .wlh{position:sticky; top:0; z-index:1; background:#fbfbfa; padding:8px 12px 7px;
+    font-size:.64rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
+    color:var(--faint); border-bottom:1px solid var(--line2); line-height:1.2;}
+  .wlist .wl{display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:6px 12px; border-bottom:1px solid var(--line2); cursor:pointer; line-height:1.2;}
+  .wlist .wl:hover, .wlist .wl.hov{background:#f4f7f6;}
+  .wlist .wl.on{background:#e8f0ef; box-shadow:inset 3px 0 0 var(--accent);}
+  .wlist .wl.dim{opacity:.35;}
+  .wlist .wn{font-size:.76rem; font-weight:700; color:var(--ink); min-width:0;}
+  .wlist .wc{display:flex; gap:3px; flex:none;}
+  .wlist .wc i{font-style:normal; font-size:9px; font-weight:800; line-height:1;
+    padding:3px 4px; border-radius:3px;}
+  .wlist .wc .none{color:var(--faint); font-size:.68rem; font-weight:600; padding:0;}
   .wardbar{position:absolute; left:10px; top:10px; right:10px; display:flex; align-items:center;
     gap:8px; pointer-events:none; z-index:5; line-height:1.2;}
   .wardbar .wback{pointer-events:auto; padding:6px 11px; border-radius:7px; border:1px solid var(--accent);
@@ -605,6 +627,11 @@
         if(!code) return false;
         return !(WARD.mem.wards[d.properties.id] || []).some(function(p){ return p.p === code; });
       });
+      var wl = $('wlist');
+      if(wl) wl.querySelectorAll('.wl').forEach(function(r){
+        r.classList.toggle('dim', !!code && !(WARD.mem.wards[r.getAttribute('data-id')] || [])
+          .some(function(p){ return p.p === code; }));
+      });
     }
   }
 
@@ -655,7 +682,7 @@
       'licensed under the Open Government Licence v3.0; contains OS data © Crown copyright and database right.',
       'Control labels are Open Council Data\'s own. Solid fill = an outright majority or a directly ' +
       'elected mayoralty; paler shade = a minority or coalition administration; black = no overall ' +
-      'control. Refreshed automatically every Monday.'
+      'control. Refreshed automatically every day.'
     ].concat(notShownNote());
     $('foot').innerHTML = '<p>' + paras.join('</p><p>') + '</p>';
     $('counts').textContent = fmt(DATA.meta.councils) + ' councils · ' +
@@ -941,8 +968,8 @@
     m.wg.selectAll('path.wd').data(feats).enter().append('path')
       .attr('class', 'wd').attr('d', m.path)
       .attr('fill', function(d){ return wardFill(m, mem.wards[d.properties.id]); })
-      .on('mousemove', function(e, d){ if(!WARD.pin) showWardCard(e, d); })
-      .on('mouseleave', function(){ if(!WARD || !WARD.pin) clearCard(); })
+      .on('mousemove', function(e, d){ markWardRow(d.properties.id); if(!WARD.pin) showWardCard(e, d); })
+      .on('mouseleave', function(){ markWardRow(null); if(!WARD || !WARD.pin) clearCard(); })
       // click or tap pins a ward's card, as a click pins a council's; on a
       // phone this is what keeps the card open after the tap
       .on('click', function(e, d){
@@ -951,14 +978,24 @@
         markWardPin();
         if(WARD.pin) showWardCard(e, d); else clearCard();
       });
+    // the council's own boundary on top of its wards
+    var outline = featureIn(m, c.gss);
+    if(outline) m.wg.append('path').datum(outline).attr('class', 'wbound').attr('d', m.path);
     scalePatterns(m, d3.zoomTransform(m.svg.node()).k);
     wardBar(m, c, geo, mem);
+    buildWardPanel();
     highlight(focusParty);
   }
 
   function markWardPin(){
     if(WARD && WARD.m.wg) WARD.m.wg.selectAll('.wd').classed('pinned', function(d){
       return !!WARD.pin && d.properties.id === WARD.pin.properties.id;
+    });
+    var wl = $('wlist'), id = WARD && WARD.pin ? WARD.pin.properties.id : null;
+    if(wl) wl.querySelectorAll('.wl').forEach(function(r){
+      var on = r.getAttribute('data-id') === id;
+      r.classList.toggle('on', on);
+      if(on && r.scrollIntoView) r.scrollIntoView({block: 'nearest'});
     });
   }
 
@@ -1017,11 +1054,70 @@
       (years.length ? '<div class="ft">Next election here: May ' + years[0] + '</div>' : '');
   }
 
+  // In the ward view the panel holds the card and the ward list; only the
+  // card part changes as you hover, so the list keeps its scroll position.
+  function setPanel(html){
+    var dc = $('dcard');
+    if(WARD && dc) dc.innerHTML = html;
+    else { $('detail').classList.remove('hasw'); $('detail').innerHTML = html; }
+  }
+
+  function wardListHtml(){
+    var ws = WARD.geo.wards.slice().sort(function(a, b){
+      return wardName(a.name).localeCompare(wardName(b.name));
+    });
+    var div = isDivisions(WARD.geo);
+    return '<div class="wlh">' + ws.length + (div ? ' divisions' : ' wards') + '</div>' +
+      ws.map(function(w){
+        var codes = wardCodes(WARD.mem.wards[w.id]);
+        var chips = codes.length ? codes.map(function(p){
+          var col = pInfo(p).colour;
+          return '<i style="background:' + col + '; color:' + txtOn(col) + '" title="' +
+            esc(pInfo(p).name) + '">' + abbrev(p) + '</i>';
+        }).join('') : '<i class="none">no data</i>';
+        return '<div class="wl" data-id="' + esc(w.id) + '"><span class="wn">' + esc(wardName(w.name)) +
+          '</span><span class="wc">' + chips + '</span></div>';
+      }).join('');
+  }
+
+  function buildWardPanel(){
+    if(!panelOn() || !WARD || !WARD.geo) return;
+    var det = $('detail');
+    det.classList.add('hasw');
+    det.innerHTML = '<div id="dcard"></div><div class="wlist" id="wlist">' + wardListHtml() + '</div>';
+    var byId = {};
+    WARD.m.wg.selectAll('.wd').each(function(d){ byId[d.properties.id] = {d: d, el: this}; });
+    det.querySelectorAll('.wl').forEach(function(row){
+      var hit = byId[row.getAttribute('data-id')];
+      if(!hit) return;
+      row.addEventListener('mouseenter', function(){
+        d3.select(hit.el).classed('hl', true).raise();
+        if(!WARD.pin) showWardCard(null, hit.d);
+      });
+      row.addEventListener('mouseleave', function(){
+        d3.select(hit.el).classed('hl', false);
+        if(WARD && !WARD.pin) clearCard();
+      });
+      row.addEventListener('click', function(){
+        WARD.pin = (WARD.pin && WARD.pin.properties.id === hit.d.properties.id) ? null : hit.d;
+        markWardPin();
+        if(WARD.pin) showWardCard(null, hit.d); else clearCard();
+      });
+    });
+    clearCard();
+    highlight(focusParty);
+  }
+  // the list row for a ward hovered on the map
+  function markWardRow(id){
+    var wl = $('wlist');
+    if(wl) wl.querySelectorAll('.wl').forEach(function(r){ r.classList.toggle('hov', r.getAttribute('data-id') === id); });
+  }
+
   function showWardCard(e, d){
     if(!WARD || !WARD.mem) return;
     var html = wardCardHtml(byGss[WARD.code], d.properties, WARD.mem.wards[d.properties.id], WARD.geo);
     if(panelOn()){
-      $('detail').innerHTML = html;
+      setPanel(html);
       tip.style.display = 'none';
     } else if(e){
       tip.innerHTML = html;
@@ -1148,7 +1244,7 @@
       return '<div class="ctrlrow" title="'+full+'"><span><i style="background:'+col+'"></i>'+nm+'</span>' +
              '<b>'+ct[k]+'</b></div>';
     }).join('');
-    $('detail').innerHTML =
+    setPanel(
       '<div class="empty"><h3>'+(largest ? 'Largest party' : 'Who runs the councils')+'</h3>' +
       '<p>' + (largest
         ? 'The party with the most seats on each council, regardless of who runs it. ' +
@@ -1156,13 +1252,13 @@
         : 'The party leading each administration, whether that is an outright majority, ' +
           'a minority or a coalition.') +
       ' Hover a council for its full breakdown; click to keep it open.</p>' +
-      rows + '</div>';
+      rows + '</div>');
   }
 
   function showCardFor(code, name, e){
     var html = cardHtml(byGss[code], name);
     if(panelOn()){
-      $('detail').innerHTML = html;
+      setPanel(html);
       tip.style.display = 'none';
     } else {
       tip.innerHTML = html;
