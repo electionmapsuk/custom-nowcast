@@ -201,6 +201,15 @@ def main():
     ap.add_argument("--data", required=True)
     a = ap.parse_args()
 
+    # Tolerate the folder's capitalisation (sources / Sources): GitHub's
+    # runners are case-sensitive, the web uploader keeps whatever you typed.
+    if not os.path.isdir(a.sources):
+        parent, want = os.path.split(os.path.normpath(a.sources))
+        for name in (os.listdir(parent or ".") if os.path.isdir(parent or ".") else []):
+            if name.lower() == want.lower() and os.path.isdir(os.path.join(parent, name)):
+                a.sources = os.path.join(parent, name)
+                break
+
     wd_path = _latest(os.path.join(a.sources, "WD_*.geojson"))
     ced_path = _latest(os.path.join(a.sources, "CED_*.geojson"))
     if not wd_path:
