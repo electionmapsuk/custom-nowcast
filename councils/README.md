@@ -310,6 +310,48 @@ against. Party labels use the ElectionMaps abbreviations — LAB, CON, LDM, RFM,
 UKI, Ind, Oth, Vac — set in `ABBREV` in the widget. Full names are used wherever
 there is room.
 
+## Ward view
+
+Clicking a council, or finding it with search, swaps it in that map for its
+wards; the other map stays where it was. Each ward is filled with its
+councillors' party, striped in proportion where they differ (common on councils
+that elect by thirds), and hovering or tapping a ward lists its councillors with
+the year each is next up. A click or tap pins a ward's card; **← All councils**
+or Esc returns. County councils show their electoral divisions.
+Filtering by a party in the legend fades the wards where it holds no seat.
+
+Two builds feed it:
+
+* `build/build_wards.py` splits the ONS boundary files in `councils/sources/`
+  into one small file per council, `data/wards/<code>.json`, plus
+  `data/wards/index.json` (codes and names only). Wards are matched to their
+  council by the ward file's own council code; county divisions carry no county
+  code, so each is placed in the county that contains it. Reorganised councils
+  (East and West Surrey) take the divisions inside them, which is what they were
+  elected on in May 2026. It runs at the start of every workflow and only
+  rewrites files whose content changed.
+* `build_councils.py` keeps each councillor's name and ward from the council
+  pages and matches the ward names to the boundary file's names within that
+  council: exact first, then after standardising "&"/"and", "St"/"Saint",
+  accents and ONS's " ED" suffix, then Welsh-language names, then a strict fuzzy
+  match for small spelling differences. The result is written to
+  `data/members/<code>.json`.
+
+A council offers the ward view only when at least 90% of its councillors land
+on a ward (`WARD_VIEW_MIN`); otherwise clicking it pins its card as before. Any
+councillors that could not be placed are counted in the ward view's header bar.
+The build report's `wardMatch` block lists every council below 100%, the ward
+names that didn't match, and every fuzzy match, so a bad match can be spotted.
+
+Northern Ireland is not covered: its councils elect by District Electoral Area
+rather than by ward, and those boundaries come from a different source (OSNI).
+
+**Each year**, when ONS publishes the May ward and county division boundaries
+(BSC — super generalised — is the right cut), replace the two files in
+`councils/sources/` (the names only need to start `WD_` and `CED_`) and run the
+workflow. Wards redrawn at a May election won't match until then, and those
+councils fall back to the pinned card in the meantime.
+
 ## Maintenance
 
 * **Weekly data** — automatic, nothing to do.

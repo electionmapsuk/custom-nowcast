@@ -139,6 +139,24 @@
   .cp:hover{stroke:#15171a; stroke-width:1.6px;}
   .cp.pinned{stroke:#15171a; stroke-width:2px;}
   .cp.dim{fill-opacity:.16;}
+  /* ward view: the chosen council's wards on top, every other council faded */
+  .cp.bg{fill-opacity:.13; pointer-events:none;}
+  .cp.inward{display:none;}
+  .wd{stroke:#fff; stroke-width:.7px; cursor:pointer; vector-effect:non-scaling-stroke;
+    transition:fill-opacity .15s;}
+  .wd:hover{stroke:#15171a; stroke-width:1.8px;}
+  .wd.dim{fill-opacity:.16;}
+  .wd.pinned{stroke:#15171a; stroke-width:2.2px;}
+  .wardbar{position:absolute; left:10px; top:10px; right:10px; display:flex; align-items:center;
+    gap:8px; pointer-events:none; z-index:5; line-height:1.2;}
+  .wardbar .wback{pointer-events:auto; padding:6px 11px; border-radius:7px; border:1px solid var(--accent);
+    background:var(--accent); color:#fff; font-weight:700; font-size:.74rem; cursor:pointer;
+    font-family:inherit; white-space:nowrap; line-height:1.2;}
+  .wardbar .wback:hover{background:#0b3d3d;}
+  .wardbar .wt{pointer-events:auto; min-width:0; background:rgba(255,255,255,.93); border:1px solid var(--line);
+    border-radius:7px; padding:6px 10px; font-size:.74rem; font-weight:800; color:var(--ink);
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .wardbar .wt span{color:var(--muted); font-weight:600;}
   .map-hint{position:absolute; left:14px; bottom:12px; font-size:.72rem; color:var(--faint);
     background:rgba(255,255,255,.85); padding:4px 9px; border-radius:8px; pointer-events:none;}
   .map-reset{position:absolute; right:12px; top:12px; padding:5px 11px; border-radius:7px;
@@ -198,6 +216,15 @@
     font-size:12px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums;}
   .ccard .ft{text-align:center; padding:6px; color:var(--accent); font-weight:800; font-size:.7rem;
     border-top:1px solid var(--line2); line-height:1.2;}
+  /* ward card - one row per councillor */
+  .ccard .cr{display:grid; grid-template-columns:34px 1fr auto; gap:8px; align-items:center;
+    margin-bottom:5px; min-height:var(--barh);}
+  .ccard .cr .ab{height:var(--barh); display:flex; align-items:center; justify-content:center;
+    line-height:1; font-size:10px; font-weight:800; border-radius:4px;}
+  .ccard .cr .who{font-size:.8rem; font-weight:700; line-height:1.2; min-width:0; color:var(--ink);}
+  .ccard .cr .who small{display:block; font-size:.66rem; color:var(--muted); font-weight:600; line-height:1.25;}
+  .ccard .cr .yr{font-size:.7rem; font-weight:800; color:var(--muted); font-variant-numeric:tabular-nums;}
+  .ccard .none{font-size:.78rem; color:var(--muted); padding:2px 0 8px; line-height:1.4;}
 
   /* table */
   .table-wrap{display:none; border:1px solid var(--line); border-radius:var(--radius); overflow:auto; max-height:560px;}
@@ -257,7 +284,7 @@
       <div class="mapcap cap1">Districts &amp; unitaries</div>
       <div class="mapcap cap2">Counties &amp; unitaries</div>
       <div class="mapbox m1" id="map-lower">
-        <div class="map-hint">Scroll to zoom · drag · click to pin</div>
+        <div class="map-hint">Scroll to zoom · drag · click a council for its wards</div>
       </div>
       <div class="mapbox m2" id="map-upper"></div>
       <div id="detail" class="ccard"></div>
@@ -478,11 +505,11 @@
   function focusCounts(){ return colourMode === 'largest' ? largestCounts() : nationalCounts().runs; }
 
   // ------------------------------------------------------------------ load --
-  function loadJson(name){
+  function loadJson(name, keepBase){
     return fetch(DATA_BASE + name)
       .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
       .catch(function(){
-        DATA_BASE = DATA_FALLBACK;
+        if(!keepBase) DATA_BASE = DATA_FALLBACK;
         return fetch(DATA_FALLBACK + name).then(function(r){
           if(!r.ok) throw new Error('HTTP ' + r.status); return r.json();
         });
@@ -552,6 +579,13 @@
         return colourKey(c) !== code;
       });
     });
+    // in the ward view, fade the wards where that party holds no seat
+    if(WARD && WARD.m.wg && WARD.mem){
+      WARD.m.wg.selectAll('.wd').classed('dim', function(d){
+        if(!code) return false;
+        return !(WARD.mem.wards[d.properties.id] || []).some(function(p){ return p.p === code; });
+      });
+    }
   }
 
   // -------------------------------------------------------------- nat. bar --
@@ -650,6 +684,7 @@
   }
 
   function drawMaps(){
+    leaveWards(true);
     TIERS.forEach(function(t){
       if(!tierShown(t.key)) return;
       if(GEO[t.key]) return drawMap(t, GEO[t.key]);
@@ -673,6 +708,7 @@
   function drawMap(t, g){
     var m = M[t.key] || (M[t.key] = {});
     m.key = t.key;
+    m.box = t.box;
     var cont = d3.select('#' + t.box);
     cont.select('svg').remove();
     var box = $(t.box).getBoundingClientRect();
@@ -695,17 +731,20 @@
       .on('mousemove', function(e,d){ if(!pinnedGss) showFeature(e,d); })
       .on('mouseleave', function(){ if(!pinnedGss) clearCard(); })
       .on('click', function(e,d){
-        var code = d.properties.code;
+        var code = d.properties.code, cc = byGss[code];
+        if(cc && cc.wards) return enterWards(m, code);
         pinnedGss = (pinnedGss === code) ? null : code;
         markPinned();
         if(pinnedGss) showFeature(e,d); else clearCard();
       });
 
-    m.zoom = d3.zoom().scaleExtent([1,50]).on('zoom', function(e){
+    // deep enough for a London borough to fill the panel in the ward view
+    m.zoom = d3.zoom().scaleExtent([1,220]).on('zoom', function(e){
       m.g.attr('transform', e.transform);
       scalePatterns(m, e.transform.k);
       if(!pinnedGss && !panelOn()) tip.style.display = 'none';
-      if(!syncing){
+      // In the ward view the other map stays where it was.
+      if(!syncing && !WARD){
         syncing = true;
         eachShown(function(other){
           if(other !== m && other.zoom) other.svg.call(other.zoom.transform, e.transform);
@@ -736,32 +775,213 @@
   }
 
   function resetView(){
+    leaveWards(true);
     var first = null;
     eachShown(function(m){ if(!first) first = m; });
     if(first) first.svg.transition().duration(500).call(first.zoom.transform, d3.zoomIdentity);
     pinnedGss = null; markPinned(); clearCard();
   }
 
+  // The transform that frames one council in a map, filling `fill` of the panel.
+  function fitTransform(m, feature, fill, maxK){
+    var box = m.svg.node().getBoundingClientRect();
+    var W = box.width, H = box.height;
+    var b = m.path.bounds(feature);
+    var dx = b[1][0]-b[0][0], dy = b[1][1]-b[0][1];
+    var k = Math.max(1, Math.min(maxK, fill/Math.max(dx/W, dy/H)));
+    var cx = (b[0][0]+b[1][0])/2, cy = (b[0][1]+b[1][1])/2;
+    return d3.zoomIdentity.translate(W/2 - k*cx, H/2 - k*cy).scale(k);
+  }
+  function featureIn(m, gss){
+    var found = null;
+    if(m && m.g) m.g.selectAll('.cp').each(function(d){ if(!found && d.properties.code === gss) found = d; });
+    return found;
+  }
+
   function zoomTo(gss){
     var found = null, host = null;
     eachShown(function(m){
       if(found) return;
-      m.g.selectAll('.cp').each(function(d){
-        if(!found && d.properties.code === gss){ found = d; host = m; }
-      });
+      var f = featureIn(m, gss);
+      if(f){ found = f; host = m; }
     });
     if(!found) return;
-    var box = host.svg.node().getBoundingClientRect();
-    var W = box.width, H = box.height;
-    var b = host.path.bounds(found);
-    var dx = b[1][0]-b[0][0], dy = b[1][1]-b[0][1];
-    var k = Math.max(1, Math.min(40, 0.55/Math.max(dx/W, dy/H)));
-    var cx = (b[0][0]+b[1][0])/2, cy = (b[0][1]+b[1][1])/2;
-    host.svg.transition().duration(700).call(host.zoom.transform,
-      d3.zoomIdentity.translate(W/2 - k*cx, H/2 - k*cy).scale(k));
+    host.svg.transition().duration(700).call(host.zoom.transform, fitTransform(host, found, 0.55, 40));
     pinnedGss = gss;
     markPinned();
     showCardFor(gss, '', null);
+  }
+
+  // ------------------------------------------------------------ ward view --
+  // Clicking a council swaps it, in that map only, for its wards: filled by the
+  // party of each ward's councillors, striped where they differ. The other map
+  // stays put. Boundaries come from data/wards/<code>.json, councillors from
+  // data/members/<code>.json; a council only offers this when the build placed
+  // enough of its councillors on its wards (council.wards).
+  var WARD = null;                 // {m, code, prev, geo, mem}
+  var WCACHE = {};
+
+  function esc(s){
+    return String(s == null ? '' : s).replace(/[&<>"]/g, function(ch){
+      return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch];
+    });
+  }
+  function wardsFor(code){
+    if(!WCACHE[code]){
+      WCACHE[code] = Promise.all([loadJson('wards/' + code + '.json', true),
+                                  loadJson('members/' + code + '.json', true)])
+        .catch(function(e){ delete WCACHE[code]; throw e; });
+    }
+    return WCACHE[code];
+  }
+  // A ward's seats as party codes, in spectrum order, vacancies last - one
+  // entry per seat, so stripes come out in proportion.
+  function wardCodes(people){
+    return (people || []).map(function(p){ return p.p; }).sort(function(a, b){
+      if(a === b) return 0;
+      if(a === 'VAC') return 1;
+      if(b === 'VAC') return -1;
+      return DATA.spectrum.indexOf(a) - DATA.spectrum.indexOf(b);
+    });
+  }
+  function wardFill(m, people){
+    var codes = wardCodes(people);
+    if(!codes.length) return '#e6e6e2';
+    var one = codes.every(function(c){ return c === codes[0]; });
+    return one ? pInfo(codes[0]).colour : tieSvgFill(m, codes);
+  }
+  function isDivisions(geo){ return !!geo && /^CED/i.test(geo.source || ''); }
+  function wardName(n){ return String(n || '').replace(/\s+ED$/, ''); }
+
+  function wardBar(m, c, geo, mem){
+    var box = d3.select('#' + m.box);
+    box.select('.wardbar').remove();
+    var bar = box.append('div').attr('class', 'wardbar');
+    bar.append('button').attr('class', 'wback').attr('type', 'button')
+      .text('\u2190 All councils')
+      .on('click', function(e){ e.stopPropagation(); leaveWards(); });
+    var what = '';
+    if(geo){
+      var un = mem ? Object.keys(mem.unmatched || {}) : [];
+      var nUn = un.reduce(function(a, k){ return a + mem.unmatched[k].length; }, 0);
+      what = geo.wards.length + (isDivisions(geo) ? ' divisions' : ' wards') +
+             (nUn ? ' \u00b7 ' + nUn + ' councillor' + (nUn > 1 ? 's' : '') + ' not mapped' : '');
+      bar.append('div').attr('class', 'wt')
+        .attr('title', nUn ? 'Not placed on the map: ' + un.join(', ') : null)
+        .html(esc(c.name) + ' <span>' + what + '</span>');
+    } else {
+      bar.append('div').attr('class', 'wt').html(esc(c.name) + ' <span>loading wards\u2026</span>');
+    }
+  }
+
+  function enterWards(m, code){
+    var c = byGss[code], f = featureIn(m, code);
+    if(!c || !f) return;
+    if(WARD) leaveWards(true);
+    WARD = {m: m, code: code, prev: d3.zoomTransform(m.svg.node())};
+    pinnedGss = null; markPinned();
+    tip.style.display = 'none';
+    wardBar(m, c, null, null);
+    m.svg.transition().duration(650).call(m.zoom.transform, fitTransform(m, f, 0.86, 220));
+    clearCard();
+    wardsFor(code).then(function(a){
+      if(!WARD || WARD.code !== code || WARD.m !== m) return;
+      drawWards(m, c, a[0], a[1]);
+    }).catch(function(){
+      if(!WARD || WARD.code !== code) return;
+      leaveWards(true);
+      pinnedGss = code; markPinned(); showCardFor(code, '', null);
+    });
+  }
+
+  function drawWards(m, c, geo, mem){
+    WARD.geo = geo; WARD.mem = mem;
+    m.g.selectAll('.cp').classed('bg', true)
+      .classed('inward', function(d){ return d.properties.code === c.gss; });
+    if(m.wg) m.wg.remove();
+    m.wg = m.g.append('g').attr('class', 'wardlayer');
+    var feats = geo.wards.map(function(w){
+      return {type: 'Feature', geometry: w.g, properties: {id: w.id, name: w.name, alt: w.alt}};
+    });
+    m.wg.selectAll('path.wd').data(feats).enter().append('path')
+      .attr('class', 'wd').attr('d', m.path)
+      .attr('fill', function(d){ return wardFill(m, mem.wards[d.properties.id]); })
+      .on('mousemove', function(e, d){ if(!WARD.pin) showWardCard(e, d); })
+      .on('mouseleave', function(){ if(!WARD || !WARD.pin) clearCard(); })
+      // click or tap pins a ward's card, as a click pins a council's; on a
+      // phone this is what keeps the card open after the tap
+      .on('click', function(e, d){
+        e.stopPropagation();
+        WARD.pin = (WARD.pin && WARD.pin.properties.id === d.properties.id) ? null : d;
+        markWardPin();
+        if(WARD.pin) showWardCard(e, d); else clearCard();
+      });
+    scalePatterns(m, d3.zoomTransform(m.svg.node()).k);
+    wardBar(m, c, geo, mem);
+    highlight(focusParty);
+  }
+
+  function markWardPin(){
+    if(WARD && WARD.m.wg) WARD.m.wg.selectAll('.wd').classed('pinned', function(d){
+      return !!WARD.pin && d.properties.id === WARD.pin.properties.id;
+    });
+  }
+
+  function leaveWards(instant){
+    if(!WARD) return;
+    var w = WARD, m = w.m;
+    WARD = null;
+    if(m.wg){ m.wg.remove(); m.wg = null; }
+    if(m.g) m.g.selectAll('.cp').classed('bg', false).classed('inward', false);
+    d3.select('#' + m.box).select('.wardbar').remove();
+    tip.style.display = 'none';
+    if(m.svg && m.svg.node().isConnected){
+      if(instant) m.svg.call(m.zoom.transform, w.prev);
+      else m.svg.transition().duration(600).call(m.zoom.transform, w.prev);
+    }
+    clearCard();
+  }
+
+  function wardCardHtml(c, props, people, geo){
+    var ppl = people || [], div = isDivisions(geo);
+    var codes = wardCodes(ppl);
+    var stack = codes.map(function(p){
+      return '<i style="width:' + (100 / codes.length) + '%; background:' + pInfo(p).colour + '"></i>';
+    }).join('');
+    var rows = ppl.length ? ppl.map(function(p){
+      var col = pInfo(p.p).colour;
+      var own = p.pn && p.p !== 'VAC' && !/^independent( \/ other)?$/i.test(p.pn) &&
+                ['OTH', 'IND', 'RES', 'UKI', 'TUV'].indexOf(p.p) >= 0 ? '<small>' + esc(p.pn) + '</small>' : '';
+      return '<div class="cr"><div class="ab" title="' + esc(pInfo(p.p).name) + '" style="background:' + col +
+        '; color:' + txtOn(col) + '">' + abbrev(p.p) + '</div><div class="who">' +
+        esc(p.p === 'VAC' ? 'Vacant seat' : p.n) + own + '</div><div class="yr" title="End of term">' +
+        (p.y || '') + '</div></div>';
+    }).join('') : '<div class="none">No councillor is listed for this ' + (div ? 'division' : 'ward') +
+      ' in the source data.</div>';
+    var years = ppl.map(function(p){ return p.y; }).filter(Boolean).sort();
+    var n = ppl.filter(function(p){ return p.p !== 'VAC'; }).length;
+    return '<div class="hd">' +
+        '<div class="nm">' + esc(wardName(props.name)) + '</div>' +
+        '<div class="ty">' + esc(c.name) + ' \u00b7 ' + (div ? 'Electoral division' : 'Ward') +
+          (props.alt ? ' \u00b7 ' + esc(props.alt) : '') + '</div>' +
+        '<div class="meta" style="margin-top:7px"><b>' + n + '</b> councillor' + (n === 1 ? '' : 's') +
+          (ppl.length > n ? ' \u00b7 <b>' + (ppl.length - n) + '</b> vacant' : '') + '</div>' +
+      '</div>' +
+      (stack ? '<div class="stack">' + stack + '</div>' : '') +
+      '<div class="bd">' + rows + '</div>' +
+      (years.length ? '<div class="ft">Next election here: May ' + years[0] + '</div>' : '');
+  }
+
+  function showWardCard(e, d){
+    if(!WARD || !WARD.mem) return;
+    var html = wardCardHtml(byGss[WARD.code], d.properties, WARD.mem.wards[d.properties.id], WARD.geo);
+    if(panelOn()){
+      $('detail').innerHTML = html;
+      tip.style.display = 'none';
+    } else if(e){
+      tip.innerHTML = html;
+      place(e);
+    }
   }
 
   // ------------------------------------------------------------------ card --
@@ -916,7 +1136,9 @@
   function clearCard(){
     tip.style.display = 'none';
     if(panelOn()){
-      if(pinnedGss) showCardFor(pinnedGss, '', null); else panelDefault();
+      if(WARD && WARD.pin) showWardCard(null, WARD.pin);
+      else if(WARD) showCardFor(WARD.code, '', null);
+      else if(pinnedGss) showCardFor(pinnedGss, '', null); else panelDefault();
     }
   }
 
@@ -1130,6 +1352,8 @@
     q.addEventListener('blur', function(){ setTimeout(closeSugg, 180); });
     document.addEventListener('keydown', function(e){
       if(e.key === 'Escape'){
+        if(WARD && WARD.pin){ WARD.pin = null; markWardPin(); return clearCard(); }
+        if(WARD) return leaveWards();
         pinnedGss = null; markPinned(); clearCard();
         if(focusParty){
           focusParty = null;
@@ -1139,13 +1363,31 @@
         }
       }
     });
+    // Only a change of width needs the maps redrawn. Phones change the height
+    // as their toolbars slide in and out while scrolling, and redrawing then
+    // would throw the reader out of the ward view.
+    var lastW = window.innerWidth;
     window.addEventListener('resize', function(){
+      if(window.innerWidth === lastW) return;
+      lastW = window.innerWidth;
       clearTimeout(window.__ccrz);
       window.__ccrz = setTimeout(drawMaps, 250);
     });
   }
 
-  function gotoCouncil(gss){ zoomTo(gss); }
+  // Search opens the ward view where there is one, on the map the council
+  // belongs to (counties on the county map), and otherwise zooms and pins.
+  function gotoCouncil(gss){
+    var c = byGss[gss];
+    if(c && c.wards){
+      var order = c.tier === 'upper' ? ['upper', 'lower'] : ['lower', 'upper'];
+      for(var i = 0; i < order.length; i++){
+        var m = M[order[i]];
+        if(tierShown(order[i]) && featureIn(m, gss)) return enterWards(m, gss);
+      }
+    }
+    zoomTo(gss);
+  }
 })();
 
 // ------------------------------------------------------------- iframe fit --
