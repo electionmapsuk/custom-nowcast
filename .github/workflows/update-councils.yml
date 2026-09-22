@@ -2,9 +2,8 @@ name: Update council control data
 
 on:
   schedule:
-    # 06:23 UTC every Monday. Open Council Data UK is usually refreshed over
-    # the weekend after Thursday by-elections are declared. (Minute changed from
-    # :15 so GitHub re-registers the schedule when this file is committed.)
+    # 06:23 UTC every day. Open Council Data UK updates as by-elections are
+    # declared and defections recorded; days with no change commit nothing.
     - cron: "23 6 * * *"
 
   workflow_dispatch:
@@ -37,10 +36,13 @@ jobs:
       - name: Fetch boundaries (first run or on request)
         if: ${{ inputs.refresh_boundaries || hashFiles('councils/data/boundaries-lower.json') == '' }}
         run: python councils/build/build_boundaries.py --out councils/data
-        
-       - name: Build ward boundaries
-         run: python councils/build/build_wards.py --sources councils/sources --data councils/data
-         
+
+      - name: Build ward boundaries
+        # Splits the ONS ward and division files in councils/sources into one
+        # small file per council. Only files whose content changed are
+        # rewritten, so most runs commit nothing here.
+        run: python councils/build/build_wards.py --sources councils/sources --data councils/data
+
       - name: Build council data
         id: build
         continue-on-error: true
