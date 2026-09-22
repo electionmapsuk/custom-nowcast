@@ -37,8 +37,10 @@ jobs:
       - name: Fetch boundaries (first run or on request)
         if: ${{ inputs.refresh_boundaries || hashFiles('councils/data/boundaries-lower.json') == '' }}
         run: python councils/build/build_boundaries.py --out councils/data
-         - name: Build ward boundaries
-           run: python councils/build/build_wards.py --sources councils/sources --data councils/data
+        
+       - name: Build ward boundaries
+         run: python councils/build/build_wards.py --sources councils/sources --data councils/data
+         
       - name: Build council data
         id: build
         continue-on-error: true
