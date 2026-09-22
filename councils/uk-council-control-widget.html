@@ -103,10 +103,25 @@
     .mapgrid.only-lower{grid-template-areas:"cap1" "m1" "leg";}
     .mapgrid.only-upper{grid-template-areas:"cap2" "m2" "leg";}
   }
+  /* ward view: the chosen map takes both map columns; the other steps aside */
+  .mapgrid.ward-lower{grid-template-areas:"cap1 cap1 ." "m1 m1 panel" "leg leg panel";}
+  .mapgrid.ward-upper{grid-template-areas:"cap2 cap2 ." "m2 m2 panel" "leg leg panel";}
+  .mapgrid.ward-lower .cap2, .mapgrid.ward-lower .m2,
+  .mapgrid.ward-upper .cap1, .mapgrid.ward-upper .m1{display:none;}
+  @media(max-width:900px){
+    .mapgrid.ward-lower{grid-template-areas:"cap1 cap1" "m1 m1" "leg leg";}
+    .mapgrid.ward-upper{grid-template-areas:"cap2 cap2" "m2 m2" "leg leg";}
+  }
+  @media(max-width:640px){
+    .mapgrid.ward-lower{grid-template-areas:"cap1" "m1" "leg";}
+    .mapgrid.ward-upper{grid-template-areas:"cap2" "m2" "leg";}
+  }
   /* with one tier on screen there is room to draw it bigger */
   @media(min-width:901px){
     .mapgrid.only-lower .mapbox, .mapgrid.only-upper .mapbox{
       height:780px; max-width:700px; margin:0 auto;}
+    .mapgrid.ward-lower .mapbox, .mapgrid.ward-upper .mapbox{
+      height:700px; max-width:none; margin:0;}
   }
   .tiergroup{display:flex; gap:8px; margin-right:10px;}
   /* Reset is a secondary action, so it sits back from the toggles */
@@ -677,6 +692,7 @@
   ];
   var M = {};            // tier key -> {svg, defs, g, zoom, path, drawn}
   var syncing = false;
+  var wardExiting = false;   // map zooming back out of a ward view: don't drag the other along
 
   function tierShown(key){ return mapMode === 'both' || mapMode === key; }
 
@@ -689,7 +705,7 @@
   }
 
   function drawMaps(){
-    leaveWards(true);
+    leaveWards(true, true);
     TIERS.forEach(function(t){
       if(!tierShown(t.key)) return;
       if(GEO[t.key]) return drawMap(t, GEO[t.key]);
@@ -716,6 +732,7 @@
     m.box = t.box;
     var cont = d3.select('#' + t.box);
     cont.select('svg').remove();
+    m.wg = null;
     var box = $(t.box).getBoundingClientRect();
     var w = Math.max(220, box.width), h = Math.max(260, box.height);
 
@@ -749,7 +766,7 @@
       scalePatterns(m, e.transform.k);
       if(!pinnedGss && !panelOn()) tip.style.display = 'none';
       // In the ward view the other map stays where it was.
-      if(!syncing && !WARD){
+      if(!syncing && !WARD && !wardExiting){
         syncing = true;
         eachShown(function(other){
           if(other !== m && other.zoom) other.svg.call(other.zoom.transform, e.transform);
@@ -879,15 +896,28 @@
     }
   }
 
+  function tierOf(key){ return TIERS.filter(function(t){ return t.key === key; })[0]; }
+  function setWardLayout(tier){
+    var grid = document.querySelector('.mapgrid');
+    grid.classList.toggle('ward-lower', tier === 'lower');
+    grid.classList.toggle('ward-upper', tier === 'upper');
+  }
+
   function enterWards(m, code){
-    var c = byGss[code], f = featureIn(m, code);
-    if(!c || !f) return;
+    var c = byGss[code];
+    if(!c || !featureIn(m, code)) return;
     if(WARD) leaveWards(true);
-    WARD = {m: m, code: code, prev: d3.zoomTransform(m.svg.node())};
+    var tier = m.key;
+    WARD = {m: m, tier: tier, code: code, prev: d3.zoomTransform(m.svg.node())};
     pinnedGss = null; markPinned();
     tip.style.display = 'none';
+    // The ward view takes both map columns, so the map is refitted to its
+    // new width before zooming in; the other map keeps its state, hidden.
+    setWardLayout(tier);
+    drawMap(tierOf(tier), GEO[tier]);
+    var f = featureIn(m, code);
     wardBar(m, c, null, null);
-    m.svg.transition().duration(650).call(m.zoom.transform, fitTransform(m, f, 0.86, 220));
+    if(f) m.svg.transition().duration(650).call(m.zoom.transform, fitTransform(m, f, 0.86, 220));
     clearCard();
     wardsFor(code).then(function(a){
       if(!WARD || WARD.code !== code || WARD.m !== m) return;
@@ -932,17 +962,27 @@
     });
   }
 
-  function leaveWards(instant){
+  // noRedraw: the caller is about to redraw every map anyway (layout change).
+  function leaveWards(instant, noRedraw){
     if(!WARD) return;
     var w = WARD, m = w.m;
     WARD = null;
     if(m.wg){ m.wg.remove(); m.wg = null; }
-    if(m.g) m.g.selectAll('.cp').classed('bg', false).classed('inward', false);
     d3.select('#' + m.box).select('.wardbar').remove();
     tip.style.display = 'none';
-    if(m.svg && m.svg.node().isConnected){
-      if(instant) m.svg.call(m.zoom.transform, w.prev);
-      else m.svg.transition().duration(600).call(m.zoom.transform, w.prev);
+    setWardLayout(null);
+    if(!noRedraw && GEO[w.tier] && tierShown(w.tier)){
+      drawMap(tierOf(w.tier), GEO[w.tier]);
+      var f = featureIn(m, w.code);
+      wardExiting = true;
+      if(!instant && f){
+        m.svg.call(m.zoom.transform, fitTransform(m, f, 0.86, 220));
+        m.svg.transition().duration(600).call(m.zoom.transform, w.prev)
+          .on('end interrupt', function(){ wardExiting = false; });
+      } else {
+        m.svg.call(m.zoom.transform, w.prev);
+        wardExiting = false;
+      }
     }
     clearCard();
   }
