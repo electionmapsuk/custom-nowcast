@@ -388,8 +388,15 @@
     if(isNaN(r)) return '#fff';
     return (0.299*r+0.587*g+0.114*b)/255 > 0.62 ? '#15171a' : '#fff';
   }
+  // Backstop for a party code the loaded councils.json doesn't know yet (an
+  // older copy of it); the data's own entry always wins.
+  var PARTY_FALLBACK = {
+    ASP: {name: 'Aspire', colour: '#c54e0a'}, YRP: {name: 'Your Party', colour: '#ff3131'},
+    WPB: {name: 'Workers Party', colour: '#0b5394'}, LIB: {name: 'Liberal Party', colour: '#e77500'},
+    SDP: {name: 'SDP', colour: '#d25469'}, RES: {name: 'Restore Britain', colour: '#051e40'}
+  };
   function pInfo(code){
-    var p = DATA && DATA.parties[code];
+    var p = (DATA && DATA.parties[code]) || PARTY_FALLBACK[code];
     return p || {name: code || 'Other', colour:'#9ca3af'};
   }
   // ElectionMaps party abbreviations
@@ -551,17 +558,20 @@
   function focusCounts(){ return colourMode === 'largest' ? largestCounts() : nationalCounts().runs; }
 
   // ------------------------------------------------------------------ load --
-  // The data files are rebuilt daily, but browsers and GitHub Pages will
-  // happily serve an old copy. An hourly query key means no one ever sees
-  // data more than an hour staler than what is published.
-  var FRESH = 'v=' + Math.floor(Date.now() / 36e5);
+  // The data files are rebuilt daily, but browsers will happily serve an old
+  // copy. 'no-cache' makes the browser check with GitHub every time (a cheap
+  // "not modified" when nothing changed), so councils.json can never be older
+  // than the ward files fetched alongside it - a stale councils.json with
+  // fresh ward files showed new party codes with no colour.
+  var FRESH = 'v=' + Math.floor(Date.now() / 6e4);
+  var NOCACHE = {cache: 'no-cache'};
   function loadJson(name, keepBase){
     name = name + (name.indexOf('?') < 0 ? '?' : '&') + FRESH;
-    return fetch(DATA_BASE + name)
+    return fetch(DATA_BASE + name, NOCACHE)
       .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
       .catch(function(){
         if(!keepBase) DATA_BASE = DATA_FALLBACK;
-        return fetch(DATA_FALLBACK + name).then(function(r){
+        return fetch(DATA_FALLBACK + name, NOCACHE).then(function(r){
           if(!r.ok) throw new Error('HTTP ' + r.status); return r.json();
         });
       });
