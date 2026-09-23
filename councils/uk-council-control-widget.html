@@ -875,6 +875,26 @@
       return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch];
     });
   }
+  // Detailed council outlines for the ward view (merged from the wards, so
+  // their edges meet the wards exactly); one file per map, fetched once.
+  var OUTLINES = {};
+  function outlinesFor(tier){
+    if(!OUTLINES[tier]){
+      OUTLINES[tier] = loadJson('wards/outlines-' + tier + '.json', true)
+        .catch(function(e){ delete OUTLINES[tier]; throw e; });
+    }
+    return OUTLINES[tier];
+  }
+  function sharpenNeighbours(m){
+    outlinesFor(m.key).then(function(o){
+      if(!WARD || WARD.m !== m) return;
+      m.g.selectAll('.cp').attr('d', function(d){
+        var g = o[d.properties.code];
+        return m.path(g ? {type: 'Feature', geometry: g} : d);
+      });
+    }).catch(function(){ /* keep the national boundaries */ });
+  }
+
   function wardsFor(code){
     if(!WCACHE[code]){
       WCACHE[code] = Promise.all([loadJson('wards/' + code + '.json', true),
@@ -943,6 +963,7 @@
     setWardLayout(tier);
     drawMap(tierOf(tier), GEO[tier]);
     var f = featureIn(m, code);
+    sharpenNeighbours(m);
     wardBar(m, c, null, null);
     if(f) m.svg.transition().duration(650).call(m.zoom.transform, fitTransform(m, f, 0.86, 220));
     clearCard();
@@ -979,7 +1000,7 @@
         if(WARD.pin) showWardCard(e, d); else clearCard();
       });
     // the council's own boundary on top of its wards
-    var outline = featureIn(m, c.gss);
+    var outline = geo.outline ? {type: 'Feature', geometry: geo.outline} : featureIn(m, c.gss);
     if(outline) m.wg.append('path').datum(outline).attr('class', 'wbound').attr('d', m.path);
     scalePatterns(m, d3.zoomTransform(m.svg.node()).k);
     wardBar(m, c, geo, mem);
