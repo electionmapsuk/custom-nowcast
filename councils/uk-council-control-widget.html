@@ -180,13 +180,23 @@
   #detail.hasw .pbox{background:var(--panel); border:1px solid var(--line);
     border-radius:var(--radius); overflow:hidden;}
   #detail.hasw #dcouncil{flex:0 1 auto; min-height:0; overflow-y:auto;}
-  #detail.hasw #dcard{flex:none; min-height:118px; overflow-y:auto;}
+  #detail.hasw #dcard{flex:none; overflow-y:auto; max-height:60%;}
   /* a neighbouring council hovered in the ward view: just its header */
   #dcard .nbr > :not(.hd){display:none;}
   #dcard .nbr .hint{display:block; padding:9px 18px; font-size:.74rem; color:var(--muted);}
   #dcard .wph{padding:16px 18px; font-size:.78rem; color:var(--muted); line-height:1.5;}
   #dcard .wph b{display:block; color:var(--ink); font-size:.86rem; margin-bottom:2px;}
   .wlist{flex:1 1 0; min-height:150px; overflow-y:auto; background:var(--panel);}
+  /* the box rule above clips (overflow:hidden) and outranks .wlist, which
+     left the list unscrollable by wheel or touch - scroll it explicitly, with
+     a visible bar so it reads as a list that goes on */
+  #detail.hasw #wlist{overflow-y:scroll; overscroll-behavior:contain;
+    scrollbar-width:thin; scrollbar-color:#b9c3c1 transparent;}
+  #wlist::-webkit-scrollbar{width:8px;}
+  #wlist::-webkit-scrollbar-track{background:transparent;}
+  #wlist::-webkit-scrollbar-thumb{background:#b9c3c1; border-radius:8px;
+    border:2px solid var(--panel);}
+  #wlist::-webkit-scrollbar-thumb:hover{background:var(--accent);}
   .wlist .wlh{position:sticky; top:0; z-index:1; background:#fbfbfa; padding:8px 12px 7px;
     font-size:.64rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
     color:var(--faint); border-bottom:1px solid var(--line2); line-height:1.2;}
@@ -1215,23 +1225,6 @@
     var h = $(WARD.m.box).getBoundingClientRect().height;
     if(h) det.style.height = Math.round(h) + 'px';
   }
-  // The ward box keeps one height whichever ward is shown - that of the
-  // council's biggest ward - so hovering down the list never shifts the rows
-  // under the pointer.
-  function sizeWardBox(){
-    var dc = $('dcard');
-    if(!dc || !WARD || !WARD.geo || !WARD.mem) return;
-    var big = null, n = -1;
-    WARD.geo.wards.forEach(function(w){
-      var k = (WARD.mem.wards[w.id] || []).length;
-      if(k > n){ n = k; big = w; }
-    });
-    dc.style.height = '';
-    if(big){
-      dc.innerHTML = wardCardHtml(byGss[WARD.code], big, WARD.mem.wards[big.id], WARD.geo);
-      dc.style.height = Math.max(118, dc.offsetHeight) + 'px';
-    }
-  }
   // Narrow screens have no side panel: the council's card goes under the map.
   function mobileCard(){
     var mc = $('mcard');
@@ -1275,7 +1268,11 @@
       '<div class="pbox" id="dcard"></div>' +
       '<div class="pbox wlist" id="wlist">' + wardListHtml() + '</div>';
     fitPanel();
-    sizeWardBox();
+    // The ward box fits whatever it shows. While the pointer runs down the
+    // list it may grow but not shrink, so the rows don't shuffle under the
+    // pointer; it settles again once the pointer leaves the list.
+    var wl = $('wlist'), dc = $('dcard');
+    wl.addEventListener('mouseleave', function(){ dc.style.minHeight = ''; });
     var byId = {};
     WARD.m.wg.selectAll('.wd').each(function(d){ byId[d.properties.id] = {d: d, el: this}; });
     det.querySelectorAll('.wl').forEach(function(row){
@@ -1284,6 +1281,7 @@
       row.addEventListener('mouseenter', function(){
         d3.select(hit.el).classed('hl', true).raise();
         if(!WARD.pin) showWardCard(null, hit.d);
+        dc.style.minHeight = dc.offsetHeight + 'px';
       });
       row.addEventListener('mouseleave', function(){
         d3.select(hit.el).classed('hl', false);
