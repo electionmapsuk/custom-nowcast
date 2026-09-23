@@ -1,5 +1,5 @@
 {
- "generated": "2026-09-23T00:26:53+00:00",
+ "generated": "2026-09-23T08:55:57+00:00",
  "year": 2026,
  "csvRows": 19273,
  "councilsParsed": 384,
@@ -143,65 +143,33 @@
  },
  "wardMatch": {
   "councils": 360,
-  "withWardView": 359,
-  "partial": [
-   {
-    "council": "Bradford",
-    "placed": 0.967,
-    "unmatchedWards": [
-     "Wibsey & Wrose"
-    ]
-   },
-   {
-    "council": "City of London",
-    "placed": 0.976,
-    "unmatchedWards": [
-     "Bridge and Bridge Without"
-    ]
-   },
-   {
-    "council": "Essex",
-    "placed": 0.987,
-    "unmatchedWards": [
-     "Loughton Central"
-    ]
-   },
-   {
-    "council": "West Surrey",
-    "placed": 0.911,
-    "unmatchedWards": [
-     "Camberley West & Frimley",
-     "Englefield Green & Virginia Water",
-     "Stanwell, Stanwell Moor & Ashford North",
-     "Thorpe, Longcross & Ottershaw"
-    ]
-   }
-  ],
-  "noWardView": [
-   {
-    "council": "East Surrey",
-    "placed": 0.778,
-    "unmatchedWards": [
-     "Cobham & Oxshott South",
-     "Dorking",
-     "Esher, Claygate & Oxshott North",
-     "Ewell Village, Stoneleigh & Nonsuch",
-     "Long Ditton, Hinchley Wood & Western Green",
-     "Merstham & Banstead North",
-     "Redhill East & North Earlswood",
-     "Thames Ditton & East Molesey"
-    ]
-   }
-  ],
+  "withWardView": 360,
+  "partial": [],
+  "noWardView": [],
   "fuzzy": [
-   "East Surrey: Ewell Court, Auriol & Chuddington -> Ewell Court, Auriol and Cuddington ED",
+   "Bradford: Wibsey & Wrose -> Wibsey & Odsal (by shared names)",
+   "City of London: Bridge and Bridge Without -> Bridge (by shared names)",
    "East Surrey: Banstead, Woodmanshire & Chipstead -> Banstead, Woodmansterne and Chipstead ED",
-   "Essex: Harlow Parndon & Toddbrook -> Harlow Parndon & Todbrook ED",
+   "East Surrey: Ewell Court, Auriol & Chuddington -> Ewell Court, Auriol and Cuddington ED",
+   "East Surrey: Cobham & Oxshott South -> Cobham ED (by shared names)",
+   "East Surrey: Dorking -> Dorking South and the Holmwoods ED (by shared names)",
+   "East Surrey: Esher, Claygate & Oxshott North -> Hinchley Wood, Claygate and Oxshott ED (by shared names)",
+   "East Surrey: Ewell Village, Stoneleigh & Nonsuch -> Ewell ED (by shared names)",
+   "East Surrey: Long Ditton, Hinchley Wood & Western Green -> The Dittons ED (by shared names)",
+   "East Surrey: Merstham & Banstead North -> Merstham and Banstead South ED (by shared names)",
+   "East Surrey: Redhill East & North Earlswood -> Redhill East ED (by shared names)",
+   "East Surrey: Thames Ditton & East Molesey -> East Molesey and Esher ED (by shared names)",
    "Essex: Harlow Nettleswell -> Harlow Netteswell ED",
+   "Essex: Harlow Parndon & Toddbrook -> Harlow Parndon & Todbrook ED",
+   "Essex: Loughton Central -> Loughton North ED (by shared names)",
    "Gloucestershire: Fairford & Lechland on Thames -> Fairford & Lechlade on Thames ED",
    "Kirklees: Liversedge & Gomersall -> Liversedge & Gomersal",
    "Oxfordshire: Cropredy & Hook Launton -> Cropredy & Hook Norton ED",
    "Staffordshire: Great Wurley & Essington -> Great Wyrley & Essington ED",
+   "West Surrey: Camberley West & Frimley -> Camberley West ED (by shared names)",
+   "West Surrey: Englefield Green & Virginia Water -> Englefield Green ED (by shared names)",
+   "West Surrey: Stanwell, Stanwell Moor & Ashford North -> Stanwell and Stanwell Moor ED (by shared names)",
+   "West Surrey: Thorpe, Longcross & Ottershaw -> Foxhills, Thorpe and Virginia Water ED (by shared names)",
    "Worcestershire: Breddon -> Bredon ED",
    "Worcestershire: Chaddersley -> Chaddesley ED"
   ]
