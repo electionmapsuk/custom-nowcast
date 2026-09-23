@@ -108,24 +108,9 @@
     .mapgrid.only-lower{grid-template-areas:"cap1" "m1" "leg";}
     .mapgrid.only-upper{grid-template-areas:"cap2" "m2" "leg";}
   }
-  /* ward view: the chosen map takes both map columns; the other steps aside */
-  .mapgrid.ward-lower{grid-template-areas:"cap1 cap1 ." "m1 m1 panel" "leg leg panel";}
-  .mapgrid.ward-upper{grid-template-areas:"cap2 cap2 ." "m2 m2 panel" "leg leg panel";}
-  .mapgrid.ward-lower .cap2, .mapgrid.ward-lower .m2,
-  .mapgrid.ward-upper .cap1, .mapgrid.ward-upper .m1{display:none;}
-  @media(max-width:900px){
-    .mapgrid.ward-lower{grid-template-areas:"cap1 cap1" "m1 m1" "leg leg";}
-    .mapgrid.ward-upper{grid-template-areas:"cap2 cap2" "m2 m2" "leg leg";}
-  }
-  @media(max-width:640px){
-    .mapgrid.ward-lower{grid-template-areas:"cap1" "m1" "leg";}
-    .mapgrid.ward-upper{grid-template-areas:"cap2" "m2" "leg";}
-  }
   /* with one tier on screen there is room to draw it bigger */
   @media(min-width:901px){
     .mapgrid.only-lower .mapbox, .mapgrid.only-upper .mapbox{
-      height:780px; max-width:700px; margin:0 auto;}
-    .mapgrid.ward-lower .mapbox, .mapgrid.ward-upper .mapbox{
       height:700px; max-width:none; margin:0;}
   }
   .tiergroup{display:flex; gap:8px; margin-right:10px;}
@@ -162,14 +147,14 @@
   /* ward view: the chosen council's wards on top, every other council faded */
   .cp.bg{fill-opacity:.13; pointer-events:none;}
   .cp.inward{display:none;}
-  .wd{stroke:#fff; stroke-width:.7px; cursor:pointer; vector-effect:non-scaling-stroke;
+  .wd{stroke:#fff; stroke-width:1.4px; cursor:pointer; vector-effect:non-scaling-stroke;
     transition:fill-opacity .15s;}
-  .wd:hover{stroke:#15171a; stroke-width:1.8px;}
+  .wd:hover{stroke:#15171a; stroke-width:2.6px;}
   .wd.dim{fill-opacity:.16;}
-  .wd.pinned, .wd.hl{stroke:#15171a; stroke-width:2.2px;}
-  /* council boundaries in the ward view: cream, three times the ward lines */
-  .cp.bg{stroke:var(--panel); stroke-width:2.1px;}
-  .wbound{fill:none; stroke:var(--panel); stroke-width:2.1px; vector-effect:non-scaling-stroke;
+  .wd.pinned, .wd.hl{stroke:#15171a; stroke-width:2.6px;}
+  /* council boundaries in the ward view: cream, wider than the ward lines */
+  .cp.bg{stroke:var(--panel); stroke-width:3.15px;}
+  .wbound{fill:none; stroke:var(--panel); stroke-width:3.15px; vector-effect:non-scaling-stroke;
     pointer-events:none;}
   /* side panel in the ward view: the card on top, every ward listed below */
   #detail.hasw{display:flex; flex-direction:column; height:700px;}
@@ -315,9 +300,8 @@
     <div class="section-h">The map</div>
     <div class="toolbar maptools">
       <span class="tiergroup">
-        <button class="mmb" data-maps="lower" title="Districts &amp; unitaries">DC</button>
-        <button class="mmb" data-maps="upper" title="Counties &amp; unitaries">CC</button>
-        <button class="mmb active" data-maps="both">Both</button>
+        <button class="mmb active" data-maps="lower" title="Districts, unitaries, metropolitan and London boroughs, Scotland, Wales and Northern Ireland">Lower tier</button>
+        <button class="mmb" data-maps="upper" title="County councils and unitaries">Upper tier</button>
       </span>
       <button class="mmb active" data-colour="control">Control</button>
       <button class="mmb" data-colour="largest">Largest party</button>
@@ -329,13 +313,15 @@
       </div>
     </div>
 
-    <div class="mapgrid">
+    <div class="mapgrid only-lower">
       <div class="mapcap cap1">Districts &amp; unitaries</div>
       <div class="mapcap cap2">Counties &amp; unitaries</div>
       <div class="mapbox m1" id="map-lower">
         <div class="map-hint">Scroll to zoom · drag · click a council for its wards</div>
       </div>
-      <div class="mapbox m2" id="map-upper"></div>
+      <div class="mapbox m2" id="map-upper">
+        <div class="map-hint">Scroll to zoom · drag · click a council for its wards</div>
+      </div>
       <div id="detail" class="ccard"></div>
       <div class="legend" id="legend"></div>
     </div>
@@ -366,7 +352,7 @@
   var $ = function(id){ return document.getElementById(id); };
   var tip = $('cc-tip');
 
-  var DATA = null, GEO = {}, colourMode = 'control', mapMode = 'both';
+  var DATA = null, GEO = {}, colourMode = 'control', mapMode = 'lower';
   var byGss = {}, focusParty = null, pinnedGss = null;
   var sortKey = 'name', sortDir = 1;
 
@@ -733,7 +719,7 @@
   var syncing = false;
   var wardExiting = false;   // map zooming back out of a ward view: don't drag the other along
 
-  function tierShown(key){ return mapMode === 'both' || mapMode === key; }
+  function tierShown(key){ return mapMode === key; }
 
   function eachMap(fn){
     TIERS.forEach(function(t){ if(M[t.key] && M[t.key].g) fn(M[t.key], t); });
@@ -754,15 +740,35 @@
     });
   }
 
+  // Switch tier without moving: the other tier's councils are drawn in the
+  // same place at the same zoom. A ward view carries across if its council
+  // is on both tiers (a unitary); otherwise you land on the councils there.
   function setMapMode(mode){
-    if(mapMode === mode) return;
-    mapMode = mode;
-    var grid = document.querySelector('.mapgrid');
-    grid.classList.toggle('only-lower', mode === 'lower');
-    grid.classList.toggle('only-upper', mode === 'upper');
-    // each layout gives the maps a different width, so the projections are
-    // refitted from scratch and the view returns to the whole UK
-    drawMaps();
+    if(mapMode === mode) return Promise.resolve();
+    var old = M[mapMode];
+    var view = old && old.svg ? d3.zoomTransform(old.svg.node()) : d3.zoomIdentity;
+    var ward = WARD ? {code: WARD.code, prev: WARD.prev, pin: WARD.pin} : null;
+    var pinned = pinnedGss;
+    return (GEO[mode] ? Promise.resolve(GEO[mode]) : loadJson('boundaries-' + mode + '.json'))
+      .then(function(g){
+        GEO[mode] = g;
+        mapMode = mode;
+        document.querySelectorAll('[data-maps]').forEach(function(x){
+          x.classList.toggle('active', x.getAttribute('data-maps') === mode);
+        });
+        var grid = document.querySelector('.mapgrid');
+        grid.classList.toggle('only-lower', mode === 'lower');
+        grid.classList.toggle('only-upper', mode === 'upper');
+        drawMaps();
+        var m = M[mode];
+        if(!m || !m.svg) return;
+        m.svg.call(m.zoom.transform, view);
+        if(ward && byGss[ward.code] && byGss[ward.code].wards && featureIn(m, ward.code)){
+          enterWards(m, ward.code, {prev: ward.prev});
+        } else if(pinned && featureIn(m, pinned)){
+          pinnedGss = pinned; markPinned(); showCardFor(pinned, '', null);
+        }
+      });
   }
 
   function drawMap(t, g){
@@ -784,7 +790,9 @@
     m.g = m.svg.append('g');
     m.patternScale = 1;
 
-    var proj = d3.geoMercator().fitExtent([[10,10],[w-10,h-10]], g);
+    // Both tiers share one projection, fitted to the lower tier, so a zoom
+    // transform means the same place on either and switching keeps the view.
+    var proj = d3.geoMercator().fitExtent([[10,10],[w-10,h-10]], GEO.lower || g);
     m.path = d3.geoPath().projection(proj);
 
     m.g.selectAll('path.cp').data(g.features).enter().append('path')
@@ -956,28 +964,22 @@
   }
 
   function tierOf(key){ return TIERS.filter(function(t){ return t.key === key; })[0]; }
-  function setWardLayout(tier){
-    var grid = document.querySelector('.mapgrid');
-    grid.classList.toggle('ward-lower', tier === 'lower');
-    grid.classList.toggle('ward-upper', tier === 'upper');
-  }
 
-  function enterWards(m, code){
+  // keep: {prev} when a tier switch carries the ward view across - stay put
+  // and remember where "All councils" should return to.
+  function enterWards(m, code, keep){
     var c = byGss[code];
-    if(!c || !featureIn(m, code)) return;
+    var f = featureIn(m, code);
+    if(!c || !f) return;
     if(WARD) leaveWards(true);
     var tier = m.key;
-    WARD = {m: m, tier: tier, code: code, prev: d3.zoomTransform(m.svg.node())};
+    WARD = {m: m, tier: tier, code: code,
+            prev: keep ? keep.prev : d3.zoomTransform(m.svg.node())};
     pinnedGss = null; markPinned();
     tip.style.display = 'none';
-    // The ward view takes both map columns, so the map is refitted to its
-    // new width before zooming in; the other map keeps its state, hidden.
-    setWardLayout(tier);
-    drawMap(tierOf(tier), GEO[tier]);
-    var f = featureIn(m, code);
     sharpenNeighbours(m);
     wardBar(m, c, null, null);
-    if(f) m.svg.transition().duration(650).call(m.zoom.transform, fitTransform(m, f, 0.86, 220));
+    if(!keep) m.svg.transition().duration(650).call(m.zoom.transform, fitTransform(m, f, 0.86, 220));
     clearCard();
     wardsFor(code).then(function(a){
       if(!WARD || WARD.code !== code || WARD.m !== m) return;
@@ -1040,19 +1042,11 @@
     if(m.wg){ m.wg.remove(); m.wg = null; }
     d3.select('#' + m.box).select('.wardbar').remove();
     tip.style.display = 'none';
-    setWardLayout(null);
-    if(!noRedraw && GEO[w.tier] && tierShown(w.tier)){
-      drawMap(tierOf(w.tier), GEO[w.tier]);
-      var f = featureIn(m, w.code);
-      wardExiting = true;
-      if(!instant && f){
-        m.svg.call(m.zoom.transform, fitTransform(m, f, 0.86, 220));
-        m.svg.transition().duration(600).call(m.zoom.transform, w.prev)
-          .on('end interrupt', function(){ wardExiting = false; });
-      } else {
-        m.svg.call(m.zoom.transform, w.prev);
-        wardExiting = false;
-      }
+    if(!noRedraw && m.g && m.svg.node().isConnected){
+      // back to the national shapes and full colour, then zoom back out
+      m.g.selectAll('.cp').classed('bg', false).classed('inward', false).attr('d', m.path);
+      if(instant) m.svg.call(m.zoom.transform, w.prev);
+      else m.svg.transition().duration(600).call(m.zoom.transform, w.prev);
     }
     clearCard();
   }
@@ -1465,11 +1459,7 @@
   // ------------------------------------------------------------------ wire --
   function wire(){
     document.querySelectorAll('[data-maps]').forEach(function(b){
-      b.addEventListener('click', function(){
-        document.querySelectorAll('[data-maps]').forEach(function(x){ x.classList.remove('active'); });
-        b.classList.add('active');
-        setMapMode(b.getAttribute('data-maps'));
-      });
+      b.addEventListener('click', function(){ setMapMode(b.getAttribute('data-maps')); });
     });
     document.querySelectorAll('[data-colour]').forEach(function(b){
       b.addEventListener('click', function(){
@@ -1563,16 +1553,18 @@
 
   // Search opens the ward view where there is one, on the map the council
   // belongs to (counties on the county map), and otherwise zooms and pins.
+  // Search opens the council on whichever tier it is drawn on - switching
+  // tier if it is only on the other one (a county from the lower tier, a
+  // district from the upper) - in its ward view where it has one.
   function gotoCouncil(gss){
     var c = byGss[gss];
-    if(c && c.wards){
-      var order = c.tier === 'upper' ? ['upper', 'lower'] : ['lower', 'upper'];
-      for(var i = 0; i < order.length; i++){
-        var m = M[order[i]];
-        if(tierShown(order[i]) && featureIn(m, gss)) return enterWards(m, gss);
-      }
-    }
-    zoomTo(gss);
+    if(!c) return;
+    var go = function(){
+      var m = M[mapMode];
+      if(c.wards && featureIn(m, gss)) enterWards(m, gss); else zoomTo(gss);
+    };
+    if(featureIn(M[mapMode], gss)) return go();
+    setMapMode(mapMode === 'lower' ? 'upper' : 'lower').then(go);
   }
 })();
 
