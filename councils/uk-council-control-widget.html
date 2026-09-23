@@ -143,8 +143,7 @@
 
   /* side panel - the same card the tooltip renders, pinned in place */
   #detail{grid-area:panel; background:var(--panel); border:1px solid var(--line);
-    border-radius:var(--radius); overflow:hidden; align-self:start;
-    position:sticky; top:12px;}
+    border-radius:var(--radius); overflow:hidden; align-self:start;}
   @media(max-width:900px){ #detail{display:none;} }
   #detail .empty{padding:20px;}
   #detail .empty h3{margin:0 0 4px; font-size:.95rem; font-weight:800;}
@@ -180,6 +179,36 @@
   #detail.hasw .pbox{background:var(--panel); border:1px solid var(--line);
     border-radius:var(--radius); overflow:hidden;}
   #detail.hasw #dcouncil{flex:0 1 auto; min-height:0; overflow-y:auto;}
+  /* the idle panel: the next round of elections, as tall as the map */
+  #detail.hase{display:flex; flex-direction:column; height:700px;}
+  .elec-hd{padding:16px 16px 10px; flex:none;}
+  .elec-hd h3{margin:0 0 3px; font-size:1rem; font-weight:800; color:var(--ink);}
+  .elec-hd p{margin:0; font-size:.76rem; color:var(--muted); line-height:1.45;}
+  .elec-hd p b{color:var(--ink);}
+  .elec-lbl{font-size:.64rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--faint); margin:12px 0 6px;}
+  .elec-bar{display:flex; height:10px; border-radius:3px; overflow:hidden;}
+  .elec-bar i{display:block; height:100%;}
+  .elec-grid{display:grid; grid-template-columns:1fr 1fr; gap:0 16px; margin-top:8px;}
+  .elec-grid div{display:flex; justify-content:space-between; align-items:center; font-size:.76rem;
+    font-weight:700; padding:3px 0; border-top:1px solid var(--line2);}
+  .elec-grid i{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:-1px;}
+  .elec-grid b{font-variant-numeric:tabular-nums;}
+  .elist{flex:1 1 0; min-height:120px; overflow-y:scroll; border-top:1px solid var(--line);
+    overscroll-behavior:contain; scrollbar-width:thin; scrollbar-color:#b9c3c1 transparent;}
+  .elist::-webkit-scrollbar{width:8px;}
+  .elist::-webkit-scrollbar-thumb{background:#b9c3c1; border-radius:8px; border:2px solid var(--panel);}
+  .elist::-webkit-scrollbar-thumb:hover{background:var(--accent);}
+  .elist .elh{position:sticky; top:0; z-index:1; background:#fbfbfa; padding:7px 16px 6px;
+    font-size:.64rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--faint);
+    border-bottom:1px solid var(--line2);}
+  .elist .el{display:grid; grid-template-columns:minmax(0,1fr) auto auto; align-items:center; gap:8px;
+    padding:6px 16px; border-bottom:1px solid var(--line2); cursor:pointer;}
+  .elist .el:hover{background:#f4f7f6;}
+  .elist .en{font-size:.76rem; font-weight:700; color:var(--ink); min-width:0;}
+  .elist .es{font-size:.68rem; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap;}
+  .elist .ec{font-size:9px; font-weight:800; padding:3px 5px; border-radius:4px; white-space:nowrap;}
+  .cp.lhl{stroke:#15171a; stroke-width:2px;}
   /* a neighbouring council hovered in the ward view: just its header */
   .nbr > :not(.hd){display:none;}
   .nbr .hint{display:block; padding:8px 12px; font-size:.72rem; color:var(--muted);}
@@ -1209,8 +1238,9 @@
     var dc = $('dcouncil');
     if(WARD && dc) dc.innerHTML = html;
     else {
-      var det = $('detail');
-      det.classList.remove('hasw'); det.style.height = '';
+      var det = $('detail'), el = $('elist');
+      if(el) ELEC_SCROLL = el.scrollTop;
+      det.classList.remove('hasw', 'hase'); det.style.height = '';
       det.innerHTML = html;
     }
   }
@@ -1218,8 +1248,10 @@
   // inside it rather than running on below the map.
   function fitPanel(){
     var det = $('detail');
-    if(!det.classList.contains('hasw') || !WARD) return;
-    var h = $(WARD.m.box).getBoundingClientRect().height;
+    var box = det.classList.contains('hasw') && WARD ? WARD.m.box
+            : det.classList.contains('hase') ? 'map-' + mapMode : null;
+    if(!box) return;
+    var h = $(box).getBoundingClientRect().height;
     if(h) det.style.height = Math.round(h) + 'px';
   }
   // Narrow screens have no side panel: the council's card goes under the map.
@@ -1411,31 +1443,101 @@
 
   function panelOn(){ return window.innerWidth > 900; }
 
+  // The idle side panel: the next round of local elections - the seats each
+  // party is defending, and every council voting. Hovering a council on the
+  // map still swaps in its card; the list keeps its place when it comes back.
+  var ELEC = null, ELEC_SCROLL = 0;
+  var NATIONS = ['England', 'Scotland', 'Wales', 'Northern Ireland'];
+  function nextRound(){
+    if(ELEC) return ELEC;
+    var today = new Date().toISOString().slice(0, 10), date = null;
+    DATA.councils.forEach(function(c){
+      (c.cycle || []).forEach(function(x){
+        if(x.date >= today && (!date || x.date < date)) date = x.date;
+      });
+    });
+    if(!date) return (ELEC = {none: true});
+    var up = [], seats = {}, total = 0;
+    DATA.councils.forEach(function(c){
+      var x = (c.cycle || []).filter(function(y){ return y.date === date; })[0];
+      if(!x) return;
+      var n = 0;
+      for(var p in x.seats){
+        if(p === 'VAC' || !x.seats[p]) continue;
+        seats[p] = (seats[p] || 0) + x.seats[p]; n += x.seats[p];
+      }
+      total += n;
+      up.push({c: c, n: n, all: (c.cycle || []).length === 1});
+    });
+    return (ELEC = {date: date, up: up, seats: seats, total: total});
+  }
+
   function panelDefault(){
-    var largest = colourMode === 'largest';
-    var ct = largest ? largestCounts() : nationalCounts().runs;
-    var keys = Object.keys(ct).filter(function(k){ return k !== 'NOC' && k !== 'TIED'; })
-      .sort(function(a,b){ return ct[b]-ct[a]; });
-    if(ct.TIED) keys.push('TIED');
-    if(ct.NOC) keys.push('NOC');
-    var rows = keys.map(function(k){
-      var col = k==='NOC' ? NOC_COLOUR : k==='TIED' ? TIE_NEUTRAL : pInfo(k).colour;
-      var nm  = k==='TIED' ? 'Tied' : k==='NOC' ? (largest ? 'None' : 'NOC') : abbrev(k);
-      var full = k==='TIED' ? 'Two or more parties level on seats'
-               : k==='NOC' ? (largest ? 'No seats' : 'No overall control, no administration')
-               : pInfo(k).name;
-      return '<div class="ctrlrow" title="'+full+'"><span><i style="background:'+col+'"></i>'+nm+'</span>' +
-             '<b>'+ct[k]+'</b></div>';
+    var E = nextRound();
+    if(E.none){
+      setPanel('<div class="empty"><h3>Local elections</h3><p>No upcoming elections in the data.</p></div>');
+      return;
+    }
+    var d = new Date(E.date + 'T12:00:00');
+    var when = d.toLocaleDateString('en-GB', {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+    // every party with a seat up gets its own row, largest first; the
+    // catch-all Oth goes last
+    var keys = Object.keys(E.seats).sort(function(a, b){ return E.seats[b] - E.seats[a]; });
+    var rows = keys.filter(function(k){ return k !== 'OTH'; })
+      .map(function(k){ return [k, E.seats[k]]; });
+    if(E.seats.OTH) rows.push(['OTH', E.seats.OTH]);
+    var bar = rows.map(function(r){
+      return '<i title="' + esc(pInfo(r[0]).name) + ' ' + fmt(r[1]) + '" style="width:' +
+             (100 * r[1] / E.total) + '%; background:' + pInfo(r[0]).colour + '"></i>';
+    }).join('');
+    var grid = rows.map(function(r){
+      return '<div title="' + esc(pInfo(r[0]).name) + '"><span><i style="background:' +
+             pInfo(r[0]).colour + '"></i>' + abbrev(r[0]) + '</span><b>' + fmt(r[1]) + '</b></div>';
+    }).join('');
+    var list = NATIONS.map(function(nat){
+      var g = E.up.filter(function(u){ return u.c.nation === nat; })
+        .sort(function(a, b){ return a.c.name.localeCompare(b.c.name); });
+      if(!g.length) return '';
+      return '<div class="elh">' + nat + ' \u00b7 ' + g.length + '</div>' + g.map(function(u){
+        var col = controlSwatch(u.c);
+        return '<div class="el" data-g="' + u.c.gss + '" title="' + esc(controlText(u.c)) + '">' +
+          '<span class="en">' + esc(u.c.name) + '</span>' +
+          '<span class="es">' + (u.all ? 'all ' + u.n : u.n + ' of ' + u.c.total) + '</span>' +
+          '<span class="ec" style="background:' + col + '; color:' + txtOn(col) + '">' +
+          esc(shortControl(u.c)) + '</span></div>';
+      }).join('');
     }).join('');
     setPanel(
-      '<div class="empty"><h3>'+(largest ? 'Largest party' : 'Who runs the councils')+'</h3>' +
-      '<p>' + (largest
-        ? 'The party with the most seats on each council, regardless of who runs it. ' +
-          'Councils where two or more parties are level are striped in their colours.'
-        : 'The party leading each administration, whether that is an outright majority, ' +
-          'a minority or a coalition.') +
-      ' Hover a council for its full breakdown; click it to see its wards.</p>' +
-      rows + '</div>');
+      '<div class="elec-hd"><h3>' + d.getFullYear() + ' local elections</h3>' +
+        '<p>' + when + ' \u00b7 <b>' + fmt(E.up.length) + '</b> councils \u00b7 <b>' +
+        fmt(E.total) + '</b> seats up</p>' +
+        '<div class="elec-lbl">Seats being defended</div>' +
+        '<div class="elec-bar">' + bar + '</div>' +
+        '<div class="elec-grid">' + grid + '</div>' +
+      '</div>' +
+      '<div class="elist" id="elist">' + list + '</div>');
+    var det = $('detail');
+    det.classList.add('hase');
+    fitPanel();
+    var el = $('elist');
+    el.scrollTop = ELEC_SCROLL;
+    el.addEventListener('scroll', function(){ ELEC_SCROLL = el.scrollTop; });
+    el.querySelectorAll('.el').forEach(function(row){
+      var g = row.getAttribute('data-g');
+      row.addEventListener('mouseenter', function(){
+        eachShown(function(m){
+          m.g.selectAll('.cp').filter(function(d){ return d.properties.code === g; })
+            .classed('lhl', true).raise();
+        });
+      });
+      row.addEventListener('mouseleave', function(){
+        eachMap(function(m){ m.g.selectAll('.cp.lhl').classed('lhl', false); });
+      });
+      row.addEventListener('click', function(){
+        eachMap(function(m){ m.g.selectAll('.cp.lhl').classed('lhl', false); });
+        gotoCouncil(g);
+      });
+    });
   }
 
   function showCardFor(code, name, e){
