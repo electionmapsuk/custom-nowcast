@@ -515,9 +515,8 @@ def match_wards(names, entries):
             exact.setdefault(_wkey(v), set()).add(wid)
             loose.setdefault(_wloose(v), set()).add(wid)
     out = {}
+    names = [n for n in names if n]
     for n in names:
-        if not n:
-            continue
         hit = exact.get(_wkey(n))
         if hit and len(hit) == 1:
             out[n] = (next(iter(hit)), "exact")
@@ -533,13 +532,66 @@ def match_wards(names, entries):
                 and (len(scored) == 1 or scored[0][0] - scored[1][0] >= 0.05)
                 and _wdistinct(n) == _wdistinct(scored[0][1])):
             out[n] = (next(iter(exact[scored[0][1]])), "fuzzy")
+
+    # Leftovers: wards renamed or redrawn at a boundary review (Surrey's new
+    # unitaries were elected on divisions ONS hasn't published yet) pair off
+    # with the divisions nobody else claimed, by the place names they share -
+    # "Camberley West & Frimley" with "Camberley West". Only unclaimed names
+    # and unclaimed divisions take part, so nothing already placed can move.
+    left = [n for n in names if n not in out]
+    used = {v[0] for v in out.values()}
+    free = [(wid, nm) for wid, nm, _alt in entries if wid not in used]
+    if left and free:
+        for n, wid in _pair_leftovers(left, free).items():
+            out[n] = (wid, "overlap")
     return out
+
+
+_WSTOP = {"and", "the", "st", "of", "on", "upon", "ed", "ward", "division", "with"}
+
+
+def _wtokens(s: str) -> set:
+    # crude stem so "Ditton" meets "Dittons"
+    return {t[:-1] if len(t) > 4 and t.endswith("s") else t
+            for t in _wkey(s).split() if t not in _WSTOP}
+
+
+def _pair_leftovers(left, free):
+    """Assign leftover ward names to free divisions so the total number of
+    shared place names is as large as possible (brute force - there are only
+    ever a handful). A pair needs at least one shared name."""
+    score = {(n, wid): len(_wtokens(n) & _wtokens(nm)) for n in left for wid, nm in free}
+    ids = [wid for wid, _ in free]
+    if len(left) > 8 or len(ids) > 10:            # keep it cheap: greedy fallback
+        out, taken = {}, set()
+        for (n, wid), sc in sorted(score.items(), key=lambda kv: -kv[1]):
+            if sc and n not in out and wid not in taken:
+                out[n] = wid
+                taken.add(wid)
+        return out
+    best = (0, {})
+
+    def walk(i, taken, total, acc):
+        nonlocal best
+        if i == len(left):
+            if total > best[0]:
+                best = (total, dict(acc))
+            return
+        walk(i + 1, taken, total, acc)            # leave this one unplaced
+        for wid in ids:
+            sc = score[(left[i], wid)]
+            if sc and wid not in taken:
+                acc[left[i]] = wid
+                walk(i + 1, taken | {wid}, total + sc, acc)
+                del acc[left[i]]
+    walk(0, frozenset(), 0, {})
+    return best[1]
 
 
 def write_members(out_dir, gss, people, entries):
     """Write members/<gss>.json and return (coverage, unmatched ward names,
     fuzzy matches)."""
-    placed = match_wards({p["w"] for p in people}, entries)
+    placed = match_wards(sorted({p["w"] for p in people}), entries)
     wards, unmatched = {}, {}
     for p in people:
         rec = {"n": p["n"], "p": p["p"], "pn": p["pn"], "y": p["y"]}
@@ -551,8 +603,14 @@ def write_members(out_dir, gss, people, entries):
     for lst in list(wards.values()) + list(unmatched.values()):
         lst.sort(key=lambda r: (r["y"] or 9999, r["n"]))
     names = {wid: nm for wid, nm, _alt in entries}
+    # Wards are shown under their official ONS names. The exception is a
+    # council created by reorganisation (LGR-*): ONS only has the old
+    # divisions there, so a ward matched by shared place names keeps the name
+    # of the new ward it was actually elected for.
+    labels = ({v[0]: w for w, v in placed.items() if v[1] == "overlap"}
+              if gss.startswith("LGR-") else {})
     doc = {"code": gss, "wards": dict(sorted(wards.items())),
-           "unmatched": dict(sorted(unmatched.items()))}
+           "unmatched": dict(sorted(unmatched.items())), "labels": dict(sorted(labels.items()))}
     d = os.path.join(out_dir, "members")
     os.makedirs(d, exist_ok=True)
     path = os.path.join(d, f"{gss}.json")
@@ -561,7 +619,8 @@ def write_members(out_dir, gss, people, entries):
         with open(path, "w", encoding="utf-8") as f:
             f.write(text)
     n_placed = sum(len(v) for v in wards.values())
-    fuzzy = [f"{w} -> {names.get(v[0], v[0])}" for w, v in placed.items() if v[1] == "fuzzy"]
+    fuzzy = [f"{w} -> {names.get(v[0], v[0])}" + (" (by shared names)" if v[1] == "overlap" else "")
+             for w, v in placed.items() if v[1] in ("fuzzy", "overlap")]
     return (n_placed / len(people) if people else 0.0), sorted(unmatched), fuzzy
 
 
