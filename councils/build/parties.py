@@ -27,12 +27,19 @@ PARTIES = {
     "TUV":  ("TUV",                  "#0C3A6A"),
     "RFM":  ("Reform UK",            "#2BC5DB"),
     "RES":  ("Restore Britain",      "#051e40"),
+    # smaller parties taken out of OCD's OTH bucket (ElectionMaps tags)
+    "ASP":  ("Aspire",               "#c54e0a"),
+    "YRP":  ("Your Party",           "#ff3131"),
+    "WPB":  ("Workers Party",        "#0b5394"),
+    "LIB":  ("Liberal Party",        "#e77500"),
+    "SDP":  ("SDP",                  "#d25469"),
     "VAC":  ("Vacant",               "#d8d8d4"),
 }
 
 # Left-to-right ordering for stacked bars and table columns.
-SPECTRUM = ["SF", "GRN", "SNP", "PLC", "SDLP", "LAB", "ALL", "LDM", "IND",
-            "OTH", "UKI", "UUP", "CON", "DUP", "TUV", "RFM", "RES", "VAC"]
+SPECTRUM = ["SF", "YRP", "WPB", "GRN", "SNP", "PLC", "SDLP", "LAB", "ASP",
+            "ALL", "LDM", "LIB", "IND", "OTH", "SDP", "UKI", "UUP", "CON",
+            "DUP", "TUV", "RFM", "RES", "VAC"]
 
 NOC_COLOUR = "rgb(20,20,20)"
 
@@ -54,6 +61,14 @@ OTH_REFINEMENTS = [
     # Great Yarmouth First sits with Restore Britain (OCD register id 530,
     # PP18235); its ten councillors are counted as theirs.
     ("great yarmouth first", "RES"),
+    ("aspire", "ASP"),
+    ("your party", "YRP"),
+    ("workers party", "WPB"),
+    ("workers' party", "WPB"),
+    # "liberal party" is not a substring of "Liberal Democrats", and "social
+    # democratic party" is not one of "Social Democratic and Labour Party"
+    ("liberal party", "LIB"),
+    ("social democratic party", "SDP"),
 ]
 
 # Fallback only: used when a councillor's Electoral Commission code is missing
@@ -64,6 +79,12 @@ NAME_RULES = [
     ("great yarmouth first",         "RES"),
     ("social democratic and labour", "SDLP"),
     ("sdlp",                         "SDLP"),
+    ("social democratic party",      "SDP"),
+    ("aspire",                       "ASP"),
+    ("your party",                   "YRP"),
+    ("workers party",                "WPB"),
+    ("workers' party",               "WPB"),
+    ("liberal party",                "LIB"),
     ("sinn",                         "SF"),
     ("democratic unionist",          "DUP"),
     ("d.u.p",                        "DUP"),
@@ -104,7 +125,8 @@ CONTROL_TOKENS = {
     "DUP": "DUP", "ALLI": "ALL", "ALL": "ALL", "UUP": "UUP", "SDLP": "SDLP",
     "TUV": "TUV", "UKIP": "UKI", "RES": "RES",
     # local parties and residents' groups that run councils
-    "RA": "IND", "PIP": "OTH", "CIIP": "OTH", "ASPIRE": "OTH",
+    "RA": "IND", "PIP": "OTH", "CIIP": "OTH", "ASPIRE": "ASP",
+    "ASP": "ASP", "YRP": "YRP", "WPB": "WPB", "SDP": "SDP",
 }
 
 
