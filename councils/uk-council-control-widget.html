@@ -8,9 +8,12 @@
 <script src="https://d3js.org/d3.v7.min.js"></script>
 <style>
   :root{
-    --bg:#f7f7f5; --panel:#fff; --ink:#15171a; --muted:#6b7280; --faint:#9ca3af;
+    /* the Nowcast palette: grey page, cream panels */
+    --bg:#E2E4E4; --panel:#fbf7f4; --ink:#15171a; --muted:#6b7280; --faint:#9ca3af;
     --line:#e3e3df; --line2:#eeeeea; --accent:#004d4d; --radius:10px;
+    --cardhd:#002626;
   }
+  html, body{background:var(--bg);}
   #cc-app *{box-sizing:border-box;}
   #cc-app{font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased;
     color:var(--ink); background:transparent; max-width:1120px; margin:0 auto; padding:8px 4px 40px;
@@ -25,7 +28,8 @@
 
   .section-h{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint);
     font-weight:700; margin:26px 0 12px; line-height:1.2;}
-  .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:18px;}
+  .panel{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:20px;}
+  @media(max-width:640px){ .panel{padding:15px;} }
 
   /* summary tiles */
   .totstrip{display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:8px;}
@@ -66,9 +70,10 @@
   .mmb.active{background:var(--accent); color:#fff; border-color:var(--accent);}
   .spacer{flex:1;}
   .search{position:relative;}
-  .search input{border:1px solid var(--line); border-radius:7px; padding:7px 11px; font-family:inherit;
-    font-size:.8rem; line-height:1.2; width:190px; color:var(--ink); background:#fff;}
-  .search input:focus{outline:none; border-color:var(--accent);}
+  .search input{border:1px solid var(--line); border-radius:8px; padding:7px 12px; font-family:inherit;
+    font-size:.8rem; font-weight:600; line-height:1.2; width:190px; color:var(--ink); background:#fff;}
+  .search input::placeholder{color:var(--faint); font-weight:500;}
+  .search input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,77,77,.08);}
   .sugg{position:absolute; z-index:70; top:calc(100% + 4px); right:0; left:auto;
     width:280px; max-width:78vw; background:#fff;
     border:1px solid var(--line); border-radius:8px; box-shadow:0 10px 26px rgba(0,0,0,.13);
@@ -162,15 +167,15 @@
   .wd:hover{stroke:#15171a; stroke-width:1.8px;}
   .wd.dim{fill-opacity:.16;}
   .wd.pinned, .wd.hl{stroke:#15171a; stroke-width:2.2px;}
-  /* council boundaries in the ward view: black, three times the ward lines */
-  .cp.bg{stroke:#15171a; stroke-width:2.1px; stroke-opacity:.35;}
-  .wbound{fill:none; stroke:#15171a; stroke-width:2.1px; vector-effect:non-scaling-stroke;
+  /* council boundaries in the ward view: cream, three times the ward lines */
+  .cp.bg{stroke:var(--panel); stroke-width:2.1px;}
+  .wbound{fill:none; stroke:var(--panel); stroke-width:2.1px; vector-effect:non-scaling-stroke;
     pointer-events:none;}
   /* side panel in the ward view: the card on top, every ward listed below */
   #detail.hasw{display:flex; flex-direction:column; height:700px;}
   #detail.hasw #dcard{flex:none;}
   .wlist{flex:1 1 auto; min-height:0; overflow-y:auto; border-top:1px solid var(--line);
-    background:#fff;}
+    background:var(--panel);}
   .wlist .wlh{position:sticky; top:0; z-index:1; background:#fbfbfa; padding:8px 12px 7px;
     font-size:.64rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
     color:var(--faint); border-bottom:1px solid var(--line2); line-height:1.2;}
@@ -189,7 +194,7 @@
   .wardbar .wback{pointer-events:auto; padding:6px 11px; border-radius:7px; border:1px solid var(--accent);
     background:var(--accent); color:#fff; font-weight:700; font-size:.74rem; cursor:pointer;
     font-family:inherit; white-space:nowrap; line-height:1.2;}
-  .wardbar .wback:hover{background:#0b3d3d;}
+  .wardbar .wback:hover{background:#003a3a;}
   .wardbar .wt{pointer-events:auto; min-width:0; background:rgba(255,255,255,.93); border:1px solid var(--line);
     border-radius:7px; padding:6px 10px; font-size:.74rem; font-weight:800; color:var(--ink);
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
@@ -205,7 +210,7 @@
   /* legend */
   .legend{grid-area:leg; display:flex; flex-wrap:wrap; gap:7px; margin-top:6px; align-content:start;}
   .lgd{display:flex; align-items:center; gap:6px; font-size:.74rem; font-weight:700; color:var(--muted);
-    border:1px solid var(--line); background:#fff; border-radius:7px; padding:5px 9px; cursor:pointer;
+    border:1px solid var(--line); background:var(--panel); border-radius:7px; padding:5px 9px; cursor:pointer;
     line-height:1.2;}
   .lgd:hover{border-color:var(--accent); color:var(--accent);}
   .lgd.off{opacity:.4;}
@@ -217,7 +222,7 @@
     max-width:calc(100vw - 16px); display:none; border-radius:12px;
     overflow:hidden; box-shadow:0 12px 32px rgba(0,0,0,.2); background:#fff;
     font-family:'Inter',system-ui,sans-serif;}
-  .ccard .hd{background:#0b3d3d; color:#fff; padding:11px 12px 10px;}
+  .ccard .hd{background:var(--cardhd); color:#fff; padding:11px 12px 10px;}
   .ccard .hd .nm{font-size:1.1rem; font-weight:800; line-height:1.15; letter-spacing:-0.01em;
     margin:0;}
   .ccard .hd .ty{font-size:.68rem; opacity:.8; font-weight:600; margin-top:1px; line-height:1.25;}
@@ -226,7 +231,7 @@
     font-weight:800; font-size:.8rem; padding:4px 6px; text-align:center; line-height:1.15;}
   .ccard .hd .meta{font-size:.71rem; opacity:.92; line-height:1.45;}
   .ccard .hd .meta b{font-weight:800;}
-  .ccard .stack{display:flex; height:9px; background:#0b3d3d;}
+  .ccard .stack{display:flex; height:9px; background:var(--cardhd);}
   .ccard .stack i{height:100%;}
   .ccard .bd{padding:9px 12px 6px;}
   #cc-tip .bd{max-height:236px; overflow:hidden;}
@@ -264,16 +269,23 @@
   .ccard .none{font-size:.78rem; color:var(--muted); padding:2px 0 8px; line-height:1.4;}
 
   /* table */
-  .table-wrap{display:none; border:1px solid var(--line); border-radius:var(--radius); overflow:auto; max-height:560px;}
+  .table-wrap{display:none; border:1px solid var(--line); border-radius:var(--radius); overflow:auto; max-height:560px;
+    background:var(--panel);}
   #cc-app table{width:100%; border-collapse:collapse; font-size:.8rem;}
   #cc-app th, #cc-app td{padding:8px 10px; text-align:left; border-bottom:1px solid var(--line2);
     white-space:nowrap; line-height:1.25;}
-  #cc-app th{position:sticky; top:0; background:#fbfbfa; font-size:.66rem; text-transform:uppercase;
-    letter-spacing:.05em; color:var(--faint); cursor:pointer; z-index:2;}
+  #cc-app th{position:sticky; top:0; background:#fbfbfa; font-size:.65rem; text-transform:uppercase;
+    letter-spacing:.05em; color:var(--faint); font-weight:700; cursor:pointer; z-index:2;
+    border-bottom:2px solid var(--line);}
+  #cc-app td{color:var(--muted); font-variant-numeric:tabular-nums;}
+  /* council name stays put while the party columns scroll under it */
+  #cc-app td:first-child{position:sticky; left:0; z-index:1; background:var(--panel);
+    color:var(--ink); font-weight:600;}
+  #cc-app th:first-child{left:0; z-index:3;}
   #cc-app th:hover{color:var(--accent);}
   #cc-app td.ctrl{color:#fff; font-weight:800; text-align:center; border-radius:0;}
   #cc-app td.num{text-align:right; font-variant-numeric:tabular-nums; color:var(--muted);}
-  #cc-app tbody tr:hover{background:#fbf7f4;}
+  #cc-app tbody tr:hover td{background:#faf9f6;}
 
   .foot{margin-top:22px; font-size:.74rem; color:var(--faint); line-height:1.55;}
   .foot p{margin:0 0 10px;}
@@ -1375,6 +1387,18 @@
     return DATA.spectrum.filter(function(p){ return have[p]; });
   }
 
+  // The table's control column in the ElectionMaps abbreviations, coalitions
+  // included - OCD's own labels say REF and LD where the rest of the page says
+  // RFM and LDM.
+  function shortControl(c){
+    var ct = c.control;
+    if(!ct || ct.type === 'noc' || !ct.parties.length) return (ct && ct.label === 'TBC') ? 'TBC' : 'NOC';
+    var names = ct.parties.map(abbrev).join('/');
+    if(ct.mayor || ct.type === 'mayoral') return names + ' mayor';
+    if(ct.type === 'minority') return names + ' min';
+    return names;
+  }
+
   function renderTable(el, list, cols){
     var head = '<thead><tr>' +
       '<th data-k="name">Council</th><th data-k="type">Type</th>' +
@@ -1385,7 +1409,7 @@
       var col = controlSwatch(c);   // this is the Control column, not the map
       return '<tr><td>'+c.name+'</td><td style="color:var(--muted)">'+(c.typeName||'')+'</td>' +
         '<td class="ctrl" style="background:'+col+'; color:'+txtOn(col)+'">'+
-        (c.control.label==='NOC' ? 'NOC' : c.control.label)+'</td>' +
+        shortControl(c)+'</td>' +
         cols.map(function(p){ return '<td class="num">'+(c.seats[p]||'')+'</td>'; }).join('') +
         '<td class="num" style="color:var(--ink); font-weight:700">'+c.total+'</td></tr>';
     }).join('') + '</tbody>';

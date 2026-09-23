@@ -2,7 +2,7 @@
 
 An interactive map of every UK principal council, coloured by political control,
 with the full party-by-party councillor breakdown on hover. Data refreshes itself
-every Monday from [Open Council Data UK](https://opencouncildata.co.uk/).
+every day from [Open Council Data UK](https://opencouncildata.co.uk/).
 
 ## What's here
 
@@ -39,7 +39,7 @@ to install.
    councils it could not match, and any warnings.
 4. Paste `squarespace_embed_councils.html` into a Squarespace Code Block.
 
-After that it runs itself at 06:15 UTC every Monday.
+After that it runs itself at 06:23 UTC every day.
 
 ## The data sources, and how they fit together
 
@@ -312,8 +312,9 @@ there is room.
 
 ## Ward view
 
-Clicking a council, or finding it with search, swaps it in that map for its
-wards; the other map stays where it was. Each ward is filled with its
+Clicking a council, or finding it with search, opens its wards in a map that
+takes both map columns (the other tier's map steps aside, keeping its place,
+and comes back when you leave). Each ward is filled with its
 councillors' party, striped in proportion where they differ (common on councils
 that elect by thirds), and hovering or tapping a ward lists its councillors with
 the year each is next up. A click or tap pins a ward's card; **← All councils**
@@ -322,13 +323,21 @@ Filtering by a party in the legend fades the wards where it holds no seat.
 
 Two builds feed it:
 
-* `build/build_wards.py` splits the ONS boundary files in `councils/sources/`
+* `build/build_wards.py` splits the ONS boundary files in `councils/Sources/`
   into one small file per council, `data/wards/<code>.json`, plus
-  `data/wards/index.json` (codes and names only). Wards are matched to their
+  `data/wards/index.json` (codes and names only). It also merges each council's
+  wards into its outline, so council boundaries in the ward view are drawn at
+  the wards' resolution rather than the much coarser national boundary file,
+  and their edges meet exactly; `data/wards/outlines-lower.json` and
+  `outlines-upper.json` hold those outlines for the faded neighbours. Wards are matched to their
   council by the ward file's own council code; county divisions carry no county
   code, so each is placed in the county that contains it. Reorganised councils
-  (East and West Surrey) take the divisions inside them, which is what they were
-  elected on in May 2026. It runs at the start of every workflow and only
+  (East and West Surrey) take the county divisions inside them. They were
+  elected on Surrey's *new* divisions from the Boundary Commission's recent
+  review, but ONS's May 2026 file still has the old ones, so where the review
+  redrew lines the names (and shapes) don't match: East Surrey falls below the
+  threshold and West Surrey shows the old outlines for four areas until ONS
+  catches up. It runs at the start of every workflow and only
   rewrites files whose content changed.
 * `build_councils.py` keeps each councillor's name and ward from the council
   pages and matches the ward names to the boundary file's names within that
@@ -348,7 +357,7 @@ rather than by ward, and those boundaries come from a different source (OSNI).
 
 **Each year**, when ONS publishes the May ward and county division boundaries
 (BSC — super generalised — is the right cut), replace the two files in
-`councils/sources/` (the names only need to start `WD_` and `CED_`) and run the
+`councils/Sources/` (the names only need to start `WD_` and `CED_`) and run the
 workflow. Wards redrawn at a May election won't match until then, and those
 councils fall back to the pinned card in the meantime.
 
