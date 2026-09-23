@@ -114,6 +114,19 @@
       height:700px; max-width:none; margin:0;}
   }
   .tiergroup{display:flex; gap:8px; margin-right:10px;}
+  /* tier toggle: one switch with a label either side, the same height as the buttons */
+  .tierswitch{display:inline-flex; align-items:center; gap:2px; height:31px; padding:0 4px;
+    border:1px solid var(--line); border-radius:7px; background:#fff;}
+  .tierswitch .tsl{border:0; background:none; padding:0 7px; height:100%; font-family:inherit;
+    font-size:.78rem; font-weight:700; color:var(--faint); cursor:pointer; line-height:1.2;}
+  .tierswitch .tsl:hover{color:var(--accent);}
+  .tierswitch .tsl.active{color:var(--ink);}
+  .tierswitch .tst{position:relative; width:36px; height:20px; flex:none; border:0; padding:0;
+    border-radius:99px; background:var(--accent); cursor:pointer;}
+  .tierswitch .tst i{position:absolute; top:3px; left:3px; width:14px; height:14px; border-radius:50%;
+    background:#fff; box-shadow:0 1px 3px rgba(0,0,0,.25); transition:transform .18s ease;}
+  .tierswitch .tst.up i{transform:translateX(16px);}
+  .tierswitch .tst:focus-visible, .tierswitch .tsl:focus-visible{outline:2px solid var(--accent); outline-offset:2px;}
   /* Reset is a secondary action, so it sits back from the toggles */
   .mmb.ghost{color:var(--faint); border-color:var(--line2); background:#fbfbfa; font-weight:600;}
   .mmb.ghost:hover{color:var(--accent); border-color:var(--line); background:#fff;}
@@ -145,7 +158,8 @@
   .cp.pinned{stroke:#15171a; stroke-width:2px;}
   .cp.dim{fill-opacity:.16;}
   /* ward view: the chosen council's wards on top, every other council faded */
-  .cp.bg{fill-opacity:.13; pointer-events:none;}
+  .cp.bg{fill-opacity:.13;}
+  .cp.bg:hover{fill-opacity:.34;}   /* a neighbour you can click through to */
   .cp.inward{display:none;}
   .wd{stroke:#fff; stroke-width:1.4px; cursor:pointer; vector-effect:non-scaling-stroke;
     transition:fill-opacity .15s;}
@@ -300,8 +314,11 @@
     <div class="section-h">The map</div>
     <div class="toolbar maptools">
       <span class="tiergroup">
-        <button class="mmb active" data-maps="lower" title="Districts, unitaries, metropolitan and London boroughs, Scotland, Wales and Northern Ireland">Lower tier</button>
-        <button class="mmb" data-maps="upper" title="County councils and unitaries">Upper tier</button>
+        <span class="tierswitch" id="tierswitch">
+          <button type="button" class="tsl active" data-maps="lower" title="Districts, unitaries, metropolitan and London boroughs, Scotland, Wales and Northern Ireland">Lower tier</button>
+          <button type="button" class="tst" id="tiertrack" role="switch" aria-checked="false" aria-label="Show the upper tier"><i></i></button>
+          <button type="button" class="tsl" data-maps="upper" title="County councils and unitaries">Upper tier</button>
+        </span>
       </span>
       <button class="mmb active" data-colour="control">Control</button>
       <button class="mmb" data-colour="largest">Largest party</button>
@@ -317,10 +334,8 @@
       <div class="mapcap cap1">Districts &amp; unitaries</div>
       <div class="mapcap cap2">Counties &amp; unitaries</div>
       <div class="mapbox m1" id="map-lower">
-        <div class="map-hint">Scroll to zoom · drag · click a council for its wards</div>
       </div>
       <div class="mapbox m2" id="map-upper">
-        <div class="map-hint">Scroll to zoom · drag · click a council for its wards</div>
       </div>
       <div id="detail" class="ccard"></div>
       <div class="legend" id="legend"></div>
@@ -756,6 +771,12 @@
         document.querySelectorAll('[data-maps]').forEach(function(x){
           x.classList.toggle('active', x.getAttribute('data-maps') === mode);
         });
+        var tr = $('tiertrack');
+        if(tr){
+          tr.classList.toggle('up', mode === 'upper');
+          tr.setAttribute('aria-checked', mode === 'upper' ? 'true' : 'false');
+          tr.setAttribute('aria-label', mode === 'upper' ? 'Show the lower tier' : 'Show the upper tier');
+        }
         var grid = document.querySelector('.mapgrid');
         grid.classList.toggle('only-lower', mode === 'lower');
         grid.classList.toggle('only-upper', mode === 'upper');
@@ -797,11 +818,13 @@
 
     m.g.selectAll('path.cp').data(g.features).enter().append('path')
       .attr('class','cp').attr('d', m.path)
-      .on('mousemove', function(e,d){ if(!pinnedGss) showFeature(e,d); })
+      .on('mousemove', function(e,d){ if(!pinnedGss && !(WARD && WARD.pin)) showFeature(e,d); })
       .on('mouseleave', function(){ if(!pinnedGss) clearCard(); })
       .on('click', function(e,d){
         var code = d.properties.code, cc = byGss[code];
         if(cc && cc.wards) return enterWards(m, code);
+        // a neighbour with no ward data, clicked from a ward view
+        if(WARD){ leaveWards(true, false, true); return zoomTo(code); }
         pinnedGss = (pinnedGss === code) ? null : code;
         markPinned();
         if(pinnedGss) showFeature(e,d); else clearCard();
@@ -941,6 +964,13 @@
   }
   function isDivisions(geo){ return !!geo && /^CED/i.test(geo.source || ''); }
   function wardName(n){ return String(n || '').replace(/\s+ED$/, ''); }
+  // The name to show for a ward: the one its councillors were elected under
+  // when the build matched it by shared place names (a renamed or redrawn
+  // ward), otherwise the boundary file's own.
+  function wardLabel(id, fallback){
+    var l = WARD && WARD.mem && WARD.mem.labels && WARD.mem.labels[id];
+    return wardName(l || fallback);
+  }
 
   function wardBar(m, c, geo, mem){
     var box = d3.select('#' + m.box);
@@ -971,10 +1001,13 @@
     var c = byGss[code];
     var f = featureIn(m, code);
     if(!c || !f) return;
-    if(WARD) leaveWards(true);
+    // Going from one council's wards straight to another's: stay where you
+    // are and fly across, and remember the view from before the first one.
+    var carry = null;
+    if(WARD){ carry = WARD.prev; leaveWards(true, false, true); }
     var tier = m.key;
     WARD = {m: m, tier: tier, code: code,
-            prev: keep ? keep.prev : d3.zoomTransform(m.svg.node())};
+            prev: keep ? keep.prev : (carry || d3.zoomTransform(m.svg.node()))};
     pinnedGss = null; markPinned();
     tip.style.display = 'none';
     sharpenNeighbours(m);
@@ -1035,7 +1068,8 @@
   }
 
   // noRedraw: the caller is about to redraw every map anyway (layout change).
-  function leaveWards(instant, noRedraw){
+  // stay: undo the ward view without moving the map (going on to another council)
+  function leaveWards(instant, noRedraw, stay){
     if(!WARD) return;
     var w = WARD, m = w.m;
     WARD = null;
@@ -1045,7 +1079,8 @@
     if(!noRedraw && m.g && m.svg.node().isConnected){
       // back to the national shapes and full colour, then zoom back out
       m.g.selectAll('.cp').classed('bg', false).classed('inward', false).attr('d', m.path);
-      if(instant) m.svg.call(m.zoom.transform, w.prev);
+      if(stay) {}
+      else if(instant) m.svg.call(m.zoom.transform, w.prev);
       else m.svg.transition().duration(600).call(m.zoom.transform, w.prev);
     }
     clearCard();
@@ -1070,7 +1105,7 @@
     var years = ppl.map(function(p){ return p.y; }).filter(Boolean).sort();
     var n = ppl.filter(function(p){ return p.p !== 'VAC'; }).length;
     return '<div class="hd">' +
-        '<div class="nm">' + esc(wardName(props.name)) + '</div>' +
+        '<div class="nm">' + esc(wardLabel(props.id, props.name)) + '</div>' +
         '<div class="ty">' + esc(c.name) + ' \u00b7 ' + (div ? 'Electoral division' : 'Ward') +
           (props.alt ? ' \u00b7 ' + esc(props.alt) : '') + '</div>' +
         '<div class="meta" style="margin-top:7px"><b>' + n + '</b> councillor' + (n === 1 ? '' : 's') +
@@ -1091,7 +1126,7 @@
 
   function wardListHtml(){
     var ws = WARD.geo.wards.slice().sort(function(a, b){
-      return wardName(a.name).localeCompare(wardName(b.name));
+      return wardLabel(a.id, a.name).localeCompare(wardLabel(b.id, b.name));
     });
     var div = isDivisions(WARD.geo);
     return '<div class="wlh">' + ws.length + (div ? ' divisions' : ' wards') + '</div>' +
@@ -1102,7 +1137,7 @@
           return '<i style="background:' + col + '; color:' + txtOn(col) + '" title="' +
             esc(pInfo(p).name) + '">' + abbrev(p) + '</i>';
         }).join('') : '<i class="none">no data</i>';
-        return '<div class="wl" data-id="' + esc(w.id) + '"><span class="wn">' + esc(wardName(w.name)) +
+        return '<div class="wl" data-id="' + esc(w.id) + '"><span class="wn">' + esc(wardLabel(w.id, w.name)) +
           '</span><span class="wc">' + chips + '</span></div>';
       }).join('');
   }
@@ -1278,7 +1313,7 @@
           'Councils where two or more parties are level are striped in their colours.'
         : 'The party leading each administration, whether that is an outright majority, ' +
           'a minority or a coalition.') +
-      ' Hover a council for its full breakdown; click to keep it open.</p>' +
+      ' Hover a council for its full breakdown; click it to see its wards.</p>' +
       rows + '</div>');
   }
 
@@ -1460,6 +1495,9 @@
   function wire(){
     document.querySelectorAll('[data-maps]').forEach(function(b){
       b.addEventListener('click', function(){ setMapMode(b.getAttribute('data-maps')); });
+    });
+    $('tiertrack').addEventListener('click', function(){
+      setMapMode(mapMode === 'lower' ? 'upper' : 'lower');
     });
     document.querySelectorAll('[data-colour]').forEach(function(b){
       b.addEventListener('click', function(){
