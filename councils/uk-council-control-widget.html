@@ -144,7 +144,7 @@
   /* side panel - the same card the tooltip renders, pinned in place */
   #detail{grid-area:panel; background:var(--panel); border:1px solid var(--line);
     border-radius:var(--radius); overflow:hidden; align-self:start;}
-  @media(max-width:900px){ #detail{display:none;} }
+  @media(max-width:900px){ #detail, .mapgrid #detail.hase, .mapgrid #detail.hasw{display:none;} }
   #detail .empty{padding:20px;}
   #detail .empty h3{margin:0 0 4px; font-size:.95rem; font-weight:800;}
   #detail .empty p{margin:0 0 16px; font-size:.8rem; color:var(--muted); line-height:1.5;}
