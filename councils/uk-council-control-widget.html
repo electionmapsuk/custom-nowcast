@@ -101,13 +101,18 @@
   .mapgrid.only-upper{grid-template-areas:"m2 m2 panel" "leg leg panel";}
   .mapgrid.only-upper .m1{display:none;}
   @media(max-width:900px){
-    .mapgrid.only-lower{grid-template-areas:"m1 m1" "leg leg";}
-    .mapgrid.only-upper{grid-template-areas:"m2 m2" "leg leg";}
+    .mapgrid.only-lower{grid-template-areas:"m1 m1" "mc mc" "leg leg";}
+    .mapgrid.only-upper{grid-template-areas:"m2 m2" "mc mc" "leg leg";}
   }
   @media(max-width:640px){
-    .mapgrid.only-lower{grid-template-areas:"m1" "leg";}
-    .mapgrid.only-upper{grid-template-areas:"m2" "leg";}
+    .mapgrid.only-lower{grid-template-areas:"m1" "mc" "leg";}
+    .mapgrid.only-upper{grid-template-areas:"m2" "mc" "leg";}
   }
+  /* phones and tablets: the council's summary under the map in the ward view
+     (a ward's own card still floats over the map when it is tapped) */
+  #mcard{display:none; grid-area:mc; background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); overflow:hidden; margin-top:4px;}
+  @media(max-width:900px){ #mcard.on{display:block;} }
   /* with one tier on screen there is room to draw it bigger */
   @media(min-width:901px){
     .mapgrid.only-lower .mapbox, .mapgrid.only-upper .mapbox{
@@ -133,8 +138,8 @@
   .m1{grid-area:m1;} .m2{grid-area:m2;}
   .mapbox{position:relative; width:100%; height:600px; background:var(--panel);
     border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
-  @media(max-width:900px){ .mapbox{height:520px;} }
-  @media(max-width:640px){ .mapbox{height:440px;} }
+  @media(max-width:900px){ .mapbox{height:570px;} }
+  @media(max-width:640px){ .mapbox{height:500px;} }
 
   /* side panel - the same card the tooltip renders, pinned in place */
   #detail{grid-area:panel; background:var(--panel); border:1px solid var(--line);
@@ -167,11 +172,21 @@
      the councils around it keep the map's thin boundaries */
   .wbound{fill:none; stroke:var(--panel); stroke-width:3.15px; vector-effect:non-scaling-stroke;
     pointer-events:none;}
-  /* side panel in the ward view: the card on top, every ward listed below */
-  #detail.hasw{display:flex; flex-direction:column; height:700px;}
-  #detail.hasw #dcard{flex:none;}
-  .wlist{flex:1 1 auto; min-height:0; overflow-y:auto; border-top:1px solid var(--line);
-    background:var(--panel);}
+  /* side panel in the ward view: three boxes - the council's own card (it
+     stays put), the hovered or pinned ward's councillors, then every ward -
+     together exactly as tall as the map (set from the map in fitPanel) */
+  #detail.hasw{display:flex; flex-direction:column; gap:10px; height:700px; position:relative; top:0;
+    background:none; border:0; border-radius:0; overflow:visible;}
+  #detail.hasw .pbox{background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); overflow:hidden;}
+  #detail.hasw #dcouncil{flex:0 1 auto; min-height:0; overflow-y:auto;}
+  #detail.hasw #dcard{flex:none; min-height:118px; overflow-y:auto;}
+  /* a neighbouring council hovered in the ward view: just its header */
+  #dcard .nbr > :not(.hd){display:none;}
+  #dcard .nbr .hint{display:block; padding:9px 18px; font-size:.74rem; color:var(--muted);}
+  #dcard .wph{padding:16px 18px; font-size:.78rem; color:var(--muted); line-height:1.5;}
+  #dcard .wph b{display:block; color:var(--ink); font-size:.86rem; margin-bottom:2px;}
+  .wlist{flex:1 1 0; min-height:150px; overflow-y:auto; background:var(--panel);}
   .wlist .wlh{position:sticky; top:0; z-index:1; background:#fbfbfa; padding:8px 12px 7px;
     font-size:.64rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
     color:var(--faint); border-bottom:1px solid var(--line2); line-height:1.2;}
@@ -333,6 +348,7 @@
       <div class="mapbox m2" id="map-upper">
       </div>
       <div id="detail" class="ccard"></div>
+      <div id="mcard" class="ccard"></div>
       <div class="legend" id="legend"></div>
     </div>
 
@@ -1041,6 +1057,7 @@
             prev: keep ? keep.prev : (carry || d3.zoomTransform(m.svg.node()))};
     pinnedGss = null; markPinned();
     tip.style.display = 'none';
+    mobileCard();
     sharpenNeighbours(m);
     wardBar(m, c, null, null);
     if(!keep) m.svg.transition().duration(650).call(m.zoom.transform, fitTransform(m, f, 0.86, 220));
@@ -1131,6 +1148,7 @@
     if(!WARD) return;
     var w = WARD, m = w.m;
     WARD = null;
+    mobileCard();
     if(m.wg){ m.wg.remove(); m.wg = null; }
     d3.select('#' + m.box).select('.wardbar').remove();
     tip.style.display = 'none';
@@ -1183,7 +1201,52 @@
   function setPanel(html){
     var dc = $('dcard');
     if(WARD && dc) dc.innerHTML = html;
-    else { $('detail').classList.remove('hasw'); $('detail').innerHTML = html; }
+    else {
+      var det = $('detail');
+      det.classList.remove('hasw'); det.style.height = '';
+      det.innerHTML = html;
+    }
+  }
+  // The ward-view panel is exactly the map's height, so the ward list scrolls
+  // inside it rather than running on below the map.
+  function fitPanel(){
+    var det = $('detail');
+    if(!det.classList.contains('hasw') || !WARD) return;
+    var h = $(WARD.m.box).getBoundingClientRect().height;
+    if(h) det.style.height = Math.round(h) + 'px';
+  }
+  // The ward box keeps one height whichever ward is shown - that of the
+  // council's biggest ward - so hovering down the list never shifts the rows
+  // under the pointer.
+  function sizeWardBox(){
+    var dc = $('dcard');
+    if(!dc || !WARD || !WARD.geo || !WARD.mem) return;
+    var big = null, n = -1;
+    WARD.geo.wards.forEach(function(w){
+      var k = (WARD.mem.wards[w.id] || []).length;
+      if(k > n){ n = k; big = w; }
+    });
+    dc.style.height = '';
+    if(big){
+      dc.innerHTML = wardCardHtml(byGss[WARD.code], big, WARD.mem.wards[big.id], WARD.geo);
+      dc.style.height = Math.max(118, dc.offsetHeight) + 'px';
+    }
+  }
+  // Narrow screens have no side panel: the council's card goes under the map.
+  function mobileCard(){
+    var mc = $('mcard');
+    if(!mc) return;
+    var on = !!WARD && !panelOn() && !!byGss[WARD.code];
+    mc.classList.toggle('on', on);
+    mc.innerHTML = on ? cardHtml(byGss[WARD.code]) : '';
+  }
+  // The middle box when no ward is hovered or pinned.
+  function wardHint(){
+    var div = isDivisions(WARD && WARD.geo);
+    var dc = $('dcard');
+    if(dc) dc.innerHTML = '<div class="wph"><b>' + (div ? 'Divisions' : 'Wards') + '</b>' +
+      'Hover over a ' + (div ? 'division' : 'ward') + ' on the map or in the list below to see ' +
+      'its councillors; click to keep it here.</div>';
   }
 
   function wardListHtml(){
@@ -1208,7 +1271,11 @@
     if(!panelOn() || !WARD || !WARD.geo) return;
     var det = $('detail');
     det.classList.add('hasw');
-    det.innerHTML = '<div id="dcard"></div><div class="wlist" id="wlist">' + wardListHtml() + '</div>';
+    det.innerHTML = '<div class="pbox" id="dcouncil">' + cardHtml(byGss[WARD.code]) + '</div>' +
+      '<div class="pbox" id="dcard"></div>' +
+      '<div class="pbox wlist" id="wlist">' + wardListHtml() + '</div>';
+    fitPanel();
+    sizeWardBox();
     var byId = {};
     WARD.m.wg.selectAll('.wd').each(function(d){ byId[d.properties.id] = {d: d, el: this}; });
     det.querySelectorAll('.wl').forEach(function(row){
@@ -1382,6 +1449,10 @@
   function showCardFor(code, name, e){
     var html = cardHtml(byGss[code], name);
     if(panelOn()){
+      // in the ward view, a neighbour hovered on the map shows in the ward box
+      if(WARD && $('dcard') && code !== WARD.code)
+        html = '<div class="nbr">' + html + '<div class="hint">Click to see its ' +
+               (byGss[code] && byGss[code].wards ? 'wards' : 'council') + '</div></div>';
       setPanel(html);
       tip.style.display = 'none';
     } else {
@@ -1402,6 +1473,7 @@
     tip.style.display = 'none';
     if(panelOn()){
       if(WARD && WARD.pin) showWardCard(null, WARD.pin);
+      else if(WARD && $('dcard')) wardHint();
       else if(WARD) showCardFor(WARD.code, '', null);
       else if(pinnedGss) showCardFor(pinnedGss, '', null); else panelDefault();
     }
