@@ -255,6 +255,28 @@ def main():
     for code, ds in placed.items():
         by_council[code] = {"source": os.path.basename(ced_path), "wards": ds}
 
+    # Outlines for counties (and reorganised councils) are built from the
+    # wards of their districts, not from their divisions: the division and
+    # ward files are simplified separately, so a county merged from divisions
+    # and a unitary merged from wards don't share an edge, and the gaps show
+    # as slivers. Built from one file, every council's edge meets its
+    # neighbours' exactly. Each district goes whole to the county holding most
+    # of its wards.
+    district_wards: dict[str, list] = {}
+    for w in wards:
+        if (w["parent"] or "").startswith("E07"):
+            district_wards.setdefault(w["parent"], []).append(w)
+    as_div = [dict(w) for w in wards if (w["parent"] or "").startswith("E07")]
+    ward_home, _ = assign_divisions(as_div, targets) if targets else ({}, [])
+    votes: dict[str, dict] = {}
+    for tcode, ws_ in ward_home.items():
+        for w in ws_:
+            votes.setdefault(w["parent"], {}).setdefault(tcode, 0)
+            votes[w["parent"]][tcode] += 1
+    county_wards: dict[str, list] = {}
+    for lad, v in votes.items():
+        county_wards.setdefault(max(v, key=v.get), []).extend(district_wards[lad])
+
     out_dir = os.path.join(a.data, "wards")
     os.makedirs(out_dir, exist_ok=True)
     index, outlines, failed = {}, {}, []
@@ -264,7 +286,8 @@ def main():
         # The council's outline at the wards' own resolution: the union of its
         # wards. The national boundary files are the coarsest ONS cut, so their
         # edges don't meet the wards; this one does, exactly.
-        outline = dissolve([w["g"] for w in ws])
+        src = county_wards.get(code) or ws
+        outline = dissolve([w["g"] for w in src])
         if outline:
             polys = [outline["coordinates"]] if outline["type"] == "Polygon" else outline["coordinates"]
             polys = [_wind(p) for p in polys]
