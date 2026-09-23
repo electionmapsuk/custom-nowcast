@@ -1,10 +1,10 @@
 {
- "generated": "2026-09-22T23:32:18+00:00",
+ "generated": "2026-09-23T00:26:53+00:00",
  "year": 2026,
  "csvRows": 19273,
  "councilsParsed": 384,
  "councilsOnMap": 372,
- "councilsWithSplitDetail": 298,
+ "councilsWithSplitDetail": 306,
  "byGroup": {
   "Scottish unitary authority": 32,
   "Non-metropolitan district": 153,
@@ -28,10 +28,10 @@
   "CON": 3728,
   "LDM": 3162,
   "RFM": 2312,
-  "IND": 2191,
+  "IND": 2248,
   "GRN": 1331,
   "SNP": 413,
-  "OTH": 340,
+  "OTH": 283,
   "PLC": 200,
   "SF": 144,
   "DUP": 119,
@@ -136,14 +136,14 @@
   "pagesRequested": 383,
   "pagesFailed": 0,
   "councilsRead": 383,
-  "councillors": 18585,
+  "councillors": 19257,
   "unnamedPages": [],
   "unmatchedPages": [],
   "partyNamesNotInRegister": {}
  },
  "wardMatch": {
   "councils": 360,
-  "withWardView": 346,
+  "withWardView": 359,
   "partial": [
    {
     "council": "Bradford",
@@ -179,122 +179,31 @@
   ],
   "noWardView": [
    {
-    "council": "Bedford",
-    "placed": 0.0,
-    "unmatchedWards": [
-     "(no ward)"
-    ]
-   },
-   {
-    "council": "Croydon",
-    "placed": 0.0,
-    "unmatchedWards": [
-     "(no ward)"
-    ]
-   },
-   {
-    "council": "Doncaster",
-    "placed": 0.0,
-    "unmatchedWards": [
-     "(no ward)"
-    ]
-   },
-   {
     "council": "East Surrey",
-    "placed": 0.806,
+    "placed": 0.778,
     "unmatchedWards": [
      "Cobham & Oxshott South",
      "Dorking",
      "Esher, Claygate & Oxshott North",
      "Ewell Village, Stoneleigh & Nonsuch",
      "Long Ditton, Hinchley Wood & Western Green",
+     "Merstham & Banstead North",
      "Redhill East & North Earlswood",
      "Thames Ditton & East Molesey"
-    ]
-   },
-   {
-    "council": "Hackney",
-    "placed": 0.0,
-    "unmatchedWards": [
-     "(no ward)"
-    ]
-   },
-   {
-    "council": "Leicester",
-    "placed": 0.0,
-    "unmatchedWards": [
-     "(no ward)"
-    ]
-   },
-   {
-    "council": "Lewisham",
-    "placed": 0.0,
-    "unmatchedWards": [
-     "(no ward)"
-    ]
-   },
-   {
-    "council": "Mansfield",
-    "placed": 0.0,
-    "unmatchedWards": [
-     "(no ward)"
-    ]
-   },
-   {
-    "council": "Middlesbrough",
-    "placed": 0.0,
-    "unmatchedWards": [
-     "(no ward)"
-    ]
-   },
-   {
-    "council": "Newham",
-    "placed": 0.0,
-    "unmatchedWards": [
-     "(no ward)"
-    ]
-   },
-   {
-    "council": "North Tyneside",
-    "placed": 0.0,
-    "unmatchedWards": [
-     "(no ward)"
-    ]
-   },
-   {
-    "council": "Salford",
-    "placed": 0.0,
-    "unmatchedWards": [
-     "(no ward)"
-    ]
-   },
-   {
-    "council": "Tower Hamlets",
-    "placed": 0.0,
-    "unmatchedWards": [
-     "(no ward)"
-    ]
-   },
-   {
-    "council": "Watford",
-    "placed": 0.0,
-    "unmatchedWards": [
-     "(no ward)"
     ]
    }
   ],
   "fuzzy": [
-   "East Surrey: Banstead, Woodmanshire & Chipstead -> Banstead, Woodmansterne and Chipstead ED",
-   "East Surrey: Merstham & Banstead North -> Merstham and Banstead South ED",
    "East Surrey: Ewell Court, Auriol & Chuddington -> Ewell Court, Auriol and Cuddington ED",
+   "East Surrey: Banstead, Woodmanshire & Chipstead -> Banstead, Woodmansterne and Chipstead ED",
    "Essex: Harlow Parndon & Toddbrook -> Harlow Parndon & Todbrook ED",
    "Essex: Harlow Nettleswell -> Harlow Netteswell ED",
    "Gloucestershire: Fairford & Lechland on Thames -> Fairford & Lechlade on Thames ED",
    "Kirklees: Liversedge & Gomersall -> Liversedge & Gomersal",
    "Oxfordshire: Cropredy & Hook Launton -> Cropredy & Hook Norton ED",
    "Staffordshire: Great Wurley & Essington -> Great Wyrley & Essington ED",
-   "Worcestershire: Chaddersley -> Chaddesley ED",
-   "Worcestershire: Breddon -> Bredon ED"
+   "Worcestershire: Breddon -> Bredon ED",
+   "Worcestershire: Chaddersley -> Chaddesley ED"
   ]
  },
  "othSplitFromCsv": [],
@@ -302,17 +211,9 @@
   "Barnsley: E08000016 -> E08000038",
   "Sheffield: E08000019 -> E08000039"
  ],
- "othNotSplit": [
-  "Bedford",
-  "Doncaster",
-  "Leicester",
-  "Mansfield",
-  "Middlesbrough",
-  "Newham",
-  "North Tyneside",
-  "Salford"
- ],
+ "othNotSplit": [],
  "othBucket": {
+  "Aspire": 32,
   "Restore Britain": 28,
   "Broxtowe Alliance": 20,
   "Residents for Uttlesford": 19,
@@ -371,8 +272,7 @@
   "Consensus": 1,
   "People Against Bureaucracy Group": 1,
   "The Walton Society": 1,
-  "Community First": 1,
-  "Lingfield & Crowhurst Residents": 1
+  "Community First": 1
  },
  "warnings": [
   "1950 councillor rows had a party code missing from the register; fell back to name matching"
