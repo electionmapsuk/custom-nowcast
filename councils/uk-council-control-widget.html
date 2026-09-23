@@ -86,27 +86,27 @@
      side panel are all placed on one grid so their tops line up */
   .mapgrid{display:grid; gap:6px 12px; align-items:start;
     grid-template-columns:minmax(0,1fr) minmax(0,1fr) 300px;
-    grid-template-areas:"cap1 cap2 ." "m1 m2 panel" "leg leg panel";}
+    grid-template-areas:"m1 m2 panel" "leg leg panel";}
   @media(max-width:900px){
     .mapgrid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);
-      grid-template-areas:"cap1 cap2" "m1 m2" "leg leg";}
+      grid-template-areas:"m1 m2" "leg leg";}
   }
   @media(max-width:640px){
     .mapgrid{grid-template-columns:minmax(0,1fr);
-      grid-template-areas:"cap1" "m1" "cap2" "m2" "leg";}
+      grid-template-areas:"m1" "m2" "leg";}
   }
   /* one tier at a time: the shown map spans both map columns */
-  .mapgrid.only-lower{grid-template-areas:"cap1 cap1 ." "m1 m1 panel" "leg leg panel";}
-  .mapgrid.only-lower .cap2, .mapgrid.only-lower .m2{display:none;}
-  .mapgrid.only-upper{grid-template-areas:"cap2 cap2 ." "m2 m2 panel" "leg leg panel";}
-  .mapgrid.only-upper .cap1, .mapgrid.only-upper .m1{display:none;}
+  .mapgrid.only-lower{grid-template-areas:"m1 m1 panel" "leg leg panel";}
+  .mapgrid.only-lower .m2{display:none;}
+  .mapgrid.only-upper{grid-template-areas:"m2 m2 panel" "leg leg panel";}
+  .mapgrid.only-upper .m1{display:none;}
   @media(max-width:900px){
-    .mapgrid.only-lower{grid-template-areas:"cap1 cap1" "m1 m1" "leg leg";}
-    .mapgrid.only-upper{grid-template-areas:"cap2 cap2" "m2 m2" "leg leg";}
+    .mapgrid.only-lower{grid-template-areas:"m1 m1" "leg leg";}
+    .mapgrid.only-upper{grid-template-areas:"m2 m2" "leg leg";}
   }
   @media(max-width:640px){
-    .mapgrid.only-lower{grid-template-areas:"cap1" "m1" "leg";}
-    .mapgrid.only-upper{grid-template-areas:"cap2" "m2" "leg";}
+    .mapgrid.only-lower{grid-template-areas:"m1" "leg";}
+    .mapgrid.only-upper{grid-template-areas:"m2" "leg";}
   }
   /* with one tier on screen there is room to draw it bigger */
   @media(min-width:901px){
@@ -130,9 +130,6 @@
   /* Reset is a secondary action, so it sits back from the toggles */
   .mmb.ghost{color:var(--faint); border-color:var(--line2); background:#fbfbfa; font-weight:600;}
   .mmb.ghost:hover{color:var(--accent); border-color:var(--line); background:#fff;}
-  .mapcap{font-size:.7rem; text-transform:uppercase; letter-spacing:.06em; line-height:1.2;
-    color:var(--faint); font-weight:700; text-align:center; align-self:end;}
-  .cap1{grid-area:cap1;} .cap2{grid-area:cap2;}
   .m1{grid-area:m1;} .m2{grid-area:m2;}
   .mapbox{position:relative; width:100%; height:600px; background:var(--panel);
     border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
@@ -166,8 +163,8 @@
   .wd:hover{stroke:#15171a; stroke-width:2.6px;}
   .wd.dim{fill-opacity:.16;}
   .wd.pinned, .wd.hl{stroke:#15171a; stroke-width:2.6px;}
-  /* council boundaries in the ward view: cream, wider than the ward lines */
-  .cp.bg{stroke:var(--panel); stroke-width:3.15px;}
+  /* ward view: only the selected council gets the thick cream outline (.wbound);
+     the councils around it keep the map's thin boundaries */
   .wbound{fill:none; stroke:var(--panel); stroke-width:3.15px; vector-effect:non-scaling-stroke;
     pointer-events:none;}
   /* side panel in the ward view: the card on top, every ward listed below */
@@ -331,8 +328,6 @@
     </div>
 
     <div class="mapgrid only-lower">
-      <div class="mapcap cap1">Districts &amp; unitaries</div>
-      <div class="mapcap cap2">Counties &amp; unitaries</div>
       <div class="mapbox m1" id="map-lower">
       </div>
       <div class="mapbox m2" id="map-upper">
@@ -1053,6 +1048,33 @@
     wardBar(m, c, geo, mem);
     buildWardPanel();
     highlight(focusParty);
+    if(WARD.focus){ var fid = WARD.focus; WARD.focus = null; focusWard(fid); }
+  }
+
+  function focusWard(id){
+    if(!WARD || !WARD.m.wg) return;
+    var m = WARD.m, hit = null;
+    m.wg.selectAll('.wd').each(function(d){ if(d.properties.id === id) hit = d; });
+    if(!hit) return;
+    WARD.pin = hit;
+    markWardPin();
+    var t = fitTransform(m, hit, 0.4, 220);
+    if(!panelOn()){
+      // Narrow screens float the card over the map, so park the ward in the
+      // top of the map and hang the card underneath it, not on top of it.
+      var H = m.svg.node().getBoundingClientRect().height;
+      t = fitTransform(m, hit, 0.28, 220);
+      t = d3.zoomIdentity.translate(t.x, t.y - H * 0.2).scale(t.k);
+    }
+    m.svg.transition().duration(650).call(m.zoom.transform, t)
+      .on('end', function(){
+        if(!WARD || WARD.pin !== hit) return;
+        var r = $(m.box).getBoundingClientRect(), wb = null;
+        m.wg.selectAll('.wd.pinned').each(function(){ wb = this.getBoundingClientRect(); });
+        showWardCard(wb ? {clientX: r.left - 16, clientY: wb.bottom - 8}
+                        : {clientX: r.left + r.width / 2, clientY: r.top + r.height / 2}, hit);
+      });
+    showWardCard(null, hit);
   }
 
   function markWardPin(){
@@ -1525,24 +1547,61 @@
     }
     function choose(el){
       if(!el) return;
-      gotoCouncil(el.getAttribute('data-g'));
+      gotoCouncil(el.getAttribute('data-g'), el.getAttribute('data-w'));
       closeSugg(); q.value = ''; q.blur();
     }
+
+    // Wards are searchable too: the names-only ward index is fetched the
+    // first time someone types, and only councils with a ward view are listed.
+    var WLIST = null, wlistLoading = false;
+    function wardIndex(){
+      if(WLIST || wlistLoading) return;
+      wlistLoading = true;
+      loadJson('wards/index.json', true).then(function(ix){
+        var out = [];
+        Object.keys(ix).forEach(function(code){
+          var c = byGss[code];
+          if(!c || !c.wards) return;
+          ix[code].forEach(function(w){
+            out.push({id: w[0], name: wardName(w[1]), low: wardName(w[1]).toLowerCase(),
+                      alt: (w[2] || '').toLowerCase(), code: code, council: c.name,
+                      div: /^E58/.test(w[0])});
+          });
+        });
+        WLIST = out;
+        if(q.value.trim().length >= 3) q.dispatchEvent(new Event('input'));
+      }).catch(function(){ wlistLoading = false; });
+    }
+    q.addEventListener('focus', wardIndex);
 
     q.addEventListener('input', function(){
       var v = q.value.trim().toLowerCase();
       if(v.length < 2) return closeSugg();
-      // name matches first, then anything matching on type or nation
+      wardIndex();
+      var pos = function(s){ return s.indexOf(v); };
+      // councils first, then wards, both by where the match falls
       var hits = DATA.councils.filter(function(c){
         return c.name.toLowerCase().indexOf(v) >= 0;
       }).sort(function(a,b){
-        var ai = a.name.toLowerCase().indexOf(v), bi = b.name.toLowerCase().indexOf(v);
+        var ai = pos(a.name.toLowerCase()), bi = pos(b.name.toLowerCase());
         return ai !== bi ? ai - bi : a.name.localeCompare(b.name);
-      }).slice(0,8);
-      if(!hits.length) return closeSugg();
+      });
+      var whits = (WLIST && v.length >= 3) ? WLIST.filter(function(w){
+        return w.low.indexOf(v) >= 0 || (w.alt && w.alt.indexOf(v) >= 0);
+      }).sort(function(a,b){
+        var ai = pos(a.low), bi = pos(b.low);
+        return ai !== bi ? ai - bi : a.name.localeCompare(b.name) || a.council.localeCompare(b.council);
+      }) : [];
+      var nc = Math.min(hits.length, whits.length ? 4 : 8);
+      hits = hits.slice(0, nc);
+      whits = whits.slice(0, 8 - nc);
+      if(!hits.length && !whits.length) return closeSugg();
       sg.innerHTML = hits.map(function(c){
         return '<div data-g="'+c.gss+'">'+c.name+' <span style="color:var(--faint)">'+
                (c.typeName||'')+'</span></div>';
+      }).join('') + whits.map(function(w){
+        return '<div data-g="'+w.code+'" data-w="'+esc(w.id)+'">'+esc(w.name)+
+               ' <span style="color:var(--faint)">'+(w.div ? 'Division' : 'Ward')+' \u00b7 '+esc(w.council)+'</span></div>';
       }).join('');
       sg.style.display = 'block';
       selIdx = 0; markSel();
@@ -1589,17 +1648,24 @@
     });
   }
 
-  // Search opens the ward view where there is one, on the map the council
-  // belongs to (counties on the county map), and otherwise zooms and pins.
   // Search opens the council on whichever tier it is drawn on - switching
   // tier if it is only on the other one (a county from the lower tier, a
   // district from the upper) - in its ward view where it has one.
-  function gotoCouncil(gss){
+  // wardId: a ward picked in the search box - open its council's ward view,
+  // then zoom to that ward and pin its card.
+  function gotoCouncil(gss, wardId){
     var c = byGss[gss];
     if(!c) return;
     var go = function(){
       var m = M[mapMode];
-      if(c.wards && featureIn(m, gss)) enterWards(m, gss); else zoomTo(gss);
+      if(WARD && WARD.code === gss && WARD.m === m && WARD.geo){
+        if(wardId) focusWard(wardId);
+        return;
+      }
+      if(c.wards && featureIn(m, gss)){
+        enterWards(m, gss);
+        if(WARD && wardId) WARD.focus = wardId;
+      } else zoomTo(gss);
     };
     if(featureIn(M[mapMode], gss)) return go();
     setMapMode(mapMode === 'lower' ? 'upper' : 'lower').then(go);
