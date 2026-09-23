@@ -395,7 +395,8 @@
   // ElectionMaps party abbreviations
   var ABBREV = {LAB:'LAB',CON:'CON',LDM:'LDM',RFM:'RFM',GRN:'GRN',SNP:'SNP',PLC:'PLC',
                 SF:'SF',DUP:'DUP',SDLP:'SDLP',ALL:'ALL',UUP:'UUP',TUV:'TUV',UKI:'UKI',
-                RES:'RES',IND:'Ind',OTH:'Oth',VAC:'Vac'};
+                RES:'RES',ASP:'ASP',YRP:'YRP',WPB:'WPB',LIB:'LIB',SDP:'SDP',
+                IND:'Ind',OTH:'Oth',VAC:'Vac'};
   function abbrev(code){ return ABBREV[code] || code; }
 
   // No overall control
@@ -951,11 +952,36 @@
       return DATA.spectrum.indexOf(a) - DATA.spectrum.indexOf(b);
     });
   }
+  // One stripe per seat. A party's second and third seats in a ward are drawn
+  // a shade darker each, so a ward held 3-0 still shows as three seats, and
+  // LAB/LAB/RES reads as two Labour seats rather than one wide band.
+  var SEAT_SHADE = 0.1;
+  function darken(hex, amount){
+    var h = (hex||'#888').replace('#','');
+    if(h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+    return '#' + [0, 2, 4].map(function(i){
+      var v = Math.round(parseInt(h.slice(i, i+2), 16) * (1 - amount));
+      return (v < 16 ? '0' : '') + v.toString(16);
+    }).join('');
+  }
   function wardFill(m, people){
     var codes = wardCodes(people);
     if(!codes.length) return '#e6e6e2';
-    var one = codes.every(function(c){ return c === codes[0]; });
-    return one ? pInfo(codes[0]).colour : tieSvgFill(m, codes);
+    if(codes.length === 1) return pInfo(codes[0]).colour;
+    var id = 'ws-' + m.key + '-' + codes.join('-');
+    if(m.defs && m.defs.select('#' + id).empty()){
+      var pat = m.defs.append('pattern').attr('id', id)
+        .attr('width', TIE_BAND * codes.length).attr('height', 8)
+        .attr('patternUnits', 'userSpaceOnUse')
+        .attr('patternTransform', 'rotate(45) scale(' + (m.patternScale || 1) + ')');
+      var seen = {};
+      codes.forEach(function(code, i){
+        var nth = seen[code] = (seen[code] || 0) + 1;
+        pat.append('rect').attr('x', i * TIE_BAND).attr('width', TIE_BAND + 0.15)
+           .attr('height', 8).attr('fill', darken(pInfo(code).colour, (nth - 1) * SEAT_SHADE));
+      });
+    }
+    return 'url(#' + id + ')';
   }
   function isDivisions(geo){ return !!geo && /^CED/i.test(geo.source || ''); }
   function wardName(n){ return String(n || '').replace(/\s+ED$/, ''); }
@@ -1108,6 +1134,7 @@
     clearCard();
   }
 
+  function bare(s){ return String(s || '').toLowerCase().replace(/\b(the|party)\b|[^a-z]/g, ''); }
   function wardCardHtml(c, props, people, geo){
     var ppl = people || [], div = isDivisions(geo);
     var codes = wardCodes(ppl);
@@ -1116,8 +1143,11 @@
     }).join('');
     var rows = ppl.length ? ppl.map(function(p){
       var col = pInfo(p.p).colour;
-      var own = p.pn && p.p !== 'VAC' && !/^independent( \/ other)?$/i.test(p.pn) &&
-                ['OTH', 'IND', 'RES', 'UKI', 'TUV'].indexOf(p.p) >= 0 ? '<small>' + esc(p.pn) + '</small>' : '';
+      // The group's own name under the councillor, for the catch-all tags
+      // only - and not when it just repeats the tag (RES / Restore Britain).
+      var own = p.pn && !/^independent( \/ other)?$/i.test(p.pn) &&
+                ['OTH', 'IND', 'RES'].indexOf(p.p) >= 0 &&
+                bare(p.pn) !== bare(pInfo(p.p).name) ? '<small>' + esc(p.pn) + '</small>' : '';
       return '<div class="cr"><div class="ab" title="' + esc(pInfo(p.p).name) + '" style="background:' + col +
         '; color:' + txtOn(col) + '">' + abbrev(p.p) + '</div><div class="who">' +
         esc(p.p === 'VAC' ? 'Vacant seat' : p.n) + own + '</div><div class="yr" title="End of term">' +
