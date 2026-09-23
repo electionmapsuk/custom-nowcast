@@ -39,6 +39,9 @@ import sys
 
 DP = 4
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from build_boundaries import dissolve  # noqa: E402  (stdlib topological union)
+
 
 def _latest(pattern: str) -> str | None:
     files = sorted(glob.glob(pattern))
@@ -195,6 +198,14 @@ def load_features(path, code_rx, name_rx, alt_rx=None, parent_rx=None):
     return out
 
 
+def _write(path, obj):
+    """Write JSON only if it changed, so git sees no churn on quiet days."""
+    text = json.dumps(obj, separators=(",", ":"), ensure_ascii=False)
+    if not os.path.exists(path) or open(path, encoding="utf-8").read() != text:
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(text)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--sources", required=True)
@@ -246,24 +257,38 @@ def main():
 
     out_dir = os.path.join(a.data, "wards")
     os.makedirs(out_dir, exist_ok=True)
-    index = {}
+    index, outlines, failed = {}, {}, []
     for code, entry in sorted(by_council.items()):
         ws = sorted(entry["wards"], key=lambda w: w["name"])
         index[code] = [[w["id"], w["name"], w["alt"]] for w in ws]
-        doc = {"code": code, "source": entry["source"],
+        # The council's outline at the wards' own resolution: the union of its
+        # wards. The national boundary files are the coarsest ONS cut, so their
+        # edges don't meet the wards; this one does, exactly.
+        outline = dissolve([w["g"] for w in ws])
+        if outline:
+            polys = [outline["coordinates"]] if outline["type"] == "Polygon" else outline["coordinates"]
+            polys = [_wind(p) for p in polys]
+            outline = ({"type": "Polygon", "coordinates": polys[0]} if len(polys) == 1
+                       else {"type": "MultiPolygon", "coordinates": polys})
+            outlines[code] = outline
+        else:
+            failed.append(code)
+        doc = {"code": code, "source": entry["source"], "outline": outline,
                "wards": [{"id": w["id"], "name": w["name"], "alt": w["alt"],
                           "g": w["g"]} for w in ws]}
-        path = os.path.join(out_dir, f"{code}.json")
-        text = json.dumps(doc, separators=(",", ":"))
-        # only rewrite a file whose content changed, so git sees no churn
-        if not os.path.exists(path) or open(path, encoding="utf-8").read() != text:
-            with open(path, "w", encoding="utf-8") as f:
-                f.write(text)
-    text = json.dumps(index, separators=(",", ":"), ensure_ascii=False)
-    ipath = os.path.join(out_dir, "index.json")
-    if not os.path.exists(ipath) or open(ipath, encoding="utf-8").read() != text:
-        with open(ipath, "w", encoding="utf-8") as f:
-            f.write(text)
+        _write(os.path.join(out_dir, f"{code}.json"), doc)
+    _write(os.path.join(out_dir, "index.json"), index)
+
+    # One file of detailed outlines per map, for the faded neighbours around
+    # a council in the ward view. A council with no outline here keeps its
+    # national boundary.
+    for tier, feats in (("lower", lower), ("upper", upper)):
+        codes = {f["properties"].get("code") for f in feats}
+        _write(os.path.join(out_dir, f"outlines-{tier}.json"),
+               {c: g for c, g in sorted(outlines.items()) if c in codes})
+    if failed:
+        print(f"  outlines: {len(failed)} councils could not be merged: {failed[:10]}",
+              file=sys.stderr)
 
     n_w = sum(len(v["wards"]) for v in by_council.values())
     print(f"  wards: {len(by_council)} councils, {n_w} wards/divisions"
