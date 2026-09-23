@@ -86,7 +86,7 @@
      side panel are all placed on one grid so their tops line up */
   .mapgrid{display:grid; gap:6px 12px; align-items:start;
     grid-template-columns:minmax(0,1fr) minmax(0,1fr) 300px;
-    grid-template-areas:"m1 m2 panel" "leg leg panel";}
+    grid-template-areas:"m1 m2 panel" "leg leg leg";}
   @media(max-width:900px){
     .mapgrid{grid-template-columns:minmax(0,1fr) minmax(0,1fr);
       grid-template-areas:"m1 m2" "leg leg";}
@@ -96,9 +96,9 @@
       grid-template-areas:"m1" "m2" "leg";}
   }
   /* one tier at a time: the shown map spans both map columns */
-  .mapgrid.only-lower{grid-template-areas:"m1 m1 panel" "leg leg panel";}
+  .mapgrid.only-lower{grid-template-areas:"m1 m1 panel" "leg leg leg";}
   .mapgrid.only-lower .m2{display:none;}
-  .mapgrid.only-upper{grid-template-areas:"m2 m2 panel" "leg leg panel";}
+  .mapgrid.only-upper{grid-template-areas:"m2 m2 panel" "leg leg leg";}
   .mapgrid.only-upper .m1{display:none;}
   @media(max-width:900px){
     .mapgrid.only-lower{grid-template-areas:"m1 m1" "mc mc" "leg leg";}
@@ -173,19 +173,16 @@
   .wbound{fill:none; stroke:var(--panel); stroke-width:3.15px; vector-effect:non-scaling-stroke;
     pointer-events:none;}
   /* side panel in the ward view: three boxes - the council's own card (it
-     stays put), the hovered or pinned ward's councillors, then every ward -
-     together exactly as tall as the map (set from the map in fitPanel) */
+     stays put) and every ward below it, together exactly as tall as the map
+     (set from the map in fitPanel). A ward's councillors float over the map. */
   #detail.hasw{display:flex; flex-direction:column; gap:10px; height:700px; position:relative; top:0;
     background:none; border:0; border-radius:0; overflow:visible;}
   #detail.hasw .pbox{background:var(--panel); border:1px solid var(--line);
     border-radius:var(--radius); overflow:hidden;}
   #detail.hasw #dcouncil{flex:0 1 auto; min-height:0; overflow-y:auto;}
-  #detail.hasw #dcard{flex:none; overflow-y:auto; max-height:60%;}
   /* a neighbouring council hovered in the ward view: just its header */
-  #dcard .nbr > :not(.hd){display:none;}
-  #dcard .nbr .hint{display:block; padding:9px 18px; font-size:.74rem; color:var(--muted);}
-  #dcard .wph{padding:16px 18px; font-size:.78rem; color:var(--muted); line-height:1.5;}
-  #dcard .wph b{display:block; color:var(--ink); font-size:.86rem; margin-bottom:2px;}
+  .nbr > :not(.hd){display:none;}
+  .nbr .hint{display:block; padding:8px 12px; font-size:.72rem; color:var(--muted);}
   .wlist{flex:1 1 0; min-height:150px; overflow-y:auto; background:var(--panel);}
   /* the box rule above clips (overflow:hidden) and outranks .wlist, which
      left the list unscrollable by wheel or touch - scroll it explicitly, with
@@ -863,10 +860,13 @@
       });
 
     // deep enough for a London borough to fill the panel in the ward view
-    m.zoom = d3.zoom().scaleExtent([1,220]).on('zoom', function(e){
+    m.zoom = d3.zoom().scaleExtent([1,220]).on('end', function(){
+      // a pinned ward's card was hidden while the map moved: put it back
+      if(WARD && WARD.m === m && WARD.pin) showWardCard(wardPoint(WARD.pin), WARD.pin);
+    }).on('zoom', function(e){
       m.g.attr('transform', e.transform);
       scalePatterns(m, e.transform.k);
-      if(!pinnedGss && !panelOn()) tip.style.display = 'none';
+      if(!pinnedGss && (!panelOn() || WARD)) tip.style.display = 'none';
       // In the ward view the other map stays where it was.
       if(!syncing && !WARD && !wardExiting){
         syncing = true;
@@ -1132,10 +1132,7 @@
     m.svg.transition().duration(650).call(m.zoom.transform, t)
       .on('end', function(){
         if(!WARD || WARD.pin !== hit) return;
-        var r = $(m.box).getBoundingClientRect(), wb = null;
-        m.wg.selectAll('.wd.pinned').each(function(){ wb = this.getBoundingClientRect(); });
-        showWardCard(wb ? {clientX: r.left - 16, clientY: wb.bottom - 8}
-                        : {clientX: r.left + r.width / 2, clientY: r.top + r.height / 2}, hit);
+        showWardCard(wardPoint(hit), hit);
       });
     showWardCard(null, hit);
   }
@@ -1206,10 +1203,10 @@
       (years.length ? '<div class="ft">Next election here: May ' + years[0] + '</div>' : '');
   }
 
-  // In the ward view the panel holds the card and the ward list; only the
-  // card part changes as you hover, so the list keeps its scroll position.
+  // In the ward view the panel holds the council's card and the ward list;
+  // only the card is ever replaced, so the list keeps its scroll position.
   function setPanel(html){
-    var dc = $('dcard');
+    var dc = $('dcouncil');
     if(WARD && dc) dc.innerHTML = html;
     else {
       var det = $('detail');
@@ -1233,15 +1230,6 @@
     mc.classList.toggle('on', on);
     mc.innerHTML = on ? cardHtml(byGss[WARD.code]) : '';
   }
-  // The middle box when no ward is hovered or pinned.
-  function wardHint(){
-    var div = isDivisions(WARD && WARD.geo);
-    var dc = $('dcard');
-    if(dc) dc.innerHTML = '<div class="wph"><b>' + (div ? 'Divisions' : 'Wards') + '</b>' +
-      'Hover over a ' + (div ? 'division' : 'ward') + ' on the map or in the list below to see ' +
-      'its councillors; click to keep it here.</div>';
-  }
-
   function wardListHtml(){
     var ws = WARD.geo.wards.slice().sort(function(a, b){
       return wardLabel(a.id, a.name).localeCompare(wardLabel(b.id, b.name));
@@ -1265,14 +1253,8 @@
     var det = $('detail');
     det.classList.add('hasw');
     det.innerHTML = '<div class="pbox" id="dcouncil">' + cardHtml(byGss[WARD.code]) + '</div>' +
-      '<div class="pbox" id="dcard"></div>' +
       '<div class="pbox wlist" id="wlist">' + wardListHtml() + '</div>';
     fitPanel();
-    // The ward box fits whatever it shows. While the pointer runs down the
-    // list it may grow but not shrink, so the rows don't shuffle under the
-    // pointer; it settles again once the pointer leaves the list.
-    var wl = $('wlist'), dc = $('dcard');
-    wl.addEventListener('mouseleave', function(){ dc.style.minHeight = ''; });
     var byId = {};
     WARD.m.wg.selectAll('.wd').each(function(d){ byId[d.properties.id] = {d: d, el: this}; });
     det.querySelectorAll('.wl').forEach(function(row){
@@ -1281,7 +1263,6 @@
       row.addEventListener('mouseenter', function(){
         d3.select(hit.el).classed('hl', true).raise();
         if(!WARD.pin) showWardCard(null, hit.d);
-        dc.style.minHeight = dc.offsetHeight + 'px';
       });
       row.addEventListener('mouseleave', function(){
         d3.select(hit.el).classed('hl', false);
@@ -1305,13 +1286,26 @@
   function showWardCard(e, d){
     if(!WARD || !WARD.mem) return;
     var html = wardCardHtml(byGss[WARD.code], d.properties, WARD.mem.wards[d.properties.id], WARD.geo);
-    if(panelOn()){
-      setPanel(html);
-      tip.style.display = 'none';
-    } else if(e){
-      tip.innerHTML = html;
-      place(e);
-    }
+    // Floats over the map: at the pointer when there is one, otherwise (a row
+    // in the list, a pinned ward, a search) at the ward itself.
+    var pt = e || (panelOn() ? wardPoint(d) : null);
+    if(!pt) return;
+    tip.innerHTML = html;
+    place(pt);
+  }
+  // Where to hang a ward's card with no pointer to go by: by its middle on a
+  // wide screen, under it on a narrow one - kept within the map either way.
+  function wardPoint(d){
+    if(!WARD || !WARD.m.wg) return null;
+    var m = WARD.m, el = null;
+    m.wg.selectAll('.wd').each(function(x){
+      if(x.properties.id === d.properties.id) el = this;
+    });
+    if(!el) return null;
+    var wb = el.getBoundingClientRect(), r = $(m.box).getBoundingClientRect();
+    if(!panelOn()) return {clientX: r.left - 16, clientY: Math.min(wb.bottom, r.bottom) - 8};
+    return {clientX: Math.max(r.left, Math.min(wb.left + wb.width / 2, r.right - 40)),
+            clientY: Math.max(r.top, Math.min(wb.top + wb.height / 2, r.bottom - 40))};
   }
 
   // ------------------------------------------------------------------ card --
@@ -1447,10 +1441,14 @@
   function showCardFor(code, name, e){
     var html = cardHtml(byGss[code], name);
     if(panelOn()){
-      // in the ward view, a neighbour hovered on the map shows in the ward box
-      if(WARD && $('dcard') && code !== WARD.code)
-        html = '<div class="nbr">' + html + '<div class="hint">Click to see its ' +
+      // In the ward view the panel keeps this council; a neighbour hovered on
+      // the map gets a floating header instead.
+      if(WARD && $('dcouncil') && code !== WARD.code){
+        tip.innerHTML = '<div class="nbr">' + html + '<div class="hint">Click to see its ' +
                (byGss[code] && byGss[code].wards ? 'wards' : 'council') + '</div></div>';
+        if(e) place(e); else tip.style.display = 'none';
+        return;
+      }
       setPanel(html);
       tip.style.display = 'none';
     } else {
@@ -1471,7 +1469,7 @@
     tip.style.display = 'none';
     if(panelOn()){
       if(WARD && WARD.pin) showWardCard(null, WARD.pin);
-      else if(WARD && $('dcard')) wardHint();
+      else if(WARD && $('dcouncil')) {}
       else if(WARD) showCardFor(WARD.code, '', null);
       else if(pinnedGss) showCardFor(pinnedGss, '', null); else panelDefault();
     }
@@ -1540,12 +1538,21 @@
 
   // Northern Ireland's parties share no columns with Great Britain's, so the
   // two get their own tables rather than one very wide sparse one.
+  // Column order for the table (and the CSV). Its own order, not the map's
+  // left-right spectrum. LIB sits with the Lib Dems and UKIP with the SDP; the
+  // Northern Ireland parties only ever appear in the NI table.
+  var TABLE_ORDER = ['ASP','YRP','WPB','SF','PLC','SNP','GRN','SDLP','LAB','LDM','LIB','ALL',
+                     'IND','UUP','CON','DUP','TUV','RFM','SDP','UKI','RES','OTH','VAC'];
+  function tableOrder(){
+    var extra = DATA.spectrum.filter(function(p){ return TABLE_ORDER.indexOf(p) < 0; });
+    return TABLE_ORDER.slice(0, -2).concat(extra, ['OTH', 'VAC']);
+  }
   function partyCols(list){
     var have = {};
     list.forEach(function(c){
       for(var p in c.seats){ if(c.seats[p]) have[p] = 1; }
     });
-    return DATA.spectrum.filter(function(p){ return have[p]; });
+    return tableOrder().filter(function(p){ return have[p]; });
   }
 
   // The table's control column in the ElectionMaps abbreviations, coalitions
@@ -1605,7 +1612,7 @@
   }
 
   function downloadCsv(){
-    var cols = DATA.spectrum.filter(function(p){ return DATA.meta.partyTotals[p]; });
+    var cols = tableOrder().filter(function(p){ return DATA.meta.partyTotals[p]; });
     var head = ['Council','Type','Nation','Region','GSS','Control','ControlType']
       .concat(cols.map(function(p){ return pInfo(p).name; })).concat(['Total']);
     var lines = [head.join(',')];
