@@ -1,5 +1,5 @@
 {
- "generated": "2026-09-25T12:00:18+00:00",
+ "generated": "2026-09-26T11:34:59+00:00",
  "year": 2026,
  "csvRows": 19273,
  "councilsParsed": 384,
@@ -24,14 +24,14 @@
  },
  "councillors": 18703,
  "partyTotals": {
-  "LAB": 4562,
+  "LAB": 4561,
   "CON": 3731,
-  "LDM": 3163,
-  "RFM": 2308,
-  "IND": 2249,
-  "GRN": 1333,
+  "LDM": 3162,
+  "RFM": 2306,
+  "IND": 2253,
+  "GRN": 1334,
   "SNP": 413,
-  "OTH": 221,
+  "OTH": 220,
   "PLC": 200,
   "SF": 144,
   "DUP": 119,
@@ -124,15 +124,7 @@
   }
  ],
  "noElectionCycle": [],
- "controlOverrides": [
-  {
-   "name": "Dorset",
-   "source": "LD/GRN",
-   "shown": "LDM",
-   "seats": 42,
-   "total": 82
-  }
- ],
+ "controlOverrides": [],
  "addedManually": [
   "Isles of Scilly"
  ],
@@ -222,7 +214,6 @@
   "Hornchurch Residents Association": 4,
   "Residents of Wilmslow": 4,
   "the Borough first": 4,
-  "Halstead Residents' Association": 3,
   "Residents' Association of Cuddington": 3,
   "Esher Residents Association": 3,
   "Tattenhams & Preston Residents": 3,
@@ -231,6 +222,7 @@
   "Farnworth and Kearsley First Party": 3,
   "Mebyon Kernow - The Party for Cornwall": 3,
   "Residents for Guildford and Villages": 2,
+  "Halstead Residents' Association": 2,
   "The All In Party": 2,
   "Hinchley Wood Residents Association": 2,
   "Together for Bury": 2,
