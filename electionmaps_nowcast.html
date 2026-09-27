@@ -617,7 +617,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var o=seatOf(d); if(!o.s){ tip.style.display='none'; return; }
     var s=o.s, sh=s.shares;
     var sorted=Object.keys(sh).filter(function(p){return sh[p]>0.003;}).sort(function(a,b){return sh[b]-sh[a];});
-    var CANONP=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','OTH'];
+    var CANONP=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','WPB','OTH'];
     var rowsP=CANONP.filter(function(p){return (sh[p]||0)>0.0005;}).sort(function(a,b){return (sh[b]||0)-(sh[a]||0);});  // show every party present (incl. low Restore/MIN)
     var maj=(sorted.length>1)?(sh[sorted[0]]-sh[sorted[1]]):sh[sorted[0]]||0;
     var base=SEATBASE[s.code]?SEATBASE[s.code].a24:null;
