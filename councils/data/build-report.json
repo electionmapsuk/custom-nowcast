@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-02T12:49:58+00:00",
+ "generated": "2026-10-03T11:50:08+00:00",
  "year": 2026,
  "csvRows": 19273,
  "councilsParsed": 384,
@@ -22,23 +22,23 @@
   "Northern Ireland": 11,
   "Wales": 22
  },
- "councillors": 18703,
+ "councillors": 18704,
  "partyTotals": {
-  "LAB": 4558,
+  "LAB": 4562,
   "CON": 3735,
   "LDM": 3158,
   "RFM": 2304,
-  "IND": 2254,
-  "GRN": 1336,
-  "SNP": 413,
-  "OTH": 220,
+  "IND": 2256,
+  "GRN": 1333,
+  "SNP": 412,
+  "OTH": 219,
   "PLC": 200,
   "SF": 144,
   "DUP": 119,
   "ALL": 65,
   "UUP": 51,
   "RES": 40,
-  "VAC": 36,
+  "VAC": 35,
   "SDLP": 34,
   "ASP": 32,
   "YRP": 11,
@@ -216,7 +216,6 @@
   "Residents' Association of Cuddington": 3,
   "Esher Residents Association": 3,
   "Tattenhams & Preston Residents": 3,
-  "Tunbridge Wells Alliance": 3,
   "Harold Wood Hill Park Residents Association": 3,
   "Farnworth and Kearsley First Party": 3,
   "Mebyon Kernow - The Party for Cornwall": 3,
@@ -224,6 +223,7 @@
   "Halstead Residents' Association": 2,
   "The All In Party": 2,
   "Hinchley Wood Residents Association": 2,
+  "Tunbridge Wells Alliance": 2,
   "Together for Bury": 2,
   "It's Our County (Herefordshire)": 2,
   "Old Windsor Residents Association": 2,
@@ -240,7 +240,7 @@
   "Community First": 1
  },
  "warnings": [
-  "1950 councillor rows had a party code missing from the register; fell back to name matching"
+  "1951 councillor rows had a party code missing from the register; fell back to name matching"
  ],
  "warningCount": 1,
  "problems": []
