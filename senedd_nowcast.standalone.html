@@ -1046,6 +1046,8 @@ document.addEventListener('DOMContentLoaded', function(){
   // six-party race is not as safe as the same lead in a stable one, and only the sims know that.
   function winBand(wp){ return wp>=0.95?'Safe':wp>=0.75?'Likely':wp>=0.55?'Lean':'Tilt'; }
   var mcSeatWin = null, mcSeatN = 0;   // per-constituency "finished top" counts from the latest run
+  var rngState = 1;        // seeded PRNG state (see seedRng / rnd)
+  var simCache = {};       // finished simulation runs, keyed by input seed (see runSimulations)
   function leadOf(shares){ return ORDER.reduce(function(a,b){ return (shares[b]||0)>(shares[a]||0)?b:a; }, ORDER[0]); }
   function marginOf(shares){
     var v = ORDER.map(function(p){ return shares[p]||0; }).sort(function(a,b){ return b-a; });
@@ -1345,13 +1347,47 @@ document.addEventListener('DOMContentLoaded', function(){
   // 32 Welsh Westminster seats together (16 constituencies, ~2x the electorate each), so purely
   // local idiosyncratic variation should average out more across the larger area — scaled down by
   // ~1/sqrt(2) to 0.028. MC config itself is declared up near `data`/`baseline2026Seats` (hoisting).
+  // The draws come from a SEEDED generator, not Math.random, and the seed is derived from the
+  // numbers being simulated. Two consequences, both wanted:
+  //
+  //   - the central projection's ranges and odds are the same on every load and every return
+  //     from a custom scenario. They used to wobble a point or two each refresh, which reads as
+  //     the model changing its mind when nothing has changed. They move when the polling average
+  //     moves — i.e. when a poll is added — and not otherwise.
+  //   - the same custom scenario always gives the same odds, so a shared link shows its author's
+  //     numbers rather than a fresh sample of them.
+  //
+  // mulberry32: small, fast, and good enough for Box-Muller — this is Monte Carlo over a model
+  // whose own inputs are polls, not cryptography. Mirrors the Holyrood page.
+  function seedRng(seed){ rngState = (seed >>> 0) || 1; }
+  function rnd(){
+    rngState = (rngState + 0x6D2B79F5) | 0;
+    var t = Math.imul(rngState ^ (rngState >>> 15), 1 | rngState);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+  // FNV-1a over the vote target, rounded to 6dp so floating-point noise in the last bit cannot
+  // produce a different seed for what is arithmetically the same scenario.
+  function seedFor(target){
+    var s = 'senedd';
+    MAIN.forEach(function(p){ s += p + (target[p]||0).toFixed(6) + ';'; });
+    var h = 2166136261;
+    for (var i=0; i<s.length; i++){ h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+    return h >>> 0;
+  }
   function gauss(){
     var u=0, v=0;
-    while(!u) u = Math.random();
-    while(!v) v = Math.random();
+    while(!u) u = rnd();
+    while(!v) v = rnd();
     return Math.sqrt(-2*Math.log(u)) * Math.cos(6.283185307*v);
   }
   function runSimulations(baseTarget, n){
+    // Same inputs, same run: seeded above, and kept once computed so coming back from a custom
+    // scenario reuses the central projection's own numbers instead of drawing a fresh sample of
+    // them.
+    var key = seedFor(baseTarget) + ':' + (n||MC.simsCentral);
+    if (simCache[key]) return simCache[key];
+    seedRng(seedFor(baseTarget));
     var N=n||MC.simsCentral, sg=MC.sigma, rho=MC.rho, kk=Math.sqrt(1-rho*rho), loc=MC.localSigma, sign=MC.sign;
     var large={}, maj={}, hung=0, seatDist={}, seatWin={};
     SeneddEngine.PARTIES.forEach(function(p){ seatDist[p]=[]; });
@@ -1381,7 +1417,9 @@ document.addEventListener('DOMContentLoaded', function(){
       var a = seatDist[p].slice().sort(function(x,y){return x-y;});
       ranges[p] = [a[Math.floor(0.05*a.length)], a[Math.min(a.length-1, Math.ceil(0.95*a.length)-1)]];
     });
-    return { N:N, large:large, maj:maj, hung:hung, ranges:ranges, seatWin:seatWin };
+    var mc = { N:N, large:large, maj:maj, hung:hung, ranges:ranges, seatWin:seatWin };
+    simCache[key] = mc;
+    return mc;
   }
   // Same markup as the GB nowcast's renderMC: .mc-big + .mc-sub in #mc-headline, then a
   // .mc-head column header and .mc-row rows (.mcab / .mcbar / .mcpct) in #mc-list.
@@ -1809,6 +1847,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // for a firm with no track record and it scores 50 with a grey circle.
   var SAMPLE_DATA = false;
   var POLLS = [
+    { pollster:'More in Common', start:'2026-09-24', end:'2026-09-30', weight:66, PLC:32, RFM:27, LAB:18, CON:12, GRN:6, LDM:5 },
     { pollster:'YouGov',    start:'2026-09-07', weight:72, PLC:32, RFM:27, LAB:13, CON:11, GRN:7, LDM:5 },
     { pollster:'Survation', start:'2026-08-13', weight:67, PLC:33, RFM:31, LAB:14, CON:9,  GRN:6, LDM:5 }
   ];
