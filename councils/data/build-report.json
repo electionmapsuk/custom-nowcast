@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-13T14:23:37+00:00",
+ "generated": "2026-10-14T12:06:14+00:00",
  "year": 2026,
  "csvRows": 19273,
  "councilsParsed": 384,
@@ -25,10 +25,10 @@
  "councillors": 18703,
  "partyTotals": {
   "LAB": 4563,
-  "CON": 3735,
+  "CON": 3733,
   "LDM": 3156,
-  "RFM": 2300,
-  "IND": 2260,
+  "RFM": 2299,
+  "IND": 2263,
   "GRN": 1334,
   "SNP": 413,
   "OTH": 219,
