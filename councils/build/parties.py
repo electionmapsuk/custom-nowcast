@@ -22,10 +22,10 @@ PARTIES = {
     "OTH":  ("Other",                "#484848"),
     "UKI":  ("UKIP",                 "#6D3177"),
     "UUP":  ("UUP",                  "#48A5EE"),
-    "CON":  ("Conservative",         "#0393D3"),
+    "CON":  ("Conservative",         "#4167d1"),
     "DUP":  ("DUP",                  "#d46a4c"),
     "TUV":  ("TUV",                  "#0C3A6A"),
-    "RFM":  ("Reform UK",            "#2BC5DB"),
+    "RFM":  ("Reform UK",            "#17B9D1"),
     "RES":  ("Restore Britain",      "#051e40"),
     # smaller parties taken out of OCD's OTH bucket (ElectionMaps tags)
     "ASP":  ("Aspire",               "#c54e0a"),
