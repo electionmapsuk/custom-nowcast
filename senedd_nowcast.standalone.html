@@ -966,7 +966,7 @@ window.SeneddEngine = { runSeneddNowcast: runSeneddNowcast, CONFIG: CONFIG, PART
 document.addEventListener('DOMContentLoaded', function(){
   var DATA_BASE = './build/data/';
 
-  var PI = { LAB:{n:'Labour',c:'#E4003B'}, CON:{n:'Conservatives',c:'#0393D3'}, RFM:{n:'Reform UK',c:'#2BC5DB'},
+  var PI = { LAB:{n:'Labour',c:'#E4003B'}, CON:{n:'Conservatives',c:'#4167d1'}, RFM:{n:'Reform UK',c:'#17B9D1'},
              LDM:{n:'Lib Dems',c:'#ff6400'}, GRN:{n:'Greens',c:'#00A85A'}, PLC:{n:'Plaid Cymru',c:'#075d55'},
              OTH:{n:'Other',c:'#9ca3af'} };
   var ORDER = ['GRN','LAB','PLC','LDM','OTH','CON','RFM'];   // base left-to-right political order
@@ -1030,12 +1030,14 @@ document.addEventListener('DOMContentLoaded', function(){
   var mapMode = 'proj';      // proj | actual | change | margin — same four modes as the GB nowcast
   var lastConstitResults = null;   // latest render's per-constituency results, so a map-mode switch can recolour without re-running the model
 
-  // Margin shades, copied from the GB nowcast's MARGINCOL so a "Safe Reform" seat is the same
-  // colour on both maps. Bands are GB's too (bandOf): lead over the second party, in points.
+  // Margin shades, built the GB nowcast's way: Safe is the party colour and Likely/Lean/Tilt are
+  // it mixed 20/40/60% with white. CON and RFM use this page's own colours (#4167d1, #17B9D1), so
+  // those two no longer match the GB map shade for shade. Bands are GB's (bandOf): lead over the
+  // second party, in points.
   var MARGINCOL = {
     LAB:{Safe:'#e4003b',Likely:'#e93362',Lean:'#ef6689',Tilt:'#f499b1'},
-    CON:{Safe:'#0393d3',Likely:'#35a9dc',Lean:'#68bee5',Tilt:'#9ad4ed'},
-    RFM:{Safe:'#2bc5db',Likely:'#55d1e2',Lean:'#80dce9',Tilt:'#aae8f1'},
+    CON:{Safe:'#4167d1',Likely:'#6785da',Lean:'#8da4e3',Tilt:'#b3c2ed'},
+    RFM:{Safe:'#17b9d1',Likely:'#45c7da',Lean:'#74d5e3',Tilt:'#a2e3ed'},
     LDM:{Safe:'#ff6400',Likely:'#ff7633',Lean:'#ff9866',Tilt:'#ffbb99'},
     GRN:{Safe:'#00a85a',Likely:'#33b97b',Lean:'#66cb9c',Tilt:'#99dcbd'},
     PLC:{Safe:'#075d55',Likely:'#397d77',Lean:'#6a9e99',Tilt:'#9cbebb'}
@@ -1520,9 +1522,9 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   // Dark or light label text, whichever reads better on this party colour. The 0.62 cutoff is the
-  // GB nowcast's textOn() threshold, kept exactly: Reform's #2BC5DB lands at 0.602, so a 0.60
-  // cutoff would flip it to dark text and the same chip would read white on GB and black here.
-  // Reform is the only party the two thresholds disagree about.
+  // GB nowcast's textOn() threshold, kept so the pages agree. It was set around Reform's old
+  // #2BC5DB, which sat at 0.602; the current #17B9D1 sits at 0.546 and the Conservatives' #4167d1
+  // at 0.407, so every party here now clears the line comfortably and takes white text.
   function textColorFor(bg){
     var r=parseInt(bg.substr(1,2),16), g=parseInt(bg.substr(3,2),16), b=parseInt(bg.substr(5,2),16);
     var lum = (0.299*r+0.587*g+0.114*b)/255;
@@ -1863,9 +1865,9 @@ document.addEventListener('DOMContentLoaded', function(){
   var LAST_ELECTION = { PLC:35.41, RFM:29.31, LAB:11.09, CON:10.75, GRN:6.74, LDM:4.46 };
   var PARTIES = [
     { key:'PLC', color:'#075d55', label:'Plaid Cymru' },
-    { key:'RFM', color:'#2BC5DB', label:'Reform UK' },
+    { key:'RFM', color:'#17B9D1', label:'Reform UK' },
     { key:'LAB', color:'#E4003B', label:'Labour' },
-    { key:'CON', color:'#0393D3', label:'Conservatives' },
+    { key:'CON', color:'#4167d1', label:'Conservatives' },
     { key:'GRN', color:'#00A85A', label:'Greens' },
     { key:'LDM', color:'#ff6400', label:'Lib Dems' }
   ];
