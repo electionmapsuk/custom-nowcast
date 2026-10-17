@@ -30,8 +30,104 @@
   .fullspan{grid-column:1 / -1;}
   .r2grid{display:grid; grid-template-columns:minmax(0,1fr) 296px; gap:10px 24px; align-items:stretch; margin-top:-20px;}
   .r2grid #map-container{grid-column:1;} .r2grid .slidersbox{grid-column:2;} .r2grid .mapcredit{grid-column:1;}
+  /* right of the map: the projected vote share in the central projection; the sliders in custom
+     mode, when the vote share block drops below the map and runs full width */
+  body:not(.custom) .slidersbox{display:none;}
+  .r2grid #map-container{grid-row:2;}
+  .r2grid .vsbox{grid-column:2; grid-row:2; display:flex; flex-direction:column;}
+  .r2grid .mapcredit{grid-row:3;}
+  body.custom .r2grid .vsbox{grid-column:1 / -1; grid-row:4;}
+  /* zoomed insets of dense urban areas: their own panel between the map and the right-hand column (wide screens) */
+  .insetbox{display:none; padding:0; overflow:hidden;} .insetbox svg{display:block;}
+  @media(min-width:1040px){
+    .r2grid{grid-template-columns:minmax(0,1fr) 250px 296px;}
+    body:not(.custom) .r2grid{grid-template-columns:minmax(0,1fr) 250px 296px;}
+    .r2grid .insetbox{display:block; grid-column:2; grid-row:2;}
+    .r2grid .vsbox, .r2grid .slidersbox{grid-column:3;}
+    body.custom .r2grid .vsbox{grid-column:1 / -1;}
+    /* map = Geographic + Hex buttons (incl. the 8px gap); insets sit under Download PNG */
+    .r2grid, body:not(.custom) .r2grid{grid-template-columns:calc((100% - 320px) * 2 / 3 - 8px / 3) minmax(0,1fr) 296px;}
+    .r2grid .insetbox{margin-left:-16px; contain:size;}
+    body.hexmap .r2grid .insetbox{display:none;} body.hexmap .r2grid #map-container{grid-column:1 / 3;}   /* hex map: no insets, map takes their space */   /* likewise: the insets svg must not push the row taller */
+    .r2grid #map-container{height:auto; min-height:650px; align-self:stretch; contain:size;}
+    /* the row is always exactly the map's 650px: nothing beside it may push it taller, so switching
+       to User Input changes no heights. The vote share cards shrink to fit; the sliders are compacted. */
+    body:not(.custom) .r2grid .vsbox, .r2grid .slidersbox{contain:size; overflow:hidden;}
+    .r2grid .slidersbox{padding:16px 18px; display:flex; flex-direction:column;}
+    .r2grid .slidersbox h2{margin-bottom:10px;}
+    /* every slider row, the total line and the Nations label share the panel height evenly (one flex column,
+       so the gaps are identical everywhere incl. SNP-Plaid); the panel itself never grows */
+    .r2grid .slidersbox{justify-content:space-between;}
+    .r2grid .slidersbox #sliders, .r2grid .slidersbox #sliders-nat{display:contents;}
+    .r2grid .slidersbox .sld{margin-bottom:0;}
+    .r2grid .slidersbox .sld .top{margin-bottom:2px;}
+    .r2grid .slidersbox .sld .lab{font-size:.82rem;}
+    .r2grid .slidersbox .sld .val input{padding:2px 6px; font-size:.84rem;}
+    .r2grid .slidersbox input[type=range]{height:9px;}
+    .r2grid .slidersbox input[type=range]::-webkit-slider-thumb{width:20px; height:20px;}
+    .r2grid .slidersbox input[type=range]::-moz-range-thumb{width:20px; height:20px;}
+    .r2grid .slidersbox .total-line{margin-top:6px; padding-top:8px;}
+    .r2grid .slidersbox .group-label{margin:10px 0 8px; padding-top:10px;}   /* size from the row, never from the drawn svg (else it grows on every redraw) */
+  }
+  .totstrip.vsstrip{margin-top:0; grid-template-columns:repeat(2,minmax(0,1fr));}
+  .vsbox .totstrip.vsstrip .tot .n{font-size:1.5rem;}
+  /* central projection, beside the map: the cards stretch to fill the whole panel height */
+  @media(min-width:881px){
+    body:not(.custom) .vsbox .totstrip.vsstrip{flex:1; grid-auto-rows:1fr; align-content:stretch;}
+    body:not(.custom) .vsbox .vsstrip .tot{display:flex; flex-direction:column; justify-content:center; align-items:flex-start;}
+    body:not(.custom) .vsbox .vsstrip .tot .nm{font-size:.85rem;}
+    body:not(.custom) .vsbox .totstrip.vsstrip .tot .n{font-size:1.8rem;}
+    body:not(.custom) .vsbox .vsstrip .tot .ch{font-size:.85rem; margin-top:6px;}
+  }
+  body.custom .totstrip.vsstrip{grid-template-columns:repeat(var(--vsn,8),minmax(0,1fr));}
+  body.custom .vsbox .totstrip.vsstrip .tot .n{font-size:1.6rem;}
+  /* tablet / mobile: the map controls join the main grid so the User Input + Share buttons can sit
+     directly under the map. Order: controls, map (+ vote share beside it on tablets), buttons, credit,
+     sliders, vote share. */
+  @media(max-width:880px){
+    .r2grid .topctrls{display:contents;}
+    .r2grid .topctrls>*{grid-column:1 / -1 !important; grid-row:auto !important;}
+    .r2grid #map-container{order:1;}
+    .r2grid .topctrls .modegrp, .r2grid .topctrls #copied{order:2; margin:0;}
+    .r2grid .mapcredit{order:3; grid-column:1 / -1 !important;}
+    .r2grid .slidersbox{order:4;}
+    .r2grid .vsbox{order:5;}
+  }
+  @media(max-width:880px){ .r2grid>*{grid-row:auto !important;} .totstrip.vsstrip, body.custom .totstrip.vsstrip{grid-template-columns:repeat(4,minmax(0,1fr));} }
+  @media(max-width:480px){ .totstrip.vsstrip, body.custom .totstrip.vsstrip{grid-template-columns:repeat(2,minmax(0,1fr));} }
+  /* tablets, central projection: the vote share stays beside the map (narrower column, cards fill its height) */
+  @media(min-width:641px) and (max-width:880px){
+    body:not(.custom) .r2grid{grid-template-columns:minmax(0,1fr) 210px; column-gap:16px;}
+    body:not(.custom) .r2grid #map-container{grid-column:1 !important;}
+    body:not(.custom) .r2grid .vsbox{grid-column:2 !important; order:1 !important; contain:size; overflow:hidden; padding:14px;}
+    body:not(.custom) .vsbox h2{margin-bottom:10px;}
+    body:not(.custom) .vsbox .totstrip.vsstrip{grid-template-columns:repeat(2,minmax(0,1fr)); flex:1; grid-auto-rows:1fr; align-content:stretch; gap:6px;}
+    body:not(.custom) .vsbox .vsstrip .tot{display:flex; flex-direction:column; justify-content:center; align-items:flex-start; padding:8px 9px;}
+    body:not(.custom) .vsbox .totstrip.vsstrip .tot .n{font-size:1.3rem;}
+  }
+  /* tablets, User Input: the sliders take the vote share's place beside the map (compacted to the
+     map's height); the vote share drops below, full width */
+  @media(min-width:641px) and (max-width:880px){
+    body.custom .r2grid{grid-template-columns:minmax(0,1fr) 210px; column-gap:16px;}   /* same width as the vote share column */
+    body.custom .r2grid #map-container{grid-column:1 !important;}
+    body.custom .r2grid .slidersbox{grid-column:2 !important; order:1 !important; contain:size; overflow:auto; padding:12px 14px;}
+    body.custom .r2grid .vsbox{grid-column:1 / -1 !important;}
+    body.custom .slidersbox h2{margin-bottom:8px;}
+    body.custom .r2grid .slidersbox{display:flex; flex-direction:column; justify-content:space-between;}
+    body.custom .slidersbox #sliders, body.custom .slidersbox #sliders-nat{display:contents;}
+    body.custom .slidersbox .sld{margin-bottom:0;}
+    body.custom .slidersbox .sld .top{margin-bottom:1px;}
+    body.custom .slidersbox .sld .lab{font-size:.78rem; gap:6px;}
+    body.custom .slidersbox .sld .val input{width:48px; padding:2px 4px; font-size:.78rem;}
+    body.custom .slidersbox input[type=range]{height:8px;}
+    body.custom .slidersbox input[type=range]::-webkit-slider-thumb{width:18px; height:18px;}
+    body.custom .slidersbox input[type=range]::-moz-range-thumb{width:18px; height:18px;}
+    body.custom .slidersbox .total-line{margin-top:4px; padding-top:6px; font-size:.74rem;}
+    body.custom .slidersbox .group-label{margin:8px 0 6px; padding-top:8px;}
+  }
   .topctrls{grid-column:1 / -1; display:grid; grid-template-columns:minmax(0,1fr) 296px; column-gap:24px; row-gap:10px; align-items:start;}
   .topctrls > *{margin:0; min-width:0;}
+  @media(min-width:881px){ .topctrls .modegrp #share{order:-1;} }   /* wide screens: Share on top, Switch to User Input below */
   .topctrls .section-h{grid-column:1; grid-row:1;}
   .topctrls .mapmodes{grid-column:1; grid-row:2;}
   .topctrls .mapsearch{grid-column:1; grid-row:3;}
@@ -48,6 +144,7 @@
   body:not(.custom) .sld{opacity:.55;}
   .sld .top{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
   .sld .lab{display:flex; align-items:center; gap:8px; font-weight:600; font-size:.88rem;}
+  .sld .lab .sseat{margin-left:-4px; color:var(--faint); font-weight:700; font-variant-numeric:tabular-nums;}
   .dot{width:11px; height:11px; border-radius:3px; flex:none;}
   .sld .val{display:flex; align-items:center; gap:2px;}
   .sld .val input{width:62px; border:1px solid var(--line); border-radius:7px; padding:4px 7px; text-align:right; font-weight:700; font-size:.9rem; font-family:inherit; font-variant-numeric:tabular-nums; color:var(--ink); background:#fff;}
@@ -102,10 +199,12 @@
   .tot .rng{font-size:.62rem; font-weight:700; opacity:.85; margin-top:3px; font-variant-numeric:tabular-nums;}
 
   .section-h{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:28px 0 12px;}
-  #map-container{position:relative; width:100%; height:720px; min-height:720px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
+  #map-container{position:relative; width:100%; height:650px; min-height:650px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
   #map-container svg{cursor:grab;} #map-container svg:active{cursor:grabbing;}
   .cp{stroke:#fff; vector-effect:non-scaling-stroke; stroke-linejoin:round; stroke-linecap:round; transition:fill .18s; cursor:pointer;}
   .cp:hover{stroke:#15171a; stroke-width:1.2px;} .cp.pinned{stroke:#15171a; stroke-width:1.4px;}
+  .insbg{fill:none;} .insdiv{stroke:var(--line); stroke-width:1px;} .inslabel{font-size:10px; font-weight:800; fill:var(--muted); letter-spacing:.04em; text-transform:uppercase;}
+  .insbox{fill:none; stroke:#6b7280; stroke-width:1px; stroke-dasharray:3 2; vector-effect:non-scaling-stroke; pointer-events:none;}
   .rgn{fill:none; stroke:#ffffff; vector-effect:non-scaling-stroke; stroke-linejoin:round; stroke-linecap:round; pointer-events:none;}
   .mapmodes{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;}
   .maprow{display:flex; justify-content:space-between; align-items:center; gap:10px; margin:28px 0 12px; flex-wrap:wrap;}
@@ -118,7 +217,8 @@
   .mmb{padding:7px 13px; border-radius:7px; border:1px solid var(--line); background:#fff; font-weight:700; font-size:.78rem; color:var(--muted); cursor:pointer; font-family:inherit;}
   .mmb:hover{border-color:var(--accent); color:var(--accent);}
   .mmb.active{background:var(--accent); color:#fff; border-color:var(--accent);}
-  .map-hint{position:absolute; left:14px; bottom:12px; font-size:.72rem; color:var(--faint); background:rgba(255,255,255,.85); padding:4px 9px; border-radius:8px; pointer-events:none;}
+  .mapreset{position:absolute; left:12px; bottom:12px; z-index:2; width:26px; height:26px; padding:0; border:1px solid var(--line); border-radius:7px; background:rgba(255,255,255,.92); color:var(--muted); font:800 .72rem/1 inherit; font-family:inherit; cursor:pointer;}
+  .mapreset:hover{color:var(--accent); border-color:var(--accent);}
   .mapcredit{font-size:.68rem; color:var(--faint); margin-top:8px; line-height:1.4;}
   .r2grid .mapcredit{margin-top:-2px;}
   .mapcredit a{color:var(--faint);}
@@ -168,14 +268,24 @@
   .tblsearch::placeholder{color:var(--faint); font-weight:500;}
   .tblsearch:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,77,77,.08);}
   td.code{font-variant-numeric:tabular-nums; color:var(--faint); font-size:.74rem;}
-  .table-wrap{display:none; border:1px solid var(--line); border-radius:var(--radius); overflow:auto; max-height:620px;}
+  .table-wrap{display:none; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:auto; max-height:620px;}
   table{width:100%; border-collapse:separate; border-spacing:0; font-size:.78rem;}
   th,td{padding:8px 10px; text-align:center; border-bottom:1px solid var(--line2); white-space:nowrap;}
   th:first-child,td:first-child{text-align:left; position:sticky; left:0; background:var(--panel); z-index:1;}
-  th{position:sticky; top:0; z-index:2; background:#fbfbfa; font-size:.65rem; text-transform:uppercase; letter-spacing:.05em; color:var(--faint); font-weight:700; cursor:pointer; border-bottom:2px solid var(--line);}
-  th:first-child{z-index:3;}
-  th:hover{color:var(--accent);}
+  th{position:sticky; top:0; z-index:2; background:#fbfbfa; font-size:.65rem; text-transform:uppercase; letter-spacing:.05em; color:var(--faint); font-weight:700; border-bottom:2px solid var(--line);}
+  th:first-child{z-index:3; background:#fbfbfa;}
   tbody tr:hover td{background:#faf9f6;}
+  td:first-child{color:var(--ink); font-weight:600;}
+  /* sortable headers: a faint arrow says "clickable"; it brightens and points once the column is sorted,
+     and columns still sorting underneath show their rank */
+  #constitTable th{cursor:pointer; user-select:none; -webkit-user-select:none;}
+  #constitTable th:hover{color:var(--accent);}
+  #constitTable th::after{content:' \2195'; opacity:.3; font-weight:400;}
+  #constitTable th.sorted-asc::after{content:' \2191' attr(data-rank); opacity:1;}
+  #constitTable th.sorted-desc::after{content:' \2193' attr(data-rank); opacity:1;}
+  #constitTable th.sorted-sub::after{opacity:.5; font-size:.9em;}
+  .winpill{display:inline-block; padding:2px 9px; border-radius:6px; font-weight:800; font-size:.68rem; min-width:42px;}
+  #constitTable td.rgn{white-space:nowrap; font-weight:700; letter-spacing:.01em; text-decoration:underline dotted rgba(0,0,0,.28); text-underline-offset:3px; cursor:help;}
   td{color:var(--muted); font-variant-numeric:tabular-nums;}
   td:first-child{color:var(--ink); font-weight:600;}
   td.win{font-weight:800; text-align:center; font-size:.7rem; padding:6px 8px;}
@@ -188,7 +298,7 @@
     .wrap{padding:16px 12px 56px;}
     .panel{padding:15px;}
     .masthead{margin-bottom:10px;}
-    #map-container{height:430px; min-height:430px;}
+    #map-container{height:475px; min-height:475px;}
     .headline .big{font-size:1.2rem;} .headline .maj{font-size:.8rem;}
     .tot{padding:9px 9px;} .tot .n{font-size:1.4rem;} .tot .nm{font-size:.62rem;}
     .seatbar{height:30px;}
@@ -201,7 +311,7 @@
   html,body{overflow-x:hidden; max-width:100%;}
   img,svg{max-width:100%;}
   .table-wrap{-webkit-overflow-scrolling:touch;}
-  @media(max-width:480px){ .totstrip{grid-template-columns:repeat(2,minmax(0,1fr));} #map-container{height:380px;min-height:380px;} .wrap{padding:14px 10px 50px;} }
+  @media(max-width:480px){ .totstrip{grid-template-columns:repeat(2,minmax(0,1fr));} #map-container{height:420px;min-height:420px;} .wrap{padding:14px 10px 50px;} }
 </style>
 </head>
 <body>
@@ -247,10 +357,15 @@
         <div id="copied" style="display:none; text-align:center; font-size:.78rem; color:var(--accent); grid-column:1 / -1; margin:0;">Link copied</div>
       </div>
 
-      <div id="map-container"><div class="map-hint">Scroll to zoom &middot; drag to pan &middot; click to pin</div></div>
+      <div id="map-container"><button class="mapreset" id="mapreset" title="Reset zoom" aria-label="Reset map zoom">R</button></div>
+      <div class="panel insetbox" id="insetbox"></div>
+      <div class="panel vsbox" id="vsbox">
+        <h2>National vote share</h2>
+        <div class="totstrip vsstrip" id="vsstrip"></div>
+      </div>
 
       <div class="panel slidersbox">
-        <h2>National vote share</h2>
+        <h2>Custom scenario</h2>
         <div id="sliders"></div>
         <div class="total-line"><span>GB total (excl. SNP/Plaid)</span><b id="gbtotal">100%</b></div>
         <div class="group-label">Nations</div>
@@ -270,7 +385,7 @@
 
       <div class="table-tools" style="margin-top:48px;">
         <div class="section-h" style="margin:0;">All constituencies</div>
-        <input id="tablesearch" class="tblsearch" placeholder="Filter by name or code…" autocomplete="off" aria-label="Filter constituencies by name or code">
+        <input id="tablesearch" class="tblsearch" placeholder="Filter by name, region or code…" autocomplete="off" aria-label="Filter constituencies by name or code">
         <button class="btn" id="toggle-table" style="flex:none; padding:7px 16px;">Hide table</button>
       </div>
       <div class="table-wrap" id="table-wrap"></div>
@@ -320,7 +435,7 @@
 
 
 <script>window.__CENTRAL_MC__={"N":1000,"large":{"LAB":988,"RFM":12},"maj":{"LAB":179},"hung":821,"ranges":{"LAB":[231,351],"CON":[62,140],"RFM":[60,168],"LDM":[40,78],"GRN":[4,16],"RES":[1,1],"SNP":[28,45],"PLC":[7,12],"MIN":[5,14],"WPB":[0,3]},"seatWin":{"W07000081":{"RFM":563,"PLC":137,"LAB":300},"S14000060":{"SNP":965,"RFM":33,"LAB":2},"S14000061":{"CON":898,"SNP":102},"S14000062":{"RFM":539,"SNP":404,"CON":57},"S14000063":{"SNP":699,"LAB":293,"RFM":8},"E14001063":{"RFM":91,"LAB":886,"CON":23},"E14001064":{"RFM":618,"CON":372,"LAB":10},"S14000064":{"RFM":94,"SNP":781,"LAB":125},"E14001065":{"LAB":861,"CON":139},"W07000082":{"LAB":271,"RFM":729},"E14001066":{"RFM":845,"LAB":155},"S14000065":{"SNP":992,"CON":8},"S14000066":{"SNP":995,"LAB":4,"CON":1},"S14000067":{"SNP":998,"CON":1,"RFM":1},"E14001067":{"CON":987,"RFM":13},"E14001068":{"RFM":999,"LAB":1},"E14001069":{"RFM":671,"LAB":318,"CON":11},"E14001070":{"LAB":791,"RFM":209},"E14001071":{"LAB":611,"RFM":103,"CON":267,"LDM":19},"S14000107":{"SNP":723,"RFM":161,"CON":22,"LAB":94},"E14001072":{"LAB":815,"CON":178,"RFM":7},"W07000083":{"PLC":888,"RFM":69,"CON":12,"LAB":31},"E14001073":{"LAB":963,"RFM":37},"E14001074":{"RFM":363,"LAB":637},"E14001075":{"LAB":305,"RFM":695},"E14001076":{"LAB":901,"RFM":69,"CON":30},"E14001077":{"RFM":952,"LAB":20,"CON":28},"E14001078":{"LAB":940,"CON":55,"RFM":5},"E14001079":{"LAB":581,"RFM":419},"E14001080":{"LDM":963,"GRN":32,"CON":1,"LAB":4},"S14000068":{"LAB":406,"SNP":542,"RFM":52},"E14001081":{"LAB":987,"CON":13},"E14001082":{"CON":964,"LDM":31,"RFM":5},"E14001083":{"LAB":993,"CON":7},"E14001084":{"LAB":997,"CON":1,"RFM":2},"E14001085":{"LAB":960,"LDM":37,"GRN":1,"RFM":2},"S14000108":{"CON":877,"SNP":122,"RFM":1},"E14001086":{"LAB":626,"MIN":288,"GRN":86},"E14001087":{"LAB":348,"RFM":342,"CON":310},"E14001088":{"RFM":247,"CON":629,"LAB":124},"E14001089":{"RFM":769,"LAB":121,"CON":110},"E14001090":{"LDM":820,"CON":172,"RFM":8},"E14001091":{"LAB":968,"GRN":32},"E14001092":{"LAB":996,"RFM":3,"CON":1},"E14001093":{"LAB":789,"RFM":211},"E14001094":{"LAB":783,"OTH":63,"GRN":68,"MIN":84,"RFM":2},"E14001095":{"RFM":307,"WPB":375,"LAB":318},"E14001096":{"LAB":449,"MIN":550,"GRN":1},"E14001097":{"RFM":244,"LAB":756},"E14001098":{"MIN":932,"LAB":68},"E14001099":{"LAB":988,"GRN":6,"RFM":6},"E14001100":{"WPB":711,"RFM":55,"LAB":234},"E14001101":{"RFM":414,"LAB":586},"E14001102":{"LAB":113,"MIN":809,"RFM":47,"WPB":31},"E14001103":{"LAB":995,"RFM":5},"E14001104":{"RFM":684,"LAB":316},"E14001105":{"RFM":611,"LAB":389},"W07000084":{"RFM":644,"PLC":47,"LAB":309},"E14001106":{"LAB":935,"RFM":65},"E14001107":{"LAB":757,"RFM":243},"E14001108":{"RFM":760,"CON":187,"LAB":53},"E14001109":{"RFM":359,"LAB":641},"E14001110":{"LAB":655,"RFM":344,"GRN":1},"E14001111":{"RFM":211,"LAB":789},"E14001112":{"LAB":839,"RFM":160,"CON":1},"E14001113":{"LAB":1000},"E14001114":{"RFM":999,"CON":1},"E14001115":{"LAB":936,"RFM":26,"CON":38},"E14001116":{"RFM":229,"LAB":749,"CON":22},"E14001117":{"LAB":617,"CON":195,"RFM":188},"E14001118":{"LAB":862,"MIN":93,"RFM":44,"GRN":1},"E14001119":{"RFM":523,"LAB":477},"E14001120":{"MIN":755,"LAB":234,"GRN":11},"E14001121":{"RFM":678,"CON":306,"LAB":16},"W07000085":{"LDM":760,"RFM":118,"CON":122},"E14001122":{"LAB":1000},"E14001123":{"LAB":602,"CON":398},"E14001124":{"LAB":990,"CON":10},"E14001125":{"RFM":525,"CON":474,"LAB":1},"W07000086":{"LAB":350,"RFM":645,"PLC":4,"CON":1},"E14001126":{"RFM":912,"CON":69,"LAB":19},"E14001127":{"RFM":853,"CON":142,"LAB":5},"E14001128":{"RFM":813,"CON":171,"LAB":16},"E14001129":{"GRN":108,"LAB":892},"E14001130":{"GRN":999,"LAB":1},"E14001131":{"GRN":999,"LAB":1},"E14001132":{"GRN":789,"LAB":211},"E14001133":{"GRN":94,"LAB":904,"RFM":2},"E14001134":{"LAB":982,"GRN":18},"E14001135":{"GRN":424,"LAB":574,"RFM":2},"E14001136":{"LAB":243,"CON":396,"RFM":361},"E14001137":{"CON":760,"RFM":188,"LAB":52},"E14001138":{"RFM":488,"CON":439,"LAB":73},"E14001139":{"RFM":406,"CON":523,"LAB":71},"E14001140":{"LAB":926,"RFM":73,"CON":1},"E14001141":{"RFM":77,"LAB":768,"CON":155},"E14001142":{"LAB":457,"RFM":543},"E14001143":{"RFM":599,"LAB":394,"CON":7},"E14001144":{"LAB":984,"RFM":10,"CON":6},"E14001145":{"LAB":987,"RFM":13},"E14001146":{"LAB":571,"RFM":275,"CON":150,"GRN":4},"W07000087":{"PLC":999,"RFM":1},"W07000088":{"PLC":964,"RFM":34,"LAB":2},"S14000069":{"LDM":953,"SNP":47},"E14001147":{"LAB":977,"RFM":20,"CON":3},"E14001148":{"LAB":831,"RFM":169},"E14001149":{"LAB":959,"GRN":39,"LDM":2},"E14001150":{"RFM":842,"LAB":156,"CON":2},"E14001151":{"LAB":979,"GRN":2,"RFM":18,"CON":1},"W07000089":{"LAB":799,"GRN":82,"PLC":36,"RFM":75,"LDM":8},"W07000090":{"RFM":89,"LAB":809,"PLC":70,"CON":32},"W07000091":{"GRN":394,"LAB":541,"PLC":42,"RFM":21,"CON":2},"W07000092":{"PLC":980,"RFM":6,"LAB":12,"GRN":2},"E14001152":{"LAB":667,"RFM":333},"E14001153":{"LDM":991,"CON":9},"E14001154":{"RFM":878,"CON":122},"S14000109":{"SNP":632,"LAB":299,"RFM":69},"E14001155":{"LAB":379,"RFM":140,"CON":481},"E14001156":{"RFM":487,"CON":492,"LAB":15,"GRN":6},"W07000093":{"PLC":1000},"E14001157":{"RFM":813,"LAB":185,"CON":2},"E14001158":{"LDM":997,"CON":2,"RFM":1},"E14001159":{"LDM":779,"CON":204,"RFM":17},"E14001160":{"CON":856,"LAB":144},"E14001161":{"LDM":889,"CON":111},"E14001162":{"LDM":724,"CON":276},"E14001163":{"LAB":1000},"E14001164":{"CON":804,"LAB":196},"E14001165":{"LAB":952,"RFM":48},"E14001166":{"LDM":970,"RFM":28,"CON":2},"E14001167":{"CON":953,"MIN":39,"LAB":8},"E14001168":{"LDM":923,"CON":70,"RFM":7},"E14001169":{"LAB":392,"CON":608},"E14001170":{"MIN":1000},"E14001171":{"RFM":298,"CON":699,"LDM":3},"E14001172":{"LAB":450,"CON":550},"E14001173":{"LAB":985,"RFM":15},"E14001174":{"RFM":1000},"E14001175":{"LAB":1000},"W07000094":{"RFM":374,"CON":365,"LAB":258,"PLC":3},"W07000095":{"LAB":72,"CON":545,"RFM":382,"PLC":1},"S14000070":{"LAB":119,"SNP":881},"E14001176":{"LAB":974,"CON":1,"RFM":25},"E14001177":{"LAB":942,"CON":24,"RFM":34},"E14001178":{"LAB":819,"RFM":97,"CON":84},"E14001179":{"LAB":869,"RFM":109,"CON":22},"E14001180":{"LAB":988,"RFM":12},"E14001181":{"LAB":959,"RFM":40,"GRN":1},"E14001182":{"LAB":998,"RFM":2},"S14000071":{"SNP":738,"LAB":254,"RFM":8},"E14001183":{"LAB":943,"RFM":57},"E14001184":{"LAB":796,"RFM":197,"CON":7},"E14001185":{"LAB":876,"RFM":124},"E14001186":{"LAB":919,"CON":73,"RFM":8},"E14001187":{"CON":973,"LAB":27},"E14001188":{"LAB":1000},"S14000072":{"SNP":978,"LAB":18,"RFM":4},"E14001189":{"RFM":602,"LAB":398},"E14001190":{"LAB":756,"CON":173,"RFM":71},"E14001191":{"RFM":577,"LAB":392,"CON":31},"E14001192":{"RFM":503,"CON":420,"LAB":77},"E14001193":{"LAB":946,"RFM":54},"E14001194":{"RFM":349,"LAB":647,"WPB":4},"E14001195":{"CON":378,"LAB":572,"RFM":50},"E14001196":{"MIN":997,"RFM":3},"E14001197":{"LDM":868,"CON":120,"RFM":12},"E14001198":{"LAB":838,"RFM":162},"E14001199":{"RFM":605,"LAB":381,"CON":14},"E14001200":{"LAB":825,"RFM":175},"E14001201":{"LDM":815,"CON":157,"RFM":28},"E14001202":{"LAB":462,"RFM":538},"E14001203":{"CON":845,"RFM":155},"E14001204":{"RFM":889,"LAB":111},"E14001205":{"LAB":1000},"S14000073":{"SNP":643,"CON":313,"RFM":43,"LAB":1},"S14000074":{"SNP":240,"CON":747,"RFM":13},"S14000075":{"SNP":996,"LAB":4},"S14000076":{"LAB":348,"SNP":645,"RFM":7},"E14001206":{"LAB":596,"RFM":308,"CON":96},"W07000096":{"PLC":1000},"E14001207":{"LAB":1000},"E14001208":{"LAB":998,"CON":2},"E14001209":{"LAB":1000},"E14001210":{"LAB":729,"CON":271},"E14001211":{"RFM":501,"LAB":499},"E14001212":{"CON":964,"RFM":7,"LAB":5,"LDM":21,"GRN":3},"E14001213":{"LAB":1000},"E14001214":{"CON":781,"LDM":216,"RFM":3},"S14000077":{"SNP":637,"RFM":2,"LAB":361},"S14000021":{"SNP":536,"LAB":464},"E14001215":{"CON":880,"RFM":116,"LAB":4},"E14001216":{"LAB":686,"RFM":312,"CON":1,"GRN":1},"E14001217":{"RFM":297,"CON":674,"LAB":29},"E14001218":{"LAB":985,"RFM":12,"CON":3},"E14001219":{"LDM":992,"RFM":8},"E14001220":{"LDM":635,"CON":325,"RFM":39,"LAB":1},"S14000078":{"SNP":912,"GRN":10,"LAB":78},"S14000079":{"LAB":317,"SNP":666,"GRN":17},"S14000080":{"LAB":995,"SNP":3,"GRN":2},"S14000081":{"SNP":769,"LAB":231},"S14000082":{"LDM":999,"SNP":1},"E14001221":{"LAB":1000},"E14001222":{"LAB":1000},"E14001223":{"LAB":939,"RFM":42,"CON":19},"E14001224":{"LDM":504,"CON":462,"RFM":33,"LAB":1},"E14001225":{"LAB":995,"RFM":4,"CON":1},"E14001226":{"CON":864,"RFM":72,"LAB":64},"E14001227":{"CON":253,"LDM":747},"E14001228":{"RFM":312,"LAB":688},"E14001229":{"LAB":1000},"E14001230":{"LDM":935,"CON":65},"E14001231":{"GRN":19,"LAB":979,"RFM":2},"E14001232":{"RFM":183,"LAB":433,"CON":355,"LDM":29},"S14000083":{"SNP":864,"LAB":107,"RFM":29},"E14001233":{"RFM":510,"CON":480,"LAB":9,"LDM":1},"E14001234":{"CON":727,"LDM":272,"RFM":1},"E14001235":{"RFM":735,"CON":176,"LAB":89},"E14001236":{"LAB":943,"RFM":42,"CON":15},"E14001237":{"LAB":993,"RFM":4,"CON":3},"E14001238":{"LAB":555,"CON":445},"E14001239":{"LAB":211,"RFM":789},"E14001240":{"LAB":471,"RFM":273,"CON":256},"E14001241":{"LDM":881,"RFM":109,"CON":6,"GRN":4},"E14001242":{"CON":354,"RFM":315,"LAB":330,"MIN":1},"E14001243":{"RFM":650,"CON":326,"LAB":24},"E14001244":{"LAB":956,"RFM":44},"E14001245":{"LAB":977,"RFM":23},"E14001246":{"RFM":448,"LAB":551,"CON":1},"S14000084":{"SNP":943,"LAB":57},"S14000085":{"SNP":849,"LAB":104,"GRN":47},"S14000086":{"SNP":901,"LAB":96,"RFM":3},"S14000087":{"SNP":840,"LAB":113,"GRN":47},"S14000088":{"SNP":962,"LAB":38},"S14000089":{"SNP":779,"LAB":220,"GRN":1},"E14001247":{"LDM":891,"RFM":81,"CON":28},"S14000090":{"SNP":978,"RFM":8,"LAB":14},"E14001248":{"LAB":779,"RFM":177,"CON":44},"E14001249":{"LDM":221,"CON":779},"E14001250":{"RFM":212,"CON":682,"LAB":106},"S14000091":{"CON":429,"SNP":565,"RFM":6},"E14001251":{"LAB":925,"GRN":62,"RFM":13},"E14001252":{"RFM":133,"CON":857,"LAB":10},"W07000097":{"RFM":425,"LAB":572,"CON":1,"PLC":2},"E14001253":{"CON":497,"RFM":476,"LAB":27},"E14001254":{"RFM":419,"LAB":538,"CON":43},"E14001255":{"RFM":817,"LAB":183},"E14001256":{"RES":958,"RFM":35,"LAB":7},"E14001257":{"LAB":1000},"E14001258":{"LDM":917,"CON":83},"E14001259":{"LAB":987,"GRN":13},"E14001260":{"LAB":981,"GRN":19},"E14001261":{"RFM":388,"LAB":611,"CON":1},"E14001262":{"LAB":729,"RFM":271},"E14001263":{"LDM":53,"CON":874,"RFM":73},"S14000092":{"SNP":548,"LAB":442,"RFM":10},"E14001264":{"LAB":1000},"E14001265":{"LAB":1000},"E14001266":{"CON":785,"LAB":210,"RFM":5},"E14001267":{"LAB":444,"RFM":534,"CON":22},"E14001268":{"LDM":918,"CON":82},"E14001269":{"LDM":906,"CON":94},"E14001270":{"CON":1000},"E14001271":{"LAB":854,"CON":146},"E14001272":{"RFM":418,"LAB":582},"E14001273":{"RFM":560,"LAB":172,"CON":268},"E14001274":{"LAB":924,"RFM":75,"GRN":1},"E14001275":{"RFM":892,"LAB":67,"CON":41},"E14001276":{"LAB":1000},"E14001277":{"LDM":893,"RFM":95,"LAB":10,"CON":2},"E14001278":{"LAB":834,"RFM":156,"CON":10},"E14001279":{"CON":801,"LAB":199},"E14001280":{"LDM":814,"CON":186},"E14001281":{"RFM":477,"CON":331,"LAB":192},"E14001282":{"RFM":668,"CON":265,"LAB":67},"E14001283":{"LAB":882,"RFM":46,"CON":72},"E14001284":{"CON":995,"LAB":5},"E14001285":{"LAB":880,"CON":118,"RFM":2},"E14001286":{"LAB":507,"RFM":493},"E14001287":{"LAB":980,"CON":13,"RFM":7},"E14001288":{"RFM":285,"CON":694,"LDM":21},"E14001289":{"LAB":972,"CON":24,"RFM":4},"E14001290":{"LAB":971,"GRN":29},"E14001291":{"LDM":858,"CON":139,"RFM":3},"E14001292":{"RFM":911,"CON":89},"E14001293":{"LAB":1000},"E14001294":{"LDM":550,"CON":450},"E14001295":{"RFM":386,"LAB":614},"E14001296":{"LAB":1000},"E14001297":{"GRN":827,"LAB":167,"RFM":6},"E14001298":{"LAB":261,"CON":676,"RFM":63},"E14001299":{"RFM":606,"LAB":381,"GRN":5,"CON":8},"E14001300":{"LAB":507,"MIN":445,"CON":46,"RFM":2},"E14001301":{"LAB":949,"MIN":49,"CON":2},"S14000093":{"SNP":895,"LAB":104,"RFM":1},"S14000094":{"SNP":454,"LDM":546},"E14001302":{"LAB":964,"RFM":34,"CON":2},"E14001303":{"GRN":113,"RFM":727,"CON":160},"E14001304":{"LAB":807,"RFM":165,"CON":28},"E14001305":{"MIN":909,"LAB":91},"E14001306":{"LAB":999,"GRN":1},"E14001307":{"LAB":835,"RFM":165},"E14001308":{"CON":738,"LAB":262},"E14001309":{"CON":966,"RFM":14,"LAB":20},"E14001310":{"LAB":472,"CON":528},"E14001311":{"LAB":758,"GRN":11,"RFM":199,"CON":32},"S14000110":{"SNP":952,"LAB":45,"RFM":3},"E14001312":{"LDM":1000},"E14001313":{"RFM":728,"LAB":272},"E14001314":{"LAB":949,"RFM":51},"E14001315":{"LAB":778,"RFM":222},"E14001316":{"CON":619,"RFM":375,"LAB":6},"E14001317":{"LAB":1000},"E14001318":{"LAB":971,"RFM":27,"CON":2},"E14001319":{"LAB":629,"GRN":371},"E14001320":{"RFM":27,"LAB":973},"E14001321":{"LAB":1000},"E14001322":{"LAB":1000},"E14001323":{"LAB":966,"GRN":34},"E14001324":{"LAB":880,"RFM":120},"E14001325":{"LAB":992,"RFM":8},"E14001326":{"CON":894,"OTH":10,"LAB":80,"MIN":13,"LDM":1,"RFM":2},"E14001327":{"MIN":930,"LAB":70},"E14001328":{"LAB":984,"RFM":16},"E14001329":{"LAB":771,"RFM":229},"E14001330":{"LDM":984,"CON":12,"RFM":4},"E14001331":{"LAB":1000},"E14001332":{"LAB":993,"GRN":7},"E14001333":{"LAB":998,"GRN":2},"E14001334":{"LAB":998,"GRN":1,"CON":1},"E14001335":{"RFM":490,"LAB":419,"CON":91},"E14001336":{"LAB":944,"RFM":56},"E14001337":{"LAB":1000},"E14001338":{"LAB":993,"GRN":7},"E14001339":{"LAB":1000},"E14001340":{"LAB":985,"GRN":15},"E14001341":{"LAB":1000},"S14000095":{"SNP":922,"LAB":34,"RFM":44},"W07000098":{"PLC":695,"RFM":304,"LAB":1},"S14000096":{"LAB":870,"SNP":128,"RFM":2},"E14001342":{"LAB":929,"RFM":54,"CON":17},"E14001343":{"RFM":803,"CON":197},"E14001344":{"RFM":829,"LAB":168,"CON":3},"E14001345":{"LAB":967,"CON":1,"RFM":31,"MIN":1},"E14001346":{"LAB":929,"MIN":19,"RFM":52},"E14001347":{"LAB":988,"CON":12},"E14001348":{"LDM":712,"CON":288},"E14001349":{"RFM":696,"CON":226,"LAB":78},"E14001350":{"LAB":998,"RFM":2},"E14001351":{"RFM":451,"CON":549},"E14001352":{"LAB":971,"GRN":29},"E14001353":{"GRN":262,"LAB":738},"E14001354":{"LAB":929,"GRN":71},"E14001355":{"RFM":663,"LAB":335,"CON":2},"E14001356":{"LDM":610,"CON":380,"RFM":10},"E14001357":{"CON":693,"RFM":292,"LAB":15},"E14001358":{"RFM":245,"CON":724,"LAB":31},"W07000099":{"RFM":736,"LAB":117,"PLC":147},"E14001359":{"RFM":174,"CON":557,"LAB":269},"E14001360":{"CON":936,"LDM":55,"RFM":9},"E14001361":{"LAB":948,"RFM":52},"E14001362":{"LAB":688,"RFM":181,"CON":131},"E14001363":{"LDM":674,"CON":314,"RFM":12},"S14000097":{"LDM":954,"SNP":46},"E14001364":{"LAB":202,"RFM":206,"CON":592},"E14001365":{"LAB":49,"CON":414,"RFM":537},"E14001366":{"LDM":923,"CON":66,"RFM":11},"W07000100":{"RFM":443,"CON":485,"LAB":69,"PLC":3},"E14001368":{"LAB":702,"CON":267,"RFM":31},"E14001367":{"LAB":873,"RFM":127},"S14000045":{"SNP":701,"LAB":297,"RFM":2},"E14001369":{"LAB":975,"RFM":8,"CON":17},"E14001370":{"LAB":962,"CON":36,"RFM":2},"E14001371":{"LAB":1000},"W07000101":{"CON":913,"LAB":87},"W07000102":{"RFM":699,"PLC":275,"LAB":13,"LDM":4,"CON":9},"S14000098":{"SNP":815,"CON":179,"RFM":6},"E14001372":{"LAB":930,"RFM":62,"CON":8},"S14000099":{"SNP":876,"LAB":122,"RFM":2},"S14000027":{"LAB":803,"SNP":187,"MIN":7,"RFM":3},"W07000103":{"RFM":814,"PLC":65,"LAB":121},"E14001373":{"RFM":118,"CON":882},"E14001374":{"RFM":182,"CON":808,"LAB":9,"LDM":1},"E14001375":{"LAB":226,"CON":596,"RFM":178},"E14001376":{"LDM":585,"CON":415},"E14001377":{"LAB":964,"RFM":36},"E14001378":{"LAB":993,"RFM":7},"E14001379":{"LAB":1000},"E14001380":{"LAB":522,"RFM":478},"W07000104":{"RFM":647,"LAB":353},"W07000105":{"LAB":334,"RFM":664,"PLC":2},"E14001381":{"LDM":435,"RFM":536,"CON":27,"LAB":2},"E14001382":{"LAB":734,"RFM":266},"E14001383":{"LAB":524,"RFM":476},"S14000048":{"RFM":25,"SNP":931,"LAB":44},"E14001384":{"CON":913,"LAB":46,"RFM":41},"E14001385":{"LDM":935,"CON":8,"RFM":57},"E14001386":{"RFM":27,"CON":842,"LDM":129,"LAB":1,"GRN":1},"E14001387":{"LDM":869,"CON":54,"RFM":77},"E14001388":{"CON":712,"RFM":82,"LDM":206},"E14001389":{"RFM":461,"LAB":539},"E14001390":{"RFM":406,"CON":594},"E14001391":{"LAB":658,"RFM":169,"CON":173},"S14000100":{"LDM":995,"SNP":5},"E14001392":{"LDM":432,"CON":566,"RFM":2},"E14001393":{"LAB":742,"CON":162,"RFM":96},"E14001394":{"LAB":921,"CON":59,"RFM":20},"E14001395":{"GRN":990,"CON":7,"RFM":3},"E14001396":{"LDM":671,"CON":321,"RFM":8},"E14001397":{"LAB":888,"RFM":99,"CON":13},"E14001398":{"LDM":979,"RFM":21},"E14001399":{"LAB":551,"CON":449},"E14001400":{"RFM":853,"LAB":145,"CON":2},"E14001401":{"LAB":370,"RFM":512,"CON":118},"E14001402":{"CON":808,"LAB":173,"RFM":19},"E14001403":{"LAB":122,"CON":820,"RFM":58},"E14001404":{"RFM":553,"LAB":377,"CON":70},"E14001405":{"RFM":424,"CON":563,"LAB":13},"E14001406":{"LAB":961,"RFM":39},"E14001407":{"RFM":249,"LAB":729,"CON":22},"E14001408":{"LAB":958,"RFM":42},"E14001409":{"LAB":908,"GRN":91,"RFM":1},"E14001410":{"LAB":998,"GRN":2},"E14001411":{"LAB":941,"RFM":59},"E14001412":{"LAB":995,"RFM":5},"E14001413":{"RFM":578,"LAB":419,"CON":3},"E14001414":{"RFM":358,"CON":641,"LAB":1},"E14001415":{"LAB":650,"RFM":350},"E14001416":{"RFM":219,"LAB":653,"MIN":128},"S14000051":{"LDM":1000},"E14001417":{"RFM":168,"CON":832},"E14001418":{"LAB":657,"RFM":340,"CON":3},"E14001419":{"LAB":989,"GRN":11},"E14001420":{"LDM":1000},"S14000101":{"SNP":905,"LAB":90,"RFM":5},"S14000102":{"SNP":874,"LAB":125,"RFM":1},"E14001421":{"LAB":998,"GRN":2},"E14001422":{"RFM":345,"LAB":521,"CON":134},"E14001423":{"LAB":754,"RFM":246},"E14001424":{"RFM":60,"LAB":910,"CON":30},"S14000103":{"SNP":974,"CON":26},"E14001425":{"RFM":64,"LAB":550,"CON":379,"WPB":7},"E14001426":{"LAB":553,"RFM":446,"CON":1},"E14001427":{"LAB":992,"RFM":8},"E14001428":{"LAB":428,"RFM":572},"W07000106":{"PLC":281,"RFM":468,"LAB":251},"E14001429":{"RFM":305,"CON":182,"LAB":513},"E14001430":{"LAB":994,"GRN":6},"E14001431":{"RFM":564,"LAB":393,"CON":43},"E14001432":{"LAB":996,"RFM":4},"E14001433":{"RFM":59,"LAB":790,"MIN":151},"E14001434":{"LAB":990,"CON":10},"E14001435":{"LAB":1000},"E14001436":{"LAB":630,"RFM":370},"E14001437":{"RFM":685,"CON":313,"LAB":2},"E14001438":{"LAB":987,"GRN":13},"E14001439":{"RFM":15,"CON":289,"LAB":696},"E14001440":{"LAB":699,"RFM":267,"CON":34},"E14001441":{"LAB":440,"RFM":473,"CON":87},"E14001442":{"LAB":150,"CON":834,"RFM":15,"LDM":1},"W07000107":{"RFM":743,"PLC":156,"LAB":101},"E14001443":{"LAB":611,"RFM":152,"CON":237},"E14001445":{"LDM":1000},"E14001444":{"CON":999,"RFM":1},"E14001446":{"WPB":589,"RFM":101,"LAB":310},"E14001447":{"RFM":668,"LAB":328,"CON":4},"E14001448":{"RFM":836,"CON":162,"LAB":2},"E14001449":{"LDM":229,"CON":771},"E14001450":{"LAB":677,"RFM":321,"CON":2},"E14001451":{"RFM":256,"LAB":570,"CON":174},"E14001452":{"LAB":785,"RFM":215},"E14001453":{"RFM":78,"LAB":867,"CON":55},"E14001454":{"CON":999,"LAB":1},"E14001455":{"LAB":977,"RFM":23},"E14001456":{"CON":977,"LDM":7,"RFM":14,"LAB":2},"E14001457":{"LAB":952,"CON":48},"S14000104":{"LAB":354,"SNP":646},"E14001458":{"CON":995,"RFM":5},"E14001459":{"LAB":1000},"E14001460":{"CON":887,"LAB":90,"LDM":17,"RFM":6},"E14001461":{"LAB":587,"RFM":412,"CON":1},"E14001462":{"LAB":515,"RFM":478,"CON":7},"E14001463":{"LAB":1000},"E14001464":{"LAB":897,"RFM":103},"E14001465":{"RFM":197,"CON":789,"LDM":14},"E14001466":{"LAB":974,"GRN":25,"RFM":1},"E14001467":{"GRN":493,"LAB":507},"E14001468":{"LAB":995,"LDM":5},"E14001469":{"LAB":987,"GRN":13},"E14001470":{"LAB":998,"RFM":2},"E14001471":{"LAB":409,"RFM":591},"E14001472":{"LAB":990,"CON":3,"RFM":7},"E14001473":{"LAB":993,"RFM":7},"E14001474":{"RFM":958,"LAB":33,"CON":9},"E14001475":{"CON":628,"LAB":288,"RFM":84},"E14001476":{"CON":370,"RFM":609,"LAB":21},"E14001477":{"LAB":467,"MIN":530,"CON":2,"RFM":1},"E14001478":{"LAB":993,"RFM":7},"E14001479":{"CON":864,"LAB":40,"RFM":95,"LDM":1},"E14001480":{"RFM":977,"LAB":22,"CON":1},"E14001481":{"LDM":960,"CON":40},"E14001482":{"LDM":733,"CON":267},"E14001483":{"LAB":698,"RFM":297,"CON":5},"E14001484":{"LDM":895,"RFM":7,"CON":98},"E14001485":{"LAB":523,"CON":103,"RFM":374},"E14001486":{"RFM":528,"LAB":460,"CON":12},"E14001487":{"RFM":501,"CON":499},"E14001488":{"RFM":332,"CON":655,"LAB":13},"E14001489":{"LAB":832,"CON":67,"RFM":101},"E14001490":{"CON":780,"RFM":134,"LAB":86},"E14001491":{"LAB":816,"RFM":181,"CON":3},"E14001492":{"LAB":783,"RFM":215,"GRN":2},"E14001493":{"LDM":171,"RFM":330,"CON":499},"E14001494":{"RFM":451,"CON":495,"LAB":54},"E14001495":{"RFM":323,"CON":485,"LAB":192},"E14001496":{"CON":900,"RFM":63,"LDM":33,"LAB":4},"E14001497":{"RFM":839,"LAB":56,"CON":105},"E14001498":{"RFM":259,"CON":659,"LAB":82},"E14001499":{"RFM":99,"LAB":901},"E14001500":{"LAB":994,"RFM":6},"E14001501":{"RFM":233,"LAB":759,"CON":8},"E14001502":{"RFM":243,"LAB":649,"CON":108},"E14001503":{"LAB":1000},"E14001504":{"RFM":93,"LAB":905,"CON":2},"E14001505":{"CON":401,"RFM":480,"LAB":116,"LDM":3},"E14001506":{"RFM":527,"LAB":473},"E14001507":{"LDM":1000},"E14001508":{"LAB":353,"RFM":642,"CON":5},"E14001509":{"LAB":961,"RFM":39},"E14001510":{"LAB":989,"RFM":11},"E14001511":{"LDM":993,"RFM":7},"E14001512":{"LDM":809,"CON":185,"RFM":6},"E14001513":{"LAB":819,"RFM":159,"CON":22},"E14001514":{"RFM":820,"LAB":76,"CON":104},"E14001515":{"LAB":900,"RFM":100},"E14001516":{"LAB":922,"RFM":74,"CON":4},"S14000105":{"SNP":970,"LAB":21,"RFM":4,"CON":5},"E14001517":{"LAB":998,"RFM":2},"E14001518":{"LAB":662,"RFM":338},"E14001519":{"LAB":191,"CON":807,"RFM":2},"E14001520":{"LAB":571,"RFM":429},"E14001521":{"RFM":697,"LAB":303},"E14001522":{"RFM":736,"LAB":232,"CON":32},"E14001523":{"CON":765,"LAB":153,"RFM":82},"E14001524":{"RFM":315,"LAB":671,"CON":14},"E14001525":{"LAB":983,"GRN":17},"E14001526":{"LDM":881,"RFM":20,"CON":99},"E14001527":{"LAB":998,"GRN":2},"E14001528":{"LAB":1000},"E14001529":{"LAB":994,"RFM":3,"CON":3},"E14001530":{"RFM":248,"LAB":601,"CON":151},"E14001531":{"LAB":599,"RFM":401},"E14001532":{"LDM":786,"CON":213,"RFM":1},"E14001533":{"CON":729,"RFM":268,"LDM":2,"GRN":1},"E14001535":{"LAB":212,"CON":730,"RFM":58},"E14001534":{"LDM":891,"CON":108,"RFM":1},"W07000108":{"LAB":526,"RFM":328,"PLC":146},"E14001536":{"LAB":851,"RFM":80,"CON":69},"E14001537":{"LAB":995,"RFM":3,"CON":2},"E14001538":{"RFM":835,"LAB":155,"CON":10},"E14001539":{"LAB":341,"CON":658,"RFM":1},"E14001540":{"LDM":971,"RFM":29},"E14001541":{"RFM":350,"LAB":650},"E14001542":{"LDM":891,"CON":103,"RFM":6},"E14001543":{"RFM":567,"CON":223,"LAB":210},"E14001544":{"RFM":121,"CON":876,"LAB":3},"E14001545":{"LDM":652,"CON":319,"RFM":29},"E14001546":{"LAB":536,"RFM":464},"E14001547":{"RFM":768,"LAB":232},"E14001548":{"LDM":742,"RFM":157,"CON":101},"E14001549":{"GRN":1,"CON":994,"RFM":5},"E14001550":{"LAB":1000},"E14001551":{"LDM":700,"RFM":291,"CON":9},"W07000109":{"RFM":748,"LAB":252},"E14001552":{"RFM":522,"CON":438,"LAB":11,"LDM":29},"E14001553":{"LAB":995,"GRN":5},"E14001554":{"LAB":989,"CON":6,"RFM":5},"E14001555":{"LDM":955,"CON":42,"RFM":3},"E14001556":{"LDM":1000},"E14001557":{"LAB":1000},"E14001558":{"CON":783,"LAB":178,"RFM":39},"W07000110":{"RFM":296,"CON":450,"LAB":250,"PLC":4},"E14001559":{"LAB":1000},"E14001560":{"LAB":885,"RFM":115},"E14001561":{"LAB":1000},"E14001562":{"RFM":441,"LAB":490,"MIN":69},"E14001563":{"LAB":996,"GRN":4},"E14001564":{"RFM":147,"LAB":853},"E14001565":{"LAB":990,"RFM":10},"E14001566":{"LAB":1000},"E14001567":{"LAB":647,"RFM":353},"E14001568":{"LAB":939,"CON":51,"RFM":9,"LDM":1},"E14001569":{"GRN":987,"CON":8,"RFM":5},"E14001570":{"CON":824,"RFM":174,"LAB":2},"E14001571":{"LAB":615,"RFM":385},"E14001572":{"LDM":980,"RFM":14,"CON":6},"E14001573":{"LAB":833,"CON":162,"RFM":5},"S14000111":{"SNP":231,"CON":769},"E14001574":{"RFM":91,"LAB":909},"E14001575":{"LDM":933,"CON":66,"RFM":1},"S14000106":{"SNP":939,"LAB":58,"RFM":3},"E14001576":{"LAB":996,"MIN":4},"E14001577":{"LAB":987,"RFM":13},"E14001578":{"RFM":568,"CON":403,"LAB":29},"E14001579":{"CON":912,"RFM":60,"LDM":28},"E14001580":{"LDM":1000},"E14001581":{"LAB":755,"RFM":241,"CON":4},"E14001582":{"CON":916,"LAB":83,"RFM":1},"E14001583":{"LAB":946,"RFM":54},"E14001584":{"LAB":1000},"E14001585":{"LAB":842,"RFM":158},"E14001586":{"LDM":999,"CON":1},"E14001587":{"LDM":974,"CON":26},"E14001588":{"CON":980,"RFM":5,"LAB":11,"LDM":4},"E14001589":{"LAB":999,"CON":1},"E14001590":{"RFM":321,"CON":648,"LAB":31},"E14001591":{"LDM":739,"CON":260,"RFM":1},"E14001592":{"LDM":984,"CON":16},"E14001593":{"LDM":870,"CON":130},"E14001594":{"LAB":586,"RFM":414},"E14001595":{"LAB":861,"RFM":139},"E14001596":{"LAB":981,"CON":5,"RFM":14},"E14001597":{"LAB":968,"RFM":26,"CON":5,"GRN":1},"E14001598":{"LAB":952,"RFM":48},"E14001599":{"RFM":28,"LAB":834,"CON":138},"W07000111":{"RFM":581,"CON":76,"LAB":281,"PLC":62},"E14001600":{"LAB":963,"CON":29,"RFM":8},"E14001601":{"RFM":784,"CON":116,"LAB":100},"E14001602":{"LAB":1000},"E14001603":{"LDM":964,"RFM":36},"W07000112":{"PLC":996,"CON":4},"E14001604":{"LAB":1000},"E14001605":{"LAB":993,"CON":6,"RFM":1}}};</script>
-<script>
+<script id="nowcast-engine-src">
 /* ElectionMapsUK nowcast engine — browser bundle (auto-generated). Do not edit; edit nowcast.js/tactical.js and re-run build_bundle.js */
 (function(){
 "use strict";
@@ -1225,7 +1340,7 @@ document.addEventListener('DOMContentLoaded', function(){
   var GEOJSON_URL='https://raw.githubusercontent.com/electionmapsuk/custom-nowcast/refs/heads/main/Westminster_Parliamentary_Constituencies_July_2024_Boundaries_UK_BUC_4872633423108313063.geojson';
   var HEX_URL='https://raw.githubusercontent.com/electionmapsuk/custom-nowcast/refs/heads/main/uk-wpc-hex-constitcode-v5-june-2024.geojson';  // hex cartogram (Automatic Knowledge, CC BY 4.0)
 
-  var PI={ LAB:{n:'Lab',c:'#E4003B'},CON:{n:'Con',c:'#0393D3'},RFM:{n:'Reform',c:'#2BC5DB'},LDM:{n:'Lib Dem',c:'#ff6400'},
+  var PI={ LAB:{n:'Lab',c:'#E4003B'},CON:{n:'Con',c:'#4167d1'},RFM:{n:'Reform',c:'#17B9D1'},LDM:{n:'Lib Dem',c:'#ff6400'},
     GRN:{n:'Green',c:'#00A85A'},RES:{n:'Restore',c:'#051e40'},SNP:{n:'SNP',c:'#e6d62e'},PLC:{n:'Plaid',c:'#075d55'},
     MIN:{n:'Ind/Minor',c:'#ca80a8'},OTH:{n:'Other',c:'#9ca3af'},WPB:{n:'Workers',c:'#2853a5'},SPKR:{n:'Speaker',c:'#374151'},
     DUP:{n:'DUP',c:'#d46a4c'},ALL:{n:'Alliance',c:'#F4C72E'},SDLP:{n:'SDLP',c:'#FF0000'},UUP:{n:'UUP',c:'#48A5EE'},
@@ -1277,6 +1392,7 @@ document.addEventListener('DOMContentLoaded', function(){
     $('modepill').textContent = m==='custom' ? 'User Input' : 'Central projection';
     $('modebtn').textContent = m==='custom' ? 'Back to Central' : 'Switch to User Input';
     $('modebtn').className = m==='custom' ? 'btn primary' : 'btn purple';
+    if(typeof syncMapLayout==='function' && results) syncMapLayout(false);
   }
   $('modebtn').addEventListener('click',function(){ if(mode==='custom'){ setSliders(centralSliderVals()); setMode('central'); recompute(); } else { setMode('custom'); refreshMC(); } });
 
@@ -1291,7 +1407,7 @@ document.addEventListener('DOMContentLoaded', function(){
     document.querySelectorAll('#sliders input[type=range],#sliders-nat input[type=range]').forEach(setTrack);
   }
   function rowHTML(s){ var id=s[0],p=s[1],sub=s[2],c=PI[p].c;
-    return '<div class="sld"><div class="top"><span class="lab"><span class="dot" style="background:'+c+'"></span>'+PI[p].n+' <small>'+sub+'</small></span>'
+    return '<div class="sld"><div class="top"><span class="lab"><span class="dot" style="background:'+c+'"></span>'+p+'<span class="sseat" id="ss_'+p+'"></span> <small>'+sub+'</small></span>'
       +'<span class="val"><input class="num" id="n_'+id+'" type="number" step="0.1" min="0" max="'+(p==='SNP'?60:60)+'" value="0" disabled aria-label="'+PI[p].n+' '+sub+' vote share, percent"><small>%</small></span></div>'
       +'<input type="range" id="'+id+'" min="0" max="'+(p==='SNP'?60:55)+'" step="0.1" value="0" style="--c:'+c+'" aria-label="'+PI[p].n+' '+sub+' vote share, percent"></div>';
   }
@@ -1320,15 +1436,15 @@ document.addEventListener('DOMContentLoaded', function(){
     results.forEach(function(s){ byName[norm(s.seatName)]=s; if(s.code) byCode[s.code]=s; });
     NIFIXED.forEach(function(s){ byName[norm(s.name)]={seatName:s.name,winner:s.winner,winner2024:s.w24,winner2019:s.w19,mp:s.mp,shares:s.shares,fixed:true}; });
     if(mode==='custom'){ mcRanges=null; mcSeatWin=null; }   // drop stale sim outputs once inputs change
-    var t=tallies(); renderTotals(t); maybeDrawMap(); updateGbTotal(); buildCoalition(t);
-    if(tableBuilt){ buildTable(); if(sortCol) sortTable(sortCol,true); }
+    var t=tallies(); renderTotals(t); paintSliderSeats(t); renderVoteShare(); maybeDrawMap(); updateGbTotal(); buildCoalition(t);
+    if(tableBuilt) buildTable();
     if(pinned) showTip(pinned._evt,pinned._d,true);
     setTimeout(refreshMC,0);
   }
   // ---- Monte Carlo majority odds (correlated swing, chunked on the main thread) ----
   // sigma = std dev of each party's vote-share error (0.015 = 1.5pp). rho = share of that error
   // that is a common left/right national swing vs party-specific (0 = independent, 1 = pure bloc swing).
-  var MC={ simsCentral:1000, simsCustom:300, sigma:0.015, rho:0.5, localSigma:0.04, batch:5,
+  var MC={ simsCentral:1000, simsCustom:250, sigma:0.015, rho:0.5, localSigma:0.04, batch:5,
            sign:{LAB:-1,GRN:-1,LDM:-1,CON:1,RFM:1,RES:1,SNP:0,PLC:0} };  // +1 right bloc, -1 left bloc
   var mcSeq=0, mcCache={}, mcRanges=null, mcSeatWin=null, mcSeatN=0, lastTallies={};
   var precompMC=(typeof window!=='undefined'&&window.__CENTRAL_MC__)||null;  // pre-baked central simulation
@@ -1345,7 +1461,87 @@ document.addEventListener('DOMContentLoaded', function(){
     $('mc-list').innerHTML=''; $('mc-sims').textContent='';
     var rb=$('mc-run'); if(rb) rb.addEventListener('click',function(){ runMC(MC.simsCustom); });
   }
+  // ---- Monte Carlo in parallel Web Workers: the same simulation, split across the machine's cores
+  // (each worker runs the identical engine bundle). Falls back to the main-thread loop if workers
+  // are unavailable (old browser, file:// restrictions, etc.).
+  var MCW={ pool:null, failed:false, job:0 };
+  var MC_WORKER_MAIN=[
+    'var ENG=null;',
+    'function g(){ var u=0,v=0; while(!u)u=Math.random(); while(!v)v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(6.283185307*v); }',
+    'onmessage=function(e){ var m=e.data; if(m.type==="init"){ ENG=m.engine; return; }',
+    '  var P=m.P, inp=m.inp, n=m.n, sign=P.sign, sg=P.sigma, rho=P.rho, kk=Math.sqrt(1-rho*rho), ni=P.ni;',
+    '  var large={}, maj={}, hung=0, seatDist={}, seatWin={}, sent=0;',
+    '  for(var i=0;i<n;i++){',
+    '    var Z=g(), gb={};',
+    '    for(var p in inp.gb){ var sn=sign[p]||0; gb[p]=Math.max(0, inp.gb[p]+(sn?sg*(rho*sn*Z+kk*g()):sg*g())); }',
+    '    var o; try{ o=self.NowcastEngine.runNowcast({gb:gb, snpScotland:Math.max(0,inp.snpScotland+sg*g()), plcWales:Math.max(0,inp.plcWales+sg*g())}, ENG); }catch(err){ o=null; }',
+    '    if(o){ var t={}; o.individualSeatResults.forEach(function(r){ var sh=r.shares, bw=null, bv=-1;',
+    '        for(var pp in sh){ if(sh[pp]<=0) continue; var val=sh[pp]+g()*P.localSigma; if(val>bv){ bv=val; bw=pp; } }',
+    '        var w=(bw==="MIN"&&r.minType)?r.minType:(bw||r.winner);',
+    '        t[w]=(t[w]||0)+1; var sw=seatWin[r.code]||(seatWin[r.code]={}); sw[w]=(sw[w]||0)+1; });',
+    '      for(var k in ni) t[k]=(t[k]||0)+ni[k];',
+    '      ["LAB","CON","RFM","LDM","GRN","RES","SNP","PLC","MIN","WPB"].forEach(function(dp){ (seatDist[dp]||(seatDist[dp]=[])).push(t[dp]||0); });',
+    '      var top=null, tn=-1; for(var q in t){ if(t[q]>tn){ tn=t[q]; top=q; } }',
+    '      large[top]=(large[top]||0)+1; if(tn>=326) maj[top]=(maj[top]||0)+1; else hung++; }',
+    '    if(i-sent>=4){ postMessage({type:"prog", job:m.job, k:i+1-sent}); sent=i+1; }',
+    '  }',
+    '  postMessage({type:"done", job:m.job, k:n-sent, res:{large:large, maj:maj, hung:hung, seatDist:seatDist, seatWin:seatWin}});',
+    '};'].join('\n');
+  function mcEngineSrc(cb){ var el=document.getElementById('nowcast-engine-src');
+    if(el && el.textContent.length>1000) return cb(el.textContent);
+    if(!window.fetch) return cb(null);
+    fetch('build/nowcast.browser.js').then(function(r){ return r.ok?r.text():null; }).then(cb).catch(function(){ cb(null); }); }
+  function mcPool(cb){
+    if(MCW.pool) return cb(MCW.pool); if(MCW.failed || !window.Worker || !window.Blob || !window.URL) return cb(null);
+    mcEngineSrc(function(src){
+      if(!src){ MCW.failed=true; return cb(null); }
+      try{
+        var url=URL.createObjectURL(new Blob(['var window=self;\n'+src+'\n'+MC_WORKER_MAIN],{type:'text/javascript'}));
+        var nw=Math.max(1, Math.min(8, (navigator.hardwareConcurrency||4)-1)), ws=[];
+        for(var k=0;k<nw;k++){ var w=new Worker(url); w.postMessage({type:'init', engine:ENGINE}); ws.push(w); }
+        MCW.pool=ws; MCW.url=url; cb(ws);
+      }catch(e){ MCW.failed=true; cb(null); }
+    }); }
+  function mcKillPool(){ if(MCW.pool){ MCW.pool.forEach(function(w){ w.terminate(); }); MCW.pool=null; } }
   function runMC(n){
+    if(!ENGINE||!window.NowcastEngine){ var m0=$('mc'); if(m0) m0.style.display='none'; return; }
+    n=n||MC.simsCentral;
+    var inp=compactInputs(); var key=JSON.stringify([inp,n,MC.sigma,MC.rho]);
+    if(mcCache[key]) return runMCMain(n);              // cached: the main-thread path just re-renders it
+    if(MCW.busy) mcKillPool();                          // a run is still going: drop it and start afresh
+    var seq=++mcSeq;
+    $('mc-headline').innerHTML='<div class="mc-sub">Simulating '+n+' elections…</div><div class="mc-prog"><i id="mc-progbar"></i></div>';
+    $('mc-list').innerHTML='';
+    mcPool(function(ws){
+      if(seq!==mcSeq) return;
+      if(!ws){ mcSeq--; return runMCMain(n); }
+      var job=++MCW.job, done=0, finished=0, parts=[];
+      var P={sign:MC.sign, sigma:MC.sigma, rho:MC.rho, localSigma:MC.localSigma, ni:niWinCounts()};
+      MCW.busy=true;
+      ws.forEach(function(w,k){
+        var nk=Math.floor(n/ws.length)+(k<n%ws.length?1:0);
+        w.onerror=function(){ if(job!==MCW.job) return; MCW.busy=false; MCW.failed=true; mcKillPool(); mcSeq--; runMCMain(n); };
+        w.onmessage=function(e){ var m=e.data; if(m.job!==job || seq!==mcSeq) return;
+          done+=m.k; var pb=$('mc-progbar'); if(pb) pb.style.width=(100*done/n)+'%';
+          if(m.type!=='done') return;
+          parts.push(m.res); if(++finished<ws.length) return;
+          MCW.busy=false;
+          var large={}, maj={}, hung=0, seatDist={}, seatWin={};
+          parts.forEach(function(r){ var x;
+            for(x in r.large) large[x]=(large[x]||0)+r.large[x];
+            for(x in r.maj) maj[x]=(maj[x]||0)+r.maj[x];
+            hung+=r.hung;
+            for(x in r.seatDist) seatDist[x]=(seatDist[x]||[]).concat(r.seatDist[x]);
+            for(x in r.seatWin){ var sw=seatWin[x]||(seatWin[x]={}); for(var y in r.seatWin[x]) sw[y]=(sw[y]||0)+r.seatWin[x][y]; } });
+          var ranges={}; for(var rp in seatDist){ var arr=seatDist[rp].slice().sort(function(a,b){return a-b;}); var lo=arr[Math.floor(0.05*arr.length)]; var hi=arr[Math.min(arr.length-1,Math.ceil(0.95*arr.length)-1)]; ranges[rp]=[lo,hi]; }
+          mcRanges=ranges; mcSeatWin=seatWin; mcSeatN=n;
+          var res={N:n,large:large,maj:maj,hung:hung,ranges:ranges,seatWin:seatWin}; mcCache[key]=res;
+          renderMC(res); renderTotals(tallies()); if(pinned) showTip(pinned._evt,pinned._d,true); };
+        if(nk>0) w.postMessage({type:'run', job:job, inp:inp, n:nk, P:P}); else { finished++; }
+      });
+    });
+  }
+  function runMCMain(n){
     if(!ENGINE||!window.NowcastEngine){ var m=$('mc'); if(m) m.style.display='none'; return; }
     n=n||MC.simsCentral;
     var inp=compactInputs(); var key=JSON.stringify([inp,n,MC.sigma,MC.rho]);
@@ -1397,6 +1593,8 @@ document.addEventListener('DOMContentLoaded', function(){
     $('mc-sims').textContent=N+' sims';
   }
 
+  // projected seats in brackets beside each party's slider (as on the Holyrood/Senedd pages); updates on every drag
+  function paintSliderSeats(t){ ROWS.concat(NATS).forEach(function(r){ var el=$('ss_'+r[1]); if(el) el.textContent=t?' ('+(t[r[1]]||0)+')':''; }); }
   function tallies(){ var t={}; results.forEach(function(r){ var w=dispWin(r); t[w]=(t[w]||0)+1; });
     NIFIXED.forEach(function(s){ t[s.winner]=(t[s.winner]||0)+1; }); return t; }
 
@@ -1411,6 +1609,20 @@ document.addEventListener('DOMContentLoaded', function(){
     var M=pres.filter(function(p){return LEAN[p]!=='L'&&LEAN[p]!=='R';}).sort(function(a,b){return t[b]-t[a];});
     return L.concat(M,R);
   }
+  // ---- projected national (GB) vote share, from the model's seat-level output ----
+  var VS24=null;
+  function renderVoteShare(){ var el=$('vsstrip'); if(!el||!results) return;
+    var P=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC'], v={}, v24={}, T=0;
+    P.concat(['OTH']).forEach(function(p){ v[p]=0; v24[p]=0; });
+    results.forEach(function(r){ var s=SEATBASE[r.code]; if(!s||r.fixed) return; var w=(s.electorate||0)*(s.turnout||0); T+=w;
+      var oth=1; P.forEach(function(p){ var x=(r.shares&&r.shares[p])||0; v[p]+=w*x; oth-=x; }); v.OTH+=w*Math.max(0,oth);
+      var a=s.a24||{}, o24=1; P.forEach(function(p){ var x=a[p]||0; v24[p]+=w*x; o24-=x; }); v24.OTH+=w*Math.max(0,o24); });
+    if(!T) return;
+    var order=P.slice().sort(function(a,b){ return v[b]-v[a]; }).filter(function(p){ return v[p]/T>0.0005; });
+    el.style.setProperty('--vsn', order.length);
+    el.innerHTML=order.map(function(p){ var sh=100*v[p]/T, ch=sh-100*v24[p]/T, c=(PI[p]||PI.OTH).c;
+      if(Math.abs(ch)<0.05) ch=0;   // avoid a "-0.0" pill
+      return '<div class="tot" title="'+fullName(p)+'" style="background:'+c+';color:'+textOn(c)+'"><div class="nm">'+p+'</div><div class="n">'+sh.toFixed(1)+'%</div><div class="ch">'+(ch>0?'+':'')+ch.toFixed(1)+'</div></div>'; }).join(''); }
   function renderTotals(t){
     if(!t||!Object.keys(t).length) return;   // never blank the header on an empty tally
     lastTallies=t;
@@ -1431,26 +1643,71 @@ document.addEventListener('DOMContentLoaded', function(){
   function ensureMapData(cb){ if(activeGeo()){ cb(); return; }
     if(mapType==='hex'){ if(window.__HEX__){ hexGeo=window.__HEX__; cb(); } else { d3.json(HEX_URL).then(function(j){ hexGeo=j; cb(); }).catch(function(e){ console.error('hex map unavailable:',e); }); } }
     else if(window.__GEO__){ geo=window.__GEO__; cb(); } else { d3.json(GEOJSON_URL).then(function(j){ geo=j; cb(); }).catch(function(e){ console.error('map unavailable:',e); }); } }
-  function maybeDrawMap(){ if(!activeGeo()||!results||typeof d3==='undefined') return; if(!mapDrawn) drawMap(); else renderMapColors(); }
+  function maybeDrawMap(){ if(results && typeof d3!=='undefined' && dualOn() && !map2Drawn){ lastLayout='dual'; drawMap2(); }
+    if(!activeGeo()||!results||typeof d3==='undefined') return; if(!mapDrawn) drawMap(); else renderMapColors(); }
   function drawMap(){ var g=activeGeo(); if(!g||typeof d3==='undefined') return;
+    document.body.classList.toggle('hexmap', mapType==='hex');   // before measuring: the layout depends on it
     var c=d3.select('#map-container'); c.select('svg').remove();
     var rect=c.node().getBoundingClientRect(); var w=Math.round(rect.width)||800; var h=(rect.height>300?Math.round(rect.height):720);
     var svg=c.append('svg').attr('width','100%').attr('height',h).attr('viewBox','0 0 '+w+' '+h).attr('role','img').attr('aria-label','Map of constituencies coloured by projected winning party. The same data is available as a sortable table further down the page.'); mapG=svg.append('g'); mapSvg=svg;
     var proj=(mapType==='hex'?d3.geoIdentity().reflectY(true):d3.geoMercator()).fitExtent([[16,16],[w-16,h-16]],g); var path=d3.geoPath().projection(proj); mapPath=path;
-    function strokeForK(k){ var hx=(mapType==='hex'); return Math.min(hx?3.4:2.2, (hx?1.05:0.55)*Math.pow(k,0.32))+'px'; }
-    function rgnStrokeForK(k){ return (2*Math.min(2.2, 0.55*Math.pow(k,0.32)))+'px'; }  // always 2x constituency borders
+    function strokeForK(k){ var hx=(mapType==='hex'); return Math.min(hx?3.4:2.2, (hx?1.05:0.55)*Math.pow(k,0.32)*(1-0.20/k))+'px'; }   // (1-0.20/k): ~20% thinner fully zoomed out, fading to unchanged once zoomed in
+    function rgnStrokeForK(k){ return (2*Math.min(2.2, 0.55*Math.pow(k,0.32))*(1-0.25/k))+'px'; }   // ~25% thinner fully zoomed out  // always 2x constituency borders
     mapZoom=d3.zoom().scaleExtent([1,40]).on('zoom',function(e){ mapG.attr('transform',e.transform); mapG.attr('stroke-width',strokeForK(e.transform.k)); mapG.select('.rgn').attr('stroke-width',rgnStrokeForK(e.transform.k)); if(!pinned) tip.style.display='none'; });
     svg.call(mapZoom); mapG.attr('stroke-width',strokeForK(1));
     mapG.selectAll('path.cp').data(g.features).enter().append('path').attr('class','cp').attr('d',path).attr('fill','#e5e7eb')
       .on('mousemove',function(e,d){ if(pinned) return; showTip(e,d,false); })
       .on('mouseout',function(){ if(!pinned) tip.style.display='none'; })
-      .on('click',function(e,d){ pinned=(pinned&&pinned._d===d)?null:{_d:d,_evt:e}; mapG.selectAll('.cp').classed('pinned',false); if(pinned){ d3.select(this).classed('pinned',true); showTip(e,d,true);} else tip.style.display='none'; });
+      .on('click',function(e,d){ pinned=(pinned&&pinned._d===d)?null:{_d:d,_evt:e}; d3.selectAll('.cp').classed('pinned',false); if(pinned){ d3.select(this).classed('pinned',true); showTip(e,d,true);} else tip.style.display='none'; });
     drawRegionBorders(g, path);
     buildSeatList();
     var cr=$('mapcredit'); if(cr) cr.innerHTML = (mapType==='hex')
       ? 'Hex cartogram &mdash; one equal-size hexagon per constituency. Layout: <b>Automatic Knowledge</b> (Philip Brown &amp; Alasdair Rae), CC BY 4.0.'
       : 'Geographic boundaries &copy; ONS / Boundary Commission (OGL).';
+    drawInsets(svg, g, path, w, h);
     mapDrawn=true; renderMapColors();
+  }
+  // ---- insets: zoomed views of dense urban seats in the empty margins either side of the
+  // geographic map (desktop only; hidden while the main map is zoomed in) ----
+  // combined-authority areas (2024 constituencies). London = the whole Greater London region.
+  var CA_SEATS={cb:["S14000063", "S14000068", "S14000070", "S14000072", "S14000077", "S14000021", "S14000078", "S14000079", "S14000080", "S14000081", "S14000082", "S14000083", "S14000084", "S14000085", "S14000086", "S14000087", "S14000088", "S14000089", "S14000092", "S14000093", "S14000095", "S14000097", "S14000099", "S14000101", "S14000102", "S14000104", "S14000106", "S14000045"],extra:["E14001564", "E14001565", "E14001163", "E14001222"],gm:["E14001065", "E14001070", "E14001103", "E14001110", "E14001111", "E14001112", "E14001144", "E14001145", "E14001158", "E14001251", "E14001277", "E14001286", "E14001329", "E14001350", "E14001352", "E14001353", "E14001354", "E14001415", "E14001416", "E14001446", "E14001459", "E14001515", "E14001517", "E14001528", "E14001585", "E14001598", "E14001602"],lcr:["E14001337", "E14001338", "E14001339", "E14001340", "E14001341", "E14001317", "E14001584", "E14001455", "E14001113", "E14001463", "E14001509", "E14001510", "E14001091", "E14001561", "E14001589", "E14001504"],wm:["E14001092", "E14001093", "E14001094", "E14001095", "E14001096", "E14001097", "E14001098", "E14001099", "E14001100", "E14001535", "E14001180", "E14001181", "E14001182", "E14001204", "E14001524", "E14001261", "E14001478", "E14001547", "E14001574", "E14001358", "E14001479", "E14001562", "E14001064", "E14001594", "E14001595", "E14001596"],wy:["E14001118", "E14001120", "E14001119", "E14001472", "E14001308", "E14001147", "E14001262", "E14001177", "E14001196", "E14001297", "E14001506", "E14001319", "E14001320", "E14001321", "E14001322", "E14001323", "E14001324", "E14001325", "E14001383", "E14001418", "E14001428", "E14001560"],sy:["E14001074", "E14001075", "E14001198", "E14001200", "E14001436", "E14001451", "E14001452", "E14001466", "E14001467", "E14001468", "E14001469", "E14001470", "E14001423"]};
+  var inCA=function(keys){ var set={}; keys.forEach(function(k){ CA_SEATS[k].forEach(function(c){ set[c]=1; }); }); return function(s){ return !!(s && set[s.code]); }; };
+  var INSETS=[   // north to south
+    {name:'Central Belt', test:inCA(['cb'])},   // Glasgow, Edinburgh, Lanarkshire, Renfrewshire, Dunbartonshire, West Lothian, Falkirk
+    {name:'Urban North', test:inCA(['gm','lcr','wy','sy','extra'])},   // Gtr Manchester, Liverpool CR, West & South Yorkshire + Warrington, Chester N, Ellesmere Port
+    {name:'West Midlands', test:inCA(['wm'])},
+    {name:'Greater London', test:function(s){ return s && s.region==='Greater London'; }}
+  ];
+  function drawInsets(svg, g, path, w, h){
+    var box=document.getElementById('insetbox'); if(!box || typeof d3==='undefined' || !geo) return;
+    var c=d3.select(box); c.select('svg').remove(); if(mapG) mapG.selectAll('.insbox').remove();
+    var r=box.getBoundingClientRect(); var W=box.clientWidth, H=box.clientHeight;   // inside the border
+    if(W<120||H<200) return;   // panel hidden (narrow screens)
+    var regOf=function(f){ var o=seatOf(f); var code=o.s&&o.s.code; return code?SEATBASE[code]:null; };
+    var share=[0.20,0.27,0.22,0.31];   // Central Belt, Urban North, West Midlands, London
+    var isvg=c.append('svg').attr('width','100%').attr('height',H).attr('viewBox','0 0 '+W+' '+H);
+    var y=0;
+    INSETS.forEach(function(ins,k){ var nm=ins.name;
+      var ih=Math.round(H*share[k]);
+      var feats=geo.features.filter(function(f){ return ins.test(regOf(f)); });
+      if(feats.length<6){ y+=ih; return; }
+      var fc={type:'FeatureCollection',features:feats};
+      if(mapType!=='hex' && path && mapG){ var bb=path.bounds(fc);
+        mapG.append('rect').attr('class','insbox').attr('x',bb[0][0]-2).attr('y',bb[0][1]-2).attr('width',bb[1][0]-bb[0][0]+4).attr('height',bb[1][1]-bb[0][1]+4); }
+      var gi=isvg.append('g').attr('class','insg').attr('transform','translate(0,'+y+')');
+      if(k>0) gi.append('line').attr('class','insdiv').attr('x1',10).attr('x2',W-10).attr('y1',0).attr('y2',0);
+      // label + map as one block, centred vertically in the slot (the label sits just above the map)
+      var LB=24, PADV=10;
+      var pj=d3.geoMercator().fitExtent([[8,PADV+LB],[W-8,ih-PADV]],fc), pp=d3.geoPath().projection(pj);
+      var bb2=pp.bounds(fc), shH=bb2[1][1]-bb2[0][1], top=Math.max(PADV,(ih-(LB+shH))/2);
+      var tr=pj.translate(); pj.translate([tr[0], tr[1]+(top+LB)-bb2[0][1]]);
+      gi.append('text').attr('class','inslabel').attr('x',12).attr('y',top+12).text(nm);
+      gi.selectAll('path.cp').data(feats).enter().append('path').attr('class','cp').attr('d',pp).attr('fill','#e5e7eb').attr('stroke-width','0.6px')
+        .on('mousemove',function(e,d){ if(pinned) return; showTip(e,d,false); })
+        .on('mouseout',function(){ if(!pinned) tip.style.display='none'; })
+        .on('click',function(e,d){ pinned=(pinned&&pinned._d===d)?null:{_d:d,_evt:e}; d3.selectAll('.cp').classed('pinned',false); if(pinned){ d3.select(this).classed('pinned',true); showTip(e,d,true);} else tip.style.display='none'; });
+      y+=ih;
+    });
   }
   function drawRegionBorders(g, path){
     try{
@@ -1488,8 +1745,9 @@ document.addEventListener('DOMContentLoaded', function(){
       var mk=function(){ return mapType==='hex'?d3.geoIdentity().reflectY(true):d3.geoMercator(); };
       var test=mk().fitWidth(EXPW-pad*2, g); var bb=d3.geoPath().projection(test).bounds(g);
       var aspect=(bb[1][1]-bb[0][1])/(bb[1][0]-bb[0][0]); var EXPH=Math.round((EXPW-pad*2)*aspect)+pad*2+foot;
-      var proj=mk().fitExtent([[pad,pad],[EXPW-pad,EXPH-pad-foot]], g); var path=d3.geoPath().projection(proj);
-      var sw=(mapType==='hex'?4.0:1.7*R);
+      var MAPW=EXPW, withIns=(mapType!=='hex'), INSW=withIns?Math.round(1250*R):0; EXPW=MAPW+INSW;   // geo: zoomed regions in a column to the right
+      var proj=mk().fitExtent([[pad,pad],[MAPW-pad,EXPH-pad-foot]], g); var path=d3.geoPath().projection(proj);
+      var sw=(mapType==='hex'?4.0:2.2*R);
       var paths=g.features.map(function(ft){ var fill="#e5e7eb"; try{ var o=seatOf(ft); if(o.s) fill=colourFor(o.s); }catch(e){} var d=path(ft)||""; return d?('<path d="'+d+'" fill="'+fill+'" stroke="#ffffff" stroke-width="'+sw+'" stroke-linejoin="round"/>'):""; }).join("");
       var rgnPath='';   // region borders overlay - white, 2x the constituency stroke
       try{ if(mapType!=='hex' && window.topojson && topojson.topology && topojson.mesh){
@@ -1499,7 +1757,27 @@ document.addEventListener('DOMContentLoaded', function(){
         var mesh=topojson.mesh(topo, topo.objects.c, function(a,b){ return a!==b && (a.properties._rg||'')!==(b.properties._rg||''); });
         var dd=path(mesh)||''; if(dd) rgnPath='<path d="'+dd+'" fill="none" stroke="#ffffff" stroke-width="'+(2*sw)+'" stroke-linejoin="round" stroke-linecap="round"/>';
       } }catch(e){ if(window.console) console.warn('png region borders unavailable:', e); }
-      var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+EXPW+'" height="'+EXPH+'" viewBox="0 0 '+EXPW+' '+EXPH+'"><rect width="100%" height="100%" fill="#fbf7f4"/>'+paths+rgnPath+'</svg>';
+      // zoomed regions (same INSETS as the on-screen panel): dashed outline on the main map, and each
+      // region drawn large in the right-hand column; labels are added on the canvas below (Inter)
+      var insSvg='', insLabels=[];
+      if(withIns){ try{
+        var regOfX=function(f){ var o=seatOf(f); var code=o.s&&o.s.code; return code?SEATBASE[code]:null; };
+        var ishare=[0.20,0.27,0.22,0.31], top0=pad, availH=EXPH-pad*2-foot, x0=MAPW, x1=EXPW-pad, y=top0, LBH=Math.round(115*R);
+        insSvg+='<line x1="'+(x0-Math.round(20*R))+'" x2="'+(x0-Math.round(20*R))+'" y1="'+top0+'" y2="'+(top0+availH)+'" stroke="#e2ddd6" stroke-width="'+Math.round(3*R)+'"/>';
+        INSETS.forEach(function(ins,k){ var ih=Math.round(availH*ishare[k]);
+          var feats=g.features.filter(function(f){ return ins.test(regOfX(f)); }); if(feats.length<6){ y+=ih; return; }
+          var fc={type:'FeatureCollection',features:feats};
+          var b0=path.bounds(fc), bp=Math.round(6*R);
+          insSvg+='<rect x="'+(b0[0][0]-bp)+'" y="'+(b0[0][1]-bp)+'" width="'+(b0[1][0]-b0[0][0]+2*bp)+'" height="'+(b0[1][1]-b0[0][1]+2*bp)+'" fill="none" stroke="#6b7280" stroke-width="'+Math.round(3*R)+'" stroke-dasharray="'+Math.round(14*R)+' '+Math.round(10*R)+'"/>';
+          if(k>0) insSvg+='<line x1="'+(x0+Math.round(60*R))+'" x2="'+x1+'" y1="'+y+'" y2="'+y+'" stroke="#e2ddd6" stroke-width="'+Math.round(3*R)+'"/>';
+          var PV=Math.round(24*R);
+          var pj=d3.geoMercator().fitExtent([[x0+Math.round(80*R),y+PV+LBH],[x1,y+ih-PV]],fc), pp=d3.geoPath().projection(pj);
+          var b2=pp.bounds(fc), shH=b2[1][1]-b2[0][1], tp=Math.max(y+PV,y+(ih-(LBH+shH))/2), tr=pj.translate(); pj.translate([tr[0], tr[1]+(tp+LBH)-b2[0][1]]);
+          insLabels.push({t:ins.name.toUpperCase(), x:x0+Math.round(80*R), y:tp+Math.round(40*R)});
+          insSvg+=feats.map(function(ft){ var fill="#e5e7eb"; try{ var o=seatOf(ft); if(o.s) fill=colourFor(o.s); }catch(e){} var d=pp(ft)||''; return d?('<path d="'+d+'" fill="'+fill+'" stroke="#ffffff" stroke-width="'+(1.8*R)+'" stroke-linejoin="round"/>'):''; }).join('');
+          y+=ih; });
+      }catch(e){ if(window.console) console.warn('png insets unavailable:', e); insSvg=''; insLabels=[]; } }
+      var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+EXPW+'" height="'+EXPH+'" viewBox="0 0 '+EXPW+' '+EXPH+'"><rect width="100%" height="100%" fill="#fbf7f4"/>'+paths+rgnPath+insSvg+'</svg>';
       var when=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
       var cap=(mapType==="hex"?"Hex cartogram \u00b7 layout: Automatic Knowledge (CC BY 4.0)":"Constituency projection");
       var title=when;
@@ -1511,6 +1789,9 @@ document.addEventListener('DOMContentLoaded', function(){
         if(mode==='custom'){ cx.strokeStyle='#7c3aed'; cx.lineWidth=Math.round(12*R); var pf=Math.round(20*R); cx.strokeRect(pf,pf,EXPW-2*pf,EXPH-2*pf); }
         function finish(lg){
           cx.textBaseline='alphabetic';
+          cx.textAlign='left'; cx.fillStyle='#6b7280'; cx.font='700 '+Math.round(34*R)+'px '+fontF;
+          insLabels.forEach(function(L){ if(cx.letterSpacing!==undefined) cx.letterSpacing=Math.round(3*R)+'px'; cx.fillText(L.t, L.x, L.y); });
+          if(cx.letterSpacing!==undefined) cx.letterSpacing='0px';
           var rowY=EXPH-Math.round(46*R);            // bottom row baseline, raised to clear the purple frame
           // centred logo with the url centred directly below it
           var lh=0, lw=0;
@@ -1534,8 +1815,8 @@ document.addEventListener('DOMContentLoaded', function(){
   }
   var MARGINCOL={
     WPB:{Safe:'#2853a5',Likely:'#5375b7',Lean:'#7e98c9',Tilt:'#a9badb'}, LAB:{Safe:'#e4003b',Likely:'#e93362',Lean:'#ef6689',Tilt:'#f499b1'},
-    RES:{Safe:'#051e40',Likely:'#374b66',Lean:'#69788c',Tilt:'#9ba5b3'}, CON:{Safe:'#0393d3',Likely:'#35a9dc',Lean:'#68bee5',Tilt:'#9ad4ed'},
-    RFM:{Safe:'#2bc5db',Likely:'#55d1e2',Lean:'#80dce9',Tilt:'#aae8f1'}, LDM:{Safe:'#ff6400',Likely:'#ff7633',Lean:'#ff9866',Tilt:'#ffbb99'},
+    RES:{Safe:'#051e40',Likely:'#374b66',Lean:'#69788c',Tilt:'#9ba5b3'}, CON:{Safe:'#4167d1',Likely:'#6785da',Lean:'#8da4e3',Tilt:'#b3c2ed'},
+    RFM:{Safe:'#17b9d1',Likely:'#45c7da',Lean:'#74d5e3',Tilt:'#a2e3ed'}, LDM:{Safe:'#ff6400',Likely:'#ff7633',Lean:'#ff9866',Tilt:'#ffbb99'},
     GRN:{Safe:'#00a85a',Likely:'#33b97b',Lean:'#66cb9c',Tilt:'#99dcbd'}, SNP:{Safe:'#e6d62e',Likely:'#ebde58',Lean:'#f0e682',Tilt:'#f5efab'},
     PLC:{Safe:'#075d55',Likely:'#397d77',Lean:'#6a9e99',Tilt:'#9cbebb'}, MIN:{Safe:'#cb87ae',Likely:'#d59fbe',Lean:'#e0b7ce',Tilt:'#eacfdf'} };
   function bandOf(m){ return m>=0.15?'Safe':m>=0.10?'Likely':m>=0.05?'Lean':'Tilt'; }
@@ -1547,7 +1828,47 @@ document.addEventListener('DOMContentLoaded', function(){
     if(mapMode==='change'){ return (dw!==r.winner2024)?((PI[dw]&&PI[dw].c)||'#9ca3af'):'#e8e8e4'; }
     if(mapMode==='margin'){ var mc=MARGINCOL[dw]; return mc?mc[classOf(r,seatMaj(r))]:((PI[dw]&&PI[dw].c)||'#9ca3af'); }
     return (PI[dw]&&PI[dw].c)||'#9ca3af'; }
-  function renderMapColors(){ if(!mapDrawn||!mapG) return; var hit=0,tot=0;
+  // ---- second map: hex cartogram beside the geographic map (central projection, wide screens) ----
+  var map2G=null, map2Drawn=false;
+  function dualOn(){ return false; }   // single map (geo/hex toggle); right column = vote share or sliders
+  function drawMap2(){ if(!dualOn()||typeof d3==='undefined') return;
+    if(!hexGeo){ if(window.__HEX__){ hexGeo=window.__HEX__; } else { d3.json(HEX_URL).then(function(j){ hexGeo=j; drawMap2(); }).catch(function(e){ console.error('hex map unavailable:',e); }); return; } }
+    if(!results) return;
+    var c=d3.select('#map-container2'); c.select('svg').remove();
+    var rect=c.node().getBoundingClientRect(); var w=Math.round(rect.width)||600; var h=(rect.height>300?Math.round(rect.height):720);
+    var svg=c.append('svg').attr('width','100%').attr('height',h).attr('viewBox','0 0 '+w+' '+h).attr('role','img').attr('aria-label','Hex cartogram of constituencies coloured by projected winning party');
+    map2G=svg.append('g');
+    var proj=d3.geoIdentity().reflectY(true).fitExtent([[16,16],[w-16,h-16]],hexGeo), path=d3.geoPath().projection(proj);
+    var sk=function(k){ return Math.min(3.4,1.05*Math.pow(k,0.32))+'px'; };
+    svg.call(d3.zoom().scaleExtent([1,40]).on('zoom',function(e){ map2G.attr('transform',e.transform).attr('stroke-width',sk(e.transform.k)); if(!pinned) tip.style.display='none'; }));
+    map2G.attr('stroke-width',sk(1));
+    map2G.selectAll('path.cp2').data(hexGeo.features).enter().append('path').attr('class','cp cp2').attr('d',path).attr('fill','#e5e7eb')
+      .on('mousemove',function(e,d){ if(pinned) return; showTip(e,d,false); })
+      .on('mouseout',function(){ if(!pinned) tip.style.display='none'; })
+      .on('click',function(e,d){ pinned=(pinned&&pinned._d===d)?null:{_d:d,_evt:e}; map2G.selectAll('.cp2').classed('pinned',false); if(mapG) mapG.selectAll('.cp').classed('pinned',false);
+        if(pinned){ d3.select(this).classed('pinned',true); showTip(e,d,true);} else tip.style.display='none'; });
+    map2Drawn=true; renderMap2Colors(); }
+  function renderMap2Colors(){ if(!map2Drawn||!map2G) return;
+    map2G.selectAll('.cp2').attr('fill',function(d){ try{ var o=seatOf(d); return o.s?colourFor(o.s):'#e5e7eb'; }catch(e){ return '#e5e7eb'; } }); }
+  // re-lay out the map panel when the mode or the screen width changes what is shown
+  var lastLayout=null;
+  function syncMapLayout(force){ var lay=dualOn()?'dual':(mode==='custom'?'custom':'single');
+    if(!force && lay===lastLayout) return;
+    // central <-> custom only changes the container's size: no full redraw here (the ResizeObserver
+    // redraws once if, and only if, the map's height actually changed)
+    if(!force && lay!=='dual' && lastLayout!=='dual' && mapDrawn){ lastLayout=lay; return; }
+    lastLayout=lay;
+    if(lay==='dual' && mapType==='hex'){ mapType='geo'; document.querySelectorAll('.mtb[data-t]').forEach(function(x){ x.classList.toggle('active', x.getAttribute('data-t')==='geo'); }); }
+    pinned=null; tip.style.display='none';
+    ensureMapData(function(){ mapDrawn=false; drawMap(); });
+    if(lay==='dual'){ map2Drawn=false; drawMap2(); } else { d3.select('#map-container2').select('svg').remove(); map2Drawn=false; map2G=null; } }
+  (function(){ var mc=document.getElementById('map-container'), lastH=0, t;
+    if(mc && window.ResizeObserver) new ResizeObserver(function(){ var h=Math.round(mc.getBoundingClientRect().height);
+      if(!lastH){ lastH=h; return; } if(Math.abs(h-lastH)<4) return; lastH=h; clearTimeout(t);
+      t=setTimeout(function(){ if(mapDrawn) ensureMapData(function(){ mapDrawn=false; drawMap(); }); },150); }).observe(mc); })();
+  window.addEventListener('resize',function(){ clearTimeout(syncMapLayout._t); syncMapLayout._t=setTimeout(function(){ syncMapLayout(false); if(mapDrawn){ drawInsets(null,null,mapPath); renderMapColors(); } },200); });
+  function renderMapColors(){ renderMap2Colors(); if(!mapDrawn||!mapG) return; var hit=0,tot=0;
+    d3.selectAll('#insetbox .cp').attr('fill',function(d){ try{ var o=seatOf(d); return o.s?colourFor(o.s):'#e5e7eb'; }catch(e){ return '#e5e7eb'; } });
     mapG.selectAll('.cp').attr('fill',function(d){ tot++; try{ var o=seatOf(d); if(!o.s) return '#e5e7eb'; hit++; return colourFor(o.s); }catch(e){ return '#e5e7eb'; } });
     if(window.console&&!renderMapColors._l){ renderMapColors._l=1; console.log('[nowcast] map seats matched '+hit+'/'+tot); } }
 
@@ -1599,19 +1920,52 @@ document.addEventListener('DOMContentLoaded', function(){
     $('coalbar').innerHTML='<div class="majmark"></div>'+order.filter(function(p){return coalSel[p];}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/642)+'%;background:'+PI[p].c+'"></div>'; }).join('');
   }
 
-  var tableBuilt=false, sortCol=null, sortDir=1;
-  function buildTable(){ var tp=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','OTH'];
-    var h='<table><thead><tr><th data-c="name">Constituency</th><th data-c="code">Code</th><th data-c="win">Now</th><th>2024</th>'+tp.map(function(p){return '<th data-c="'+p+'">'+p+'</th>';}).join('')+'</tr></thead><tbody>';
-    results.forEach(function(s){ var dw=dispWin(s); var wc=(PI[dw]||PI.OTH).c, w2=(PI[s.winner2024]||PI.OTH).c;
-      h+='<tr><td>'+s.seatName+'</td><td class="code">'+(s.code||'')+'</td><td class="win"><span style="background:'+wc+';color:'+textOn(wc)+'">'+dw+'</span></td><td class="win"><span style="background:'+w2+';color:'+textOn(w2)+'">'+s.winner2024+'</span></td>'+tp.map(function(p){var v=s.shares[p]||0;return '<td class="sh">'+(v>=0.005?(v*100).toFixed(0)+'%':v>=0.0001?'0%':'&middot;')+'</td>';}).join('')+'</tr>'; });
-    h+='</tbody></table>'; $('table-wrap').innerHTML=h;
-    $('table-wrap').querySelectorAll('th[data-c]').forEach(function(th){ th.addEventListener('click',function(){ sortTable(th.getAttribute('data-c')); }); }); tableBuilt=true; applyTableSearch(); }
-  function sortTable(col,keep){ if(!keep){ sortDir=(sortCol===col)?-sortDir:1; } sortCol=col; var tb=$('table-wrap').querySelector('tbody'); var rows=Array.prototype.slice.call(tb.querySelectorAll('tr'));
-    rows.sort(function(a,b){ if(col==='name'){return a.cells[0].textContent.localeCompare(b.cells[0].textContent)*sortDir;} if(col==='code'){return a.cells[1].textContent.localeCompare(b.cells[1].textContent)*sortDir;} if(col==='win'){return a.cells[2].textContent.localeCompare(b.cells[2].textContent)*sortDir;}
-      var tp=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','OTH']; var i=4+tp.indexOf(col); var av=parseFloat(a.cells[i].textContent)||-1, bv=parseFloat(b.cells[i].textContent)||-1; return (av-bv)*sortDir; });
-    tb.innerHTML=''; rows.forEach(function(r){tb.appendChild(r);}); applyTableSearch(); }
-  function applyTableSearch(){ var el=$('tablesearch'); var q=(el&&el.value||'').trim().toLowerCase(); var tb=$('table-wrap').querySelector('tbody'); if(!tb) return;
-    Array.prototype.slice.call(tb.querySelectorAll('tr')).forEach(function(r){ var nm=r.cells[0].textContent.toLowerCase(), cd=r.cells[1].textContent.toLowerCase(); r.style.display=(!q||nm.indexOf(q)>=0||cd.indexOf(q)>=0)?'':'none'; }); }
+  // ---- constituency table (design and sort logic as on the Holyrood page) ----
+  // A STACK of sort keys, most recent first: sort by Labour share, then by region, and you get the
+  // regions alphabetically with Labour's best seats first inside each. Name is the final tiebreak.
+  var TBL_P=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','OTH'];
+  var REGION_CODE={'North East':'NE','North West':'NW','Yorkshire and the Humber':'YH','East Midlands':'EM','West Midlands':'WM',
+    'East of England':'EA','Greater London':'LD','South East':'SE','South West':'SW','Wales':'WA','Scotland':'SC'};
+  var tableBuilt=false, tableSort=[{k:'name',dir:1}], TABLE_SORT_DEPTH=4;
+  function darkenForText(bg){ var r=parseInt(bg.substr(1,2),16), g=parseInt(bg.substr(3,2),16), b=parseInt(bg.substr(5,2),16);
+    var lum=(0.299*r+0.587*g+0.114*b)/255; if(lum<=0.62) return bg; var k=0.45/lum;
+    var h=function(v){ v=Math.round(v*k).toString(16); return v.length<2?'0'+v:v; }; return '#'+h(r)+h(g)+h(b); }
+  function tblRegion(s){ var b=s.code&&SEATBASE[s.code]; return (b&&b.region)||''; }
+  function sortValue(s,k){
+    if(k==='name') return s.seatName; if(k==='region') return tblRegion(s); if(k==='win') return dispWin(s); if(k==='w24') return s.winner2024||'';
+    if(k==='margin') return seatMaj(s); return (s.shares&&s.shares[k])||0; }
+  function cmpOn(a,b,key){ var x=sortValue(a,key.k), y=sortValue(b,key.k);
+    if(typeof x==='string') return key.dir*x.localeCompare(y); return x===y?0:key.dir*(x-y); }
+  function buildTable(){
+    var wrap=$('table-wrap');
+    if(!wrap.querySelector('table')){
+      wrap.innerHTML='<table id="constitTable"><thead><tr><th data-k="name" data-t="text">Constituency</th><th data-k="region" data-t="text">Region</th>'+
+        '<th data-k="w24" data-t="text">2024</th><th data-k="win" data-t="text">Winner</th>'+
+        TBL_P.map(function(p){ return '<th data-k="'+p+'" data-t="num">'+(p==='MIN'?'Ind':p==='OTH'?'Oth':p)+'</th>'; }).join('')+
+        '<th data-k="margin" data-t="num">Maj (pts)</th></tr></thead><tbody id="constitBody"></tbody></table>';
+      // text columns open A-Z, number columns biggest first; clicking the primary column reverses it,
+      // any other column becomes primary and the previous sort survives as the tiebreak
+      wrap.querySelectorAll('th').forEach(function(th){ th.addEventListener('click',function(){ var k=th.getAttribute('data-k');
+        if(tableSort.length && tableSort[0].k===k) tableSort[0].dir=-tableSort[0].dir;
+        else tableSort=[{k:k, dir:th.getAttribute('data-t')==='num'?-1:1}].concat(tableSort.filter(function(e){ return e.k!==k; })).slice(0,TABLE_SORT_DEPTH);
+        buildTable(); }); });
+    }
+    var rows=results.slice().sort(function(a,b){ for(var i=0;i<tableSort.length;i++){ var r=cmpOn(a,b,tableSort[i]); if(r) return r; } return a.seatName.localeCompare(b.seatName); });
+    wrap.querySelectorAll('th').forEach(function(th){ var k=th.getAttribute('data-k'), at=-1;
+      for(var i=0;i<tableSort.length;i++) if(tableSort[i].k===k){ at=i; break; }
+      th.classList.toggle('sorted-asc', at>=0 && tableSort[at].dir===1); th.classList.toggle('sorted-desc', at>=0 && tableSort[at].dir===-1);
+      th.classList.toggle('sorted-sub', at>0); if(at>0) th.setAttribute('data-rank',String(at+1)); else th.removeAttribute('data-rank'); });
+    var pill=function(w){ var c=(PI[w]||PI.OTH).c; return '<span class="winpill" style="background:'+c+';color:'+textOn(c)+'">'+w+'</span>'; };
+    $('constitBody').innerHTML=rows.map(function(s){ var dw=dispWin(s), rg=tblRegion(s), wc=(PI[dw]||PI.OTH).c;
+      var cells=TBL_P.map(function(p){ var v=((s.shares&&s.shares[p])||0)*100, win=(p===s.winner);
+        return '<td'+(win?' style="font-weight:800; color:'+darkenForText(wc)+'"':'')+'>'+(v>=0.05?v.toFixed(1)+'%':'&mdash;')+'</td>'; }).join('');
+      return '<tr data-code="'+(s.code||'')+'"><td>'+s.seatName+'</td><td class="rgn" title="'+rg+'" data-region="'+rg+'">'+(REGION_CODE[rg]||rg)+'</td>'+
+        '<td>'+(s.winner2024?pill(s.winner2024):'&mdash;')+'</td><td>'+pill(dw)+'</td>'+cells+'<td>'+(seatMaj(s)*100).toFixed(1)+'</td></tr>'; }).join('');
+    tableBuilt=true; applyTableSearch(); }
+  function applyTableSearch(){ var el=$('tablesearch'); var q=(el&&el.value||'').trim().toLowerCase(); var tb=$('constitBody'); if(!tb) return;
+    Array.prototype.slice.call(tb.querySelectorAll('tr')).forEach(function(r){
+      var hay=(r.cells[0].textContent+' '+r.cells[1].textContent+' '+(r.cells[1].getAttribute('data-region')||'')+' '+(r.getAttribute('data-code')||'')).toLowerCase();
+      r.style.display=(!q||hay.indexOf(q)>=0)?'':'none'; }); }
   $('toggle-table').addEventListener('click',function(){ var w=$('table-wrap'); if(w.style.display==='block'){ w.style.display='none'; this.textContent='Show table'; } else { if(!tableBuilt) buildTable(); w.style.display='block'; this.textContent='Hide table'; } });
   function downloadTableCSV(){ if(!results) return; var tp=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','OTH'];
     var rows=[['Constituency','Code','Winner','2024'].concat(tp)];
@@ -1626,6 +1980,7 @@ document.addEventListener('DOMContentLoaded', function(){
   if(!tableBuilt) buildTable(); $('table-wrap').style.display='block'; $('toggle-table').textContent='Hide table';
 
   document.querySelectorAll('.mmb').forEach(function(b){ b.addEventListener('click',function(){ mapMode=b.getAttribute('data-m'); document.querySelectorAll('.mmb').forEach(function(x){x.classList.remove('active');}); b.classList.add('active'); renderMapColors(); }); });
+  (function(){ var rb=$('mapreset'); if(rb) rb.addEventListener('click',function(){ if(mapSvg&&mapZoom) mapSvg.transition().duration(500).call(mapZoom.transform, d3.zoomIdentity); }); })();
   document.querySelectorAll('.mtb').forEach(function(b){ b.addEventListener('click',function(){ var t=b.getAttribute('data-t'); if(!t || t===mapType) return;
     document.querySelectorAll('.mtb').forEach(function(x){x.classList.remove('active');}); b.classList.add('active');
     mapType=t; pinned=null; tip.style.display='none';
