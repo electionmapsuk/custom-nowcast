@@ -173,6 +173,7 @@
   .field label{display:block; font-size:.66rem; text-transform:uppercase; letter-spacing:.08em; font-weight:800; color:var(--faint); margin-bottom:5px;}
   .field input[type=text]{width:100%; height:36px; padding:0 10px; border:1px solid var(--line); border-radius:8px; font-weight:700; text-transform:uppercase; background:#fff;}
   .field input[type=color]{width:100%; height:38px; border:1px solid var(--line); border-radius:8px; padding:2px; background:#fff; cursor:pointer;}
+  .sidepick{display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:5px;} .sidepick .mgb{height:34px; font-size:.7rem;}
   .modal .acts{display:flex; gap:8px; justify-content:flex-end; margin-top:16px;}
   #toast{position:fixed; left:50%; bottom:24px; transform:translateX(-50%) translateY(20px); background:var(--tipbg); color:#fff; font-weight:700; font-size:.8rem; padding:9px 16px; border-radius:9px; opacity:0; pointer-events:none; transition:all .2s; z-index:120;}
   #toast.on{opacity:1; transform:translateX(-50%);}
@@ -296,6 +297,10 @@
     <div class="field"><label for="m-abbr">Abbreviation (max 4)</label><input type="text" id="m-abbr" maxlength="4" placeholder="e.g. MRLP"></div>
     <div class="field"><label for="m-name">Full name</label><input type="text" id="m-name" maxlength="28" placeholder="e.g. Monster Raving Loony" style="text-transform:none"></div>
     <div class="field"><label for="m-color">Colour</label><input type="color" id="m-color" value="#b300b3"></div>
+    <div class="field"><label>Position in the seat bar</label>
+      <div class="sidepick" id="m-side" role="radiogroup">
+        <button type="button" class="mgb" data-s="L">Left of centre</button><button type="button" class="mgb" data-s="C">Centrist</button><button type="button" class="mgb" data-s="R">Right of centre</button>
+      </div></div>
     <div class="acts">
       <button class="btn" id="m-reset" style="margin-right:auto; display:none;">Reset colour</button>
       <button class="btn" id="m-cancel">Cancel</button>
@@ -328,7 +333,11 @@ document.addEventListener('DOMContentLoaded', function(){
   var partyInfo = JSON.parse(JSON.stringify(DEFAULTS));
   var partyOrder = ['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','YRP','WPB','IND','SF','DUP','ALL','SDLP','UUP','TUV','OTH','SPKR'];
   // Nowcast seat-bar spectrum, left → right; custom parties sit with Others
-  var SPECTRUM = ['YRP','SF','GRN','SNP','PLC','SDLP','LAB','ALL','LDM','IND','OTH','WPB','SPKR','UUP','CON','DUP','TUV','RFM','RES'];
+  // seat bar: left-of-centre parties fill from the left edge (largest first), right-of-centre from the right edge
+  // (largest outermost), centrists sit after the left bloc; unpainted seats are the gap in between
+  var SIDE = {LAB:'L',LDM:'L',GRN:'L',SNP:'L',PLC:'L',YRP:'L',WPB:'L',SF:'L',SDLP:'L',ALL:'L',
+              IND:'C',OTH:'C',SPKR:'C', CON:'R',RFM:'R',RES:'R',DUP:'R',UUP:'R',TUV:'R'};
+  function sideOf(p){ return (partyInfo[p]&&partyInfo[p].s)||SIDE[p]||'C'; }
   // Nowcast margin shades: Likely / Lean / Tilt = 20% / 40% / 60% towards white
   var TINT = {Safe:0, Likely:0.2, Lean:0.4, Tilt:0.6};
   var MARGINS = ['Tilt','Lean','Likely','Safe'];
@@ -447,18 +456,22 @@ document.addEventListener('DOMContentLoaded', function(){
     $('m-abbr').value=p||''; $('m-abbr').disabled=!!p;
     $('m-name').value=p?pname(p):'';
     $('m-color').value=p?toHex(rgbOf(pc(p))):'#b300b3';
+    setSidePick(p?sideOf(p):'C');
     $('m-ok').textContent=p?'Save':'Add party';
     $('m-reset').style.display=(p&&DEFAULTS[p])?'':'none';
     $('party-modal').classList.add('on'); setTimeout(function(){ (p?$('m-color'):$('m-abbr')).focus(); },30); }
   function closeModal(){ $('party-modal').classList.remove('on'); }
+  var pickedSide='C';
+  function setSidePick(sd){ pickedSide=sd; document.querySelectorAll('#m-side .mgb').forEach(function(b){ b.classList.toggle('active',b.dataset.s===sd); }); }
+  document.querySelectorAll('#m-side .mgb').forEach(function(b){ b.addEventListener('click',function(){ setSidePick(b.dataset.s); }); });
   $('m-cancel').addEventListener('click',closeModal);
   $('party-modal').addEventListener('click',function(e){ if(e.target===this) closeModal(); });
   $('m-reset').addEventListener('click',function(){ if(editing&&DEFAULTS[editing]) $('m-color').value=toHex(rgbOf(DEFAULTS[editing].c)); });
   $('m-ok').addEventListener('click',function(){
     var abbr=(editing||$('m-abbr').value).toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4), col=$('m-color').value, nm=$('m-name').value.trim();
     if(!abbr){ $('m-abbr').focus(); return; }
-    if(!partyInfo[abbr]){ partyInfo[abbr]={n:nm||abbr,c:col}; var i=partyOrder.indexOf('OTH'); partyOrder.splice(i>-1?i:partyOrder.length,0,abbr); }
-    else { partyInfo[abbr].c=col; if(nm) partyInfo[abbr].n=nm; }
+    if(!partyInfo[abbr]){ partyInfo[abbr]={n:nm||abbr,c:col,s:pickedSide}; var i=partyOrder.indexOf('OTH'); partyOrder.splice(i>-1?i:partyOrder.length,0,abbr); }
+    else { partyInfo[abbr].c=col; if(nm) partyInfo[abbr].n=nm; if(pickedSide!==(SIDE[abbr]||'C')) partyInfo[abbr].s=pickedSide; else delete partyInfo[abbr].s; }
     closeModal(); buildPalette(); setBrush(abbr); refresh();
   });
 
@@ -575,14 +588,15 @@ document.addEventListener('DOMContentLoaded', function(){
   function tally(){ var t={}, n=0; Object.keys(own).forEach(function(c){ var o=own[c]; if(!t[o.p]) t[o.p]={total:0,Safe:0,Likely:0,Lean:0,Tilt:0,gain:0,loss:0}; t[o.p].total++; t[o.p][o.m||'Safe']++; n++;
       var b=base24[c]; if(b && b!==o.p){ t[o.p].gain++; if(!t[b]) t[b]={total:0,Safe:0,Likely:0,Lean:0,Tilt:0,gain:0,loss:0}; t[b].loss++; } });
     return {t:t, n:n}; }
-  function specIdx(p){ var i=SPECTRUM.indexOf(p); return i<0?SPECTRUM.indexOf('OTH')+0.5:i; }
+
   function renderTotals(){
     var T=tally(), t=T.t, n=T.n; $('painted-count').textContent=n;
     var parties=Object.keys(t).filter(function(p){ return t[p].total>0; });
     // seat bar, Nowcast spectrum order; unpainted seats fill the remainder
     var segs=$('segs'); segs.innerHTML='';
-    parties.slice().sort(function(a,b){ return specIdx(a)-specIdx(b); }).forEach(function(p){
-      var d=document.createElement('div'); d.className='seg'; d.style.width=(t[p].total/650*100)+'%'; d.style.background=pc(p); d.title=pname(p)+': '+t[p].total; segs.appendChild(d); });
+    var bySize=function(a,b){ return t[b].total-t[a].total; }, seg=function(p){ var d=document.createElement('div'); d.className='seg'; d.style.width=(t[p].total/650*100)+'%'; d.style.background=pc(p); d.title=pname(p)+': '+t[p].total; segs.appendChild(d); };
+    var L=parties.filter(function(p){ return sideOf(p)==='L'; }).sort(bySize), C=parties.filter(function(p){ return sideOf(p)==='C'; }).sort(bySize), Rt=parties.filter(function(p){ return sideOf(p)==='R'; }).sort(bySize).reverse();
+    L.forEach(seg); C.forEach(seg); var gap=document.createElement('div'); gap.style.flex='1'; segs.appendChild(gap); Rt.forEach(seg);
     // headline
     var ranked=parties.filter(function(p){ return p!=='SPKR'; }).sort(function(a,b){ return t[b].total-t[a].total; });
     var hp=$('hl-party'), hm=$('hl-maj');
@@ -734,7 +748,7 @@ document.addEventListener('DOMContentLoaded', function(){
     rd.onload=function(e){ try{ importProject(JSON.parse(e.target.result)); toast('Project loaded'); }catch(err){ console.error(err); toast('Sorry, that file could not be read'); } }; rd.readAsText(f); ev.target.value=''; });
   function importProject(d){
     pushUndo(); var next={}, miss=0, info=d.partyInfo;
-    if(info) Object.keys(info).forEach(function(p){ var v=info[p]; partyInfo[p]={n:v.n||v.name||(partyInfo[p]&&partyInfo[p].n)||p, c:v.c||v.color||pc(p)}; });
+    if(info) Object.keys(info).forEach(function(p){ var v=info[p]; partyInfo[p]={n:v.n||v.name||(partyInfo[p]&&partyInfo[p].n)||p, c:v.c||v.color||pc(p)}; if(v.s) partyInfo[p].s=v.s; });
     if(d.partyOrder) partyOrder=d.partyOrder.filter(function(p){ return partyInfo[p]; });
     var src=(d.formatVersion>=2)?(d.ownership||{}):d;
     Object.keys(src).forEach(function(k){ var v=src[k], c=(/^[EWSN]\d{8}$/.test(k)&&nameByCode[k])?k:codeFromName(k); if(!c){ miss++; return; }
@@ -747,7 +761,7 @@ document.addEventListener('DOMContentLoaded', function(){
   function encodeShare(){ var used=partyOrder.filter(function(p){ return partyInfo[p]; }).slice(0,61);
     var s=codes.map(function(c){ var o=own[c]; var i=o?used.indexOf(o.p):-1; return i<0?'-':ALPH[i]; }).join('');
     var m=marginMode?codes.map(function(c){ var o=own[c]; return o?String(MARGINS.indexOf(o.m)):'3'; }).join('').replace(/3+$/,''):'';
-    var custom={}; used.forEach(function(p){ if(!DEFAULTS[p]||partyInfo[p].c!==DEFAULTS[p].c) custom[p]=partyInfo[p]; });
+    var custom={}; used.forEach(function(p){ if(!DEFAULTS[p]||partyInfo[p].c!==DEFAULTS[p].c||partyInfo[p].s) custom[p]=partyInfo[p]; });
     var q='v=1&o='+used.join('.')+'&s='+s.replace(/-+$/,''); if(m) q+='&m='+m; if(Object.keys(custom).length) q+='&c='+encodeURIComponent(JSON.stringify(custom)); return q; }
   function decodeShare(h){ var q={}; h.replace(/^#/,'').split('&').forEach(function(kv){ var i=kv.indexOf('='); if(i>0) q[kv.slice(0,i)]=kv.slice(i+1); }); if(q.v!=='1'||!q.s) return false;
     var used=q.o.split('.'); if(q.c){ try{ var cu=JSON.parse(decodeURIComponent(q.c)); Object.keys(cu).forEach(function(p){ partyInfo[p]=cu[p]; }); }catch(e){} }
