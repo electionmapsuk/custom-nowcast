@@ -599,7 +599,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var have24=Object.keys(base24).length>0;
     cards.forEach(function(p){ var c=pc(p), d=document.createElement('div'); d.className='tot'; d.style.background=c; d.style.color=ink(c);
       var net=t[p].gain-t[p].loss, html='<div class="nm" title="'+pname(p)+'">'+p+'</div><div class="n">'+t[p].total+'</div>';
-      if(have24 && p!=='SPKR') html+='<div class="ch" title="'+t[p].gain+' gains, '+t[p].loss+' losses vs 2024 in painted seats">'+(net>0?'+':net<0?'−':'±')+Math.abs(net)+'</div>';
+      if(have24) html+='<div class="ch" title="'+t[p].gain+' gains, '+t[p].loss+' losses vs 2024 in painted seats">'+(net>0?'+':net<0?'−':'±')+Math.abs(net)+'</div>';
       if(marginMode){ html+='<div class="mbar">'+MARGINS.map(function(m){ var k=t[p][m]; if(!k) return ''; var cc=tint(c,m); return '<div style="flex:'+k+';background:'+cc+';color:'+ink(cc)+'" title="'+m+': '+k+'">'+(k/t[p].total>=0.16?k:'')+'</div>'; }).join('')+'</div>'; }
       d.innerHTML=html; strip.appendChild(d); });
   }
