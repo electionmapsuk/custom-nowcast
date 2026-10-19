@@ -558,8 +558,8 @@
               <div class="adv-control-group">
                 <label>Smoothing window</label>
                 <div style="display:flex; align-items:center; gap:8px; flex:1; margin-left:10px;">
-                  <input type="range" id="adv-window-slider" class="adv-slider" min="7" max="84" step="7" value="56">
-                  <span id="adv-window-val" style="font-weight:700; width:38px; text-align:right;">56 d</span>
+                  <input type="range" id="adv-window-slider" class="adv-slider" min="7" max="84" step="7" value="70">
+                  <span id="adv-window-val" style="font-weight:700; width:38px; text-align:right;">70 d</span>
                 </div>
               </div>
               <div class="adv-control-group"><label>Accuracy weighting</label><input type="checkbox" id="adv-weighted" checked></div>
@@ -584,7 +584,7 @@
           </div>
           <div class="methodology-item">
             <span class="methodology-title">3. Time-based kernel smoothing (LOESS)</span>
-            <p class="methodology-desc">The trendline is a tricube-weighted local average over a 56-day window &mdash; wide, because Holyrood polling is sparse enough that a narrow window would let a single poll swing the average. Each vote is smoothed separately and anchored on the actual 7 May 2026 result, so both lines start from a known point.</p>
+            <p class="methodology-desc">The trendline is a tricube-weighted local average over a 70-day window &mdash; wide, because Holyrood polling is sparse enough that a narrow window would let a single poll swing the average. Each vote is smoothed separately and anchored on the actual 7 May 2026 result, so both lines start from a known point.</p>
           </div>
           <div class="methodology-item">
             <span class="methodology-title">4. Outlier suppression (bisquare)</span>
@@ -4708,6 +4708,9 @@ document.addEventListener('DOMContentLoaded', function(){
 (function(){
   var SAMPLE_DATA = false;
   var POLLS = [
+    { pollster:'More in Common', start:'2026-10-09', end:'2026-10-13', weight:66,
+      C:{ SNP:36, LAB:21, RFM:15, GRN:3,  CON:12, LDM:10 },
+      L:{ SNP:30, LAB:20, RFM:17, GRN:7,  CON:13, LDM:10 } },
     { pollster:'Survation', start:'2026-08-13', weight:67,
       C:{ SNP:37, LAB:17, RFM:18, GRN:5,  CON:11, LDM:10 },
       L:{ SNP:31, LAB:17, RFM:18, GRN:9,  CON:12, LDM:11 } },
@@ -4745,9 +4748,9 @@ document.addEventListener('DOMContentLoaded', function(){
   var VOTES = { C:'Constituency', L:'Regional list' };
   var FONT = 'Inter, system-ui, sans-serif';
   var active = {
-    // 56 days rather than the GB page's 35: Holyrood polling is sparse, and a narrow window
+    // 70 days rather than the GB page's 35: Holyrood polling is sparse, and a narrow window
     // lets one poll dominate the average (and the central projection that reads off it).
-    LOESS_WINDOW_DAYS: 56, REJECT_OUTLIERS: true, WEIGHTED: true, FREQUENCY_BALANCING: true,
+    LOESS_WINDOW_DAYS: 70, REJECT_OUTLIERS: true, WEIGHTED: true, FREQUENCY_BALANCING: true,
     START_DATE: CONFIG.ELECTION_2026, END_DATE: null,
     EXCLUDED_POLLSTERS: new Set(), HIDDEN_PARTIES: new Set()
   };
