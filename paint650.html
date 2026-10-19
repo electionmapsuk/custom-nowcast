@@ -19,6 +19,7 @@
   body{margin:0; background:var(--bg); color:var(--ink); font-family:'Inter',system-ui,sans-serif !important; -webkit-font-smoothing:antialiased;}
   button,input,select{font-family:inherit;}
   .wrap{max-width:1120px; margin:0 auto; padding:24px 20px 80px;}
+  html.embedded,html.embedded body{overflow:hidden;} html.embedded .wrap{padding-bottom:12px;}
   .masthead{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:14px;}
   .masthead h1{font-size:1.55rem; font-weight:900; letter-spacing:-0.03em; margin:0;}
   .modepill{font-size:.7rem; font-weight:800; text-transform:uppercase; letter-spacing:.06em; padding:6px 11px; border-radius:7px; background:#eef2f2; color:var(--accent);}
@@ -835,7 +836,9 @@ document.addEventListener('DOMContentLoaded', function(){
   }
 
   // iframe embeds (Squarespace): tell the parent page our height so it can size the frame with no inner scrollbar
-  (function(){ if(window.parent===window) return; var last=0, post=function(){ var h=document.documentElement.scrollHeight; if(Math.abs(h-last)>2){ last=h; try{ window.parent.postMessage({paint650Height:h},'*'); }catch(e){} } };
+  (function(){ if(window.parent===window) return; document.documentElement.classList.add('embedded');
+    // measure the content itself, not the document: inside a tall iframe the document is never shorter than the frame, so it could only grow
+    var last=0, post=function(){ var w=document.querySelector('.wrap'); var h=Math.ceil(w.getBoundingClientRect().bottom+(window.scrollY||0)); if(Math.abs(h-last)>2){ last=h; try{ window.parent.postMessage({paint650Height:h},'*'); }catch(e){} } };
     if(window.ResizeObserver) new ResizeObserver(post).observe(document.body); window.addEventListener('load',post); setTimeout(post,500); })();
 
   // ---------------- boot ----------------
