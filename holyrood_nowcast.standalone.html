@@ -592,7 +592,7 @@
           </div>
           <div class="methodology-item">
             <span class="methodology-title">5. The Green constituency adjustment</span>
-            <p class="methodology-desc">Pollsters ask every respondent how they would vote locally, including in the many seats the Greens do not contest &mdash; they stood in six of 73 in 2026. The chart shows what the polls found, but the figure fed to the projection is <b>the Green constituency average divided by three</b>, which is roughly what that question has historically converted to once candidacy is accounted for. No other party is adjusted.</p>
+            <p class="methodology-desc">Pollsters ask every respondent how they would vote locally, including in the many seats the Greens do not contest &mdash; they stood in six of 73 in 2026. The chart shows what the polls found, but the figure fed to the projection is <b>40% of the Green constituency average</b>, which is roughly what that question has historically converted to once candidacy is accounted for. No other party is adjusted.</p>
           </div>
         </div>
       </div>
@@ -4735,7 +4735,7 @@ document.addEventListener('DOMContentLoaded', function(){
   // Greens did not contest in 2026, so their constituency polling is not a share the model can
   // use as it stands. The chart shows the polls untouched; the figure handed to the projection
   // is this share of it. Constituency vote only, Greens only.
-  var GRN_CONST_FACTOR = 1/3;
+  var GRN_CONST_FACTOR = 0.4;   // was 1/3
 
   var PARTIES = [
     { key:'SNP', color:'#e6d62e', label:'SNP' },
