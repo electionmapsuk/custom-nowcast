@@ -30,8 +30,115 @@
   .fullspan{grid-column:1 / -1;}
   .r2grid{display:grid; grid-template-columns:minmax(0,1fr) 296px; gap:10px 24px; align-items:stretch; margin-top:-20px;}
   .r2grid #map-container{grid-column:1;} .r2grid .slidersbox{grid-column:2;} .r2grid .mapcredit{grid-column:1;}
+  /* right of the map: the projected vote share in the central projection; the sliders in custom
+     mode, when the vote share block drops below the map and runs full width */
+  body:not(.custom) .slidersbox{display:none;}
+  .r2grid #map-container{grid-row:2;}
+  .r2grid .vsbox{grid-column:2; grid-row:2; display:flex; flex-direction:column;}
+  .r2grid .mapcredit{grid-row:3;}
+  body.custom .r2grid .vsbox{grid-column:1 / -1; grid-row:4;}
+  /* zoomed insets of dense urban areas: their own panel between the map and the right-hand column (wide screens) */
+  .insetbox{display:none; overflow:hidden;} .panel.insetbox{padding:0;}   /* .panel's 20px padding was overriding padding:0 and squeezing the drawing */ .insetbox svg{display:block; max-width:none;}
+  @media(min-width:1040px){
+    .r2grid{grid-template-columns:minmax(0,1fr) 250px 296px;}
+    body:not(.custom) .r2grid{grid-template-columns:minmax(0,1fr) 250px 296px;}
+    .r2grid .insetbox{display:block; grid-column:2; grid-row:2;}
+    .r2grid .vsbox, .r2grid .slidersbox{grid-column:3;}
+    body.custom .r2grid .vsbox{grid-column:1 / -1;}
+    /* map = Geographic + Hex buttons (incl. the 8px gap); insets sit under Download PNG */
+    .r2grid, body:not(.custom) .r2grid{grid-template-columns:calc((100% - 320px) * 2 / 3 - 8px / 3) minmax(0,1fr) 296px;}
+    .r2grid .insetbox{margin-left:-16px; contain:size;}
+    body.hexmap .r2grid .insetbox{display:none;} body.hexmap .r2grid #map-container{grid-column:1 / 3;}   /* hex map: no insets, map takes their space */   /* likewise: the insets svg must not push the row taller */
+    .r2grid #map-container{height:auto; min-height:650px; align-self:stretch; contain:size;}
+    /* the row is always exactly the map's 650px: nothing beside it may push it taller, so switching
+       to User Input changes no heights. The vote share cards shrink to fit; the sliders are compacted. */
+    body:not(.custom) .r2grid .vsbox, .r2grid .slidersbox{contain:size; overflow:hidden;}
+    .r2grid .slidersbox{padding:16px 18px; display:flex; flex-direction:column;}
+    .r2grid .slidersbox h2{margin-bottom:10px;}
+    /* every slider row, the total line and the Nations label share the panel height evenly (one flex column,
+       so the gaps are identical everywhere incl. SNP-Plaid); the panel itself never grows */
+    .r2grid .slidersbox{justify-content:space-between;}
+    .r2grid .slidersbox #sliders, .r2grid .slidersbox #sliders-nat{display:contents;}
+    .r2grid .slidersbox .sld{margin-bottom:0;}
+    .r2grid .slidersbox .sld .top{margin-bottom:2px;}
+    .r2grid .slidersbox .sld .lab{font-size:.82rem;}
+    .r2grid .slidersbox .sld .val input{padding:2px 6px; font-size:.84rem;}
+    .r2grid .slidersbox input[type=range]{height:9px;}
+    .r2grid .slidersbox input[type=range]::-webkit-slider-thumb{width:20px; height:20px;}
+    .r2grid .slidersbox input[type=range]::-moz-range-thumb{width:20px; height:20px;}
+    .r2grid .slidersbox .total-line{margin-top:6px; padding-top:8px;}
+    .r2grid .slidersbox .group-label{margin:10px 0 8px; padding-top:10px;}   /* size from the row, never from the drawn svg (else it grows on every redraw) */
+  }
+  .totstrip.vsstrip{margin-top:0; grid-template-columns:repeat(2,minmax(0,1fr));}
+  .vsbox .totstrip.vsstrip .tot .n{font-size:1.5rem;}
+  /* central projection, beside the map: the cards stretch to fill the whole panel height */
+  @media(min-width:881px){
+    body:not(.custom) .vsbox .totstrip.vsstrip{flex:1; grid-auto-rows:1fr; align-content:stretch;}
+    body:not(.custom) .vsbox .vsstrip .tot{display:flex; flex-direction:column; justify-content:center; align-items:flex-start;}
+    body:not(.custom) .vsbox .vsstrip .tot .nm{font-size:.85rem;}
+    body:not(.custom) .vsbox .totstrip.vsstrip .tot .n{font-size:1.8rem;}
+    body:not(.custom) .vsbox .vsstrip .tot .ch{font-size:.85rem; margin-top:6px;}
+  }
+  body.custom .totstrip.vsstrip{grid-template-columns:repeat(var(--vsn,8),minmax(0,1fr));}
+  body.custom .vsbox .totstrip.vsstrip .tot .n{font-size:1.6rem;}
+  /* tablet / mobile: the map controls join the main grid so the User Input + Share buttons can sit
+     directly under the map. Order: controls, map (+ vote share beside it on tablets), buttons, credit,
+     sliders, vote share. */
+  @media(max-width:880px){
+    .r2grid .topctrls{display:contents;}
+    .r2grid .topctrls>*{grid-column:1 / -1 !important; grid-row:auto !important;}
+    .r2grid #map-container{order:1;}
+    .r2grid .topctrls .modegrp, .r2grid .topctrls #copied{order:2; margin:0;}
+    .r2grid .mapcredit{order:3; grid-column:1 / -1 !important;}
+    .r2grid .slidersbox{order:4;}
+    .r2grid .vsbox{order:5;}
+  }
+  @media(max-width:880px){ .r2grid>*{grid-row:auto !important;} .totstrip.vsstrip, body.custom .totstrip.vsstrip{grid-template-columns:repeat(4,minmax(0,1fr));} }
+  @media(max-width:480px){ .totstrip.vsstrip, body.custom .totstrip.vsstrip{grid-template-columns:repeat(2,minmax(0,1fr));} }
+  /* tablets, central projection: the vote share stays beside the map (narrower column, cards fill its height) */
+  @media(min-width:641px) and (max-width:880px){
+    body:not(.custom) .r2grid{grid-template-columns:minmax(0,1fr) 210px; column-gap:16px;}
+    body:not(.custom) .r2grid #map-container{grid-column:1 !important;}
+    body:not(.custom) .r2grid .vsbox{grid-column:2 !important; order:1 !important; contain:size; overflow:hidden; padding:14px;}
+    body:not(.custom) .vsbox h2{margin-bottom:10px;}
+    body:not(.custom) .vsbox .totstrip.vsstrip{grid-template-columns:repeat(2,minmax(0,1fr)); flex:1; grid-auto-rows:1fr; align-content:stretch; gap:6px;}
+    body:not(.custom) .vsbox .vsstrip .tot{display:flex; flex-direction:column; justify-content:center; align-items:flex-start; padding:8px 9px;}
+    body:not(.custom) .vsbox .totstrip.vsstrip .tot .n{font-size:1.3rem;}
+  }
+  /* tablets, User Input: the sliders take the vote share's place beside the map (compacted to the
+     map's height); the vote share drops below, full width */
+  @media(min-width:641px) and (max-width:880px){
+    body.custom .r2grid{grid-template-columns:minmax(0,1fr) 210px; column-gap:16px;}   /* same width as the vote share column */
+    body.custom .r2grid #map-container{grid-column:1 !important;}
+    body.custom .r2grid .slidersbox{grid-column:2 !important; order:1 !important; contain:size; overflow:auto; padding:12px 14px;}
+    body.custom .r2grid .vsbox{grid-column:1 / -1 !important;}
+    body.custom .slidersbox h2{margin-bottom:8px;}
+    body.custom .r2grid .slidersbox{display:flex; flex-direction:column; justify-content:space-between;}
+    body.custom .slidersbox #sliders, body.custom .slidersbox #sliders-nat{display:contents;}
+    body.custom .slidersbox .sld{margin-bottom:0;}
+    body.custom .slidersbox .sld .top{margin-bottom:1px;}
+    body.custom .slidersbox .sld .lab{font-size:.78rem; gap:6px;}
+    body.custom .slidersbox .sld .val input{width:56px; padding:2px 4px; font-size:.76rem;}
+    body.custom .slidersbox input[type=range]{height:8px;}
+    body.custom .slidersbox input[type=range]::-webkit-slider-thumb{width:18px; height:18px;}
+    body.custom .slidersbox input[type=range]::-moz-range-thumb{width:18px; height:18px;}
+    body.custom .slidersbox .total-line{margin-top:4px; padding-top:6px; font-size:.74rem;}
+    body.custom .slidersbox .group-label{margin:8px 0 6px; padding-top:8px;}
+  }
   .topctrls{grid-column:1 / -1; display:grid; grid-template-columns:minmax(0,1fr) 296px; column-gap:24px; row-gap:10px; align-items:start;}
   .topctrls > *{margin:0; min-width:0;}
+  @media(min-width:881px){ .topctrls .modegrp #share{order:-1;} }   /* wide screens: Share on top, Switch to User Input below */
+  /* wide screens: the two buttons sit on the same grid rows as the search box and the map-type buttons
+     (subgrid), so Share is exactly as tall as the search box and lines up with it */
+  @media(min-width:881px){
+    .topctrls .mapsearch{margin:0;}
+    .r2grid .topctrls .modegrp{display:contents;}   /* buttons become items of the main controls grid itself: same rows as the search box / map buttons */
+    .r2grid .topctrls .modegrp #share{grid-column:2; grid-row:3; align-self:end;} .r2grid .topctrls .modegrp #modebtn{grid-column:2; grid-row:4; align-self:end;}
+  }
+  /* fixed, identical heights (border-box) for the search box and all the map-control buttons */
+  .topctrls .mapsearch input, .topctrls .modegrp button, .topctrls .mapgrp button{height:38px !important; min-height:38px !important; max-height:38px !important; box-sizing:border-box !important; padding-top:0 !important; padding-bottom:0 !important; border-width:1px !important; line-height:normal; margin:0;}
+  .topctrls .modegrp button{flex:1 1 0;} .topctrls .mapsearch input{display:block;}   /* block input: no stray line-height gap under it */
+  @media(min-width:881px){ .r2grid .topctrls .modegrp button{flex:none; width:100%;} }
   .topctrls .section-h{grid-column:1; grid-row:1;}
   .topctrls .mapmodes{grid-column:1; grid-row:2;}
   .topctrls .mapsearch{grid-column:1; grid-row:3;}
@@ -48,10 +155,14 @@
   body:not(.custom) .sld{opacity:.55;}
   .sld .top{display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;}
   .sld .lab{display:flex; align-items:center; gap:8px; font-weight:600; font-size:.88rem;}
+  .sld .lab .sseat{margin-left:-4px; color:var(--faint); font-weight:700; font-variant-numeric:tabular-nums;}
   .dot{width:11px; height:11px; border-radius:3px; flex:none;}
   .sld .val{display:flex; align-items:center; gap:2px;}
   .sld .val input{width:62px; border:1px solid var(--line); border-radius:7px; padding:4px 7px; text-align:right; font-weight:700; font-size:.9rem; font-family:inherit; font-variant-numeric:tabular-nums; color:var(--ink); background:#fff;}
   .sld .val input:disabled{border-color:transparent; background:transparent;}
+  /* number boxes: no spinner arrows (they were eating the width and cutting off the decimal) */
+  .sld .val input{-moz-appearance:textfield; appearance:textfield; min-width:52px; box-sizing:border-box;}
+  .sld .val input::-webkit-outer-spin-button, .sld .val input::-webkit-inner-spin-button{-webkit-appearance:none; margin:0;}
   .sld .val small{color:var(--faint); font-weight:600;}
   input[type=range]{-webkit-appearance:none; appearance:none; width:100%; height:11px; border-radius:99px; background:var(--line); outline:none; margin:2px 0;}
   input[type=range]:disabled{opacity:.6;}
@@ -102,10 +213,12 @@
   .tot .rng{font-size:.62rem; font-weight:700; opacity:.85; margin-top:3px; font-variant-numeric:tabular-nums;}
 
   .section-h{font-size:.72rem; text-transform:uppercase; letter-spacing:.09em; color:var(--faint); font-weight:700; margin:28px 0 12px;}
-  #map-container{position:relative; width:100%; height:720px; min-height:720px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
+  #map-container{position:relative; width:100%; height:650px; min-height:650px; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:hidden;}
   #map-container svg{cursor:grab;} #map-container svg:active{cursor:grabbing;}
   .cp{stroke:#fff; vector-effect:non-scaling-stroke; stroke-linejoin:round; stroke-linecap:round; transition:fill .18s; cursor:pointer;}
   .cp:hover{stroke:#15171a; stroke-width:1.2px;} .cp.pinned{stroke:#15171a; stroke-width:1.4px;}
+  .insbg{fill:none;} .insdiv{stroke:var(--line); stroke-width:1px;} .inslabel{font-size:8.5px; font-weight:800; fill:var(--muted); letter-spacing:.04em; text-transform:uppercase;}
+  .insbox{fill:none; stroke:#6b7280; stroke-width:1px; stroke-dasharray:3 2; vector-effect:non-scaling-stroke; pointer-events:none;}
   .rgn{fill:none; stroke:#ffffff; vector-effect:non-scaling-stroke; stroke-linejoin:round; stroke-linecap:round; pointer-events:none;}
   .mapmodes{display:flex; gap:6px; margin-bottom:10px; flex-wrap:wrap;}
   .maprow{display:flex; justify-content:space-between; align-items:center; gap:10px; margin:28px 0 12px; flex-wrap:wrap;}
@@ -118,7 +231,8 @@
   .mmb{padding:7px 13px; border-radius:7px; border:1px solid var(--line); background:#fff; font-weight:700; font-size:.78rem; color:var(--muted); cursor:pointer; font-family:inherit;}
   .mmb:hover{border-color:var(--accent); color:var(--accent);}
   .mmb.active{background:var(--accent); color:#fff; border-color:var(--accent);}
-  .map-hint{position:absolute; left:14px; bottom:12px; font-size:.72rem; color:var(--faint); background:rgba(255,255,255,.85); padding:4px 9px; border-radius:8px; pointer-events:none;}
+  .mapreset{position:absolute; left:12px; bottom:12px; z-index:2; width:26px; height:26px; padding:0; border:1px solid var(--line); border-radius:7px; background:rgba(255,255,255,.92); color:var(--muted); font:800 .72rem/1 inherit; font-family:inherit; cursor:pointer;}
+  .mapreset:hover{color:var(--accent); border-color:var(--accent);}
   .mapcredit{font-size:.68rem; color:var(--faint); margin-top:8px; line-height:1.4;}
   .r2grid .mapcredit{margin-top:-2px;}
   .mapcredit a{color:var(--faint);}
@@ -151,16 +265,28 @@
   #coal-total{display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:7px; font-size:1.35rem; font-weight:900; letter-spacing:-0.02em; font-variant-numeric:tabular-nums; line-height:1.2; margin:6px 0 14px; color:#dc2626;}
   #coal-total.gov{color:#16a34a;}
   #coal-total .coalchip{display:inline-block; padding:3px 9px; border-radius:6px; font-size:.8rem; font-weight:800; letter-spacing:0;}
-  #coal-total .coaloutcome{margin-left:2px;}
+  #coal-total .coaloutcome{margin-left:2px; font-size:.9rem; font-weight:600; color:var(--muted); letter-spacing:0;}   /* same style as the headline's 'N short' / 'Majority of N' */
+  /* fixed-height summary line (it was growing/shrinking with the chips and the 'Select parties' text) */
+  #coal-total{height:2rem; margin:0 0 4px !important; flex-wrap:nowrap; overflow:hidden; white-space:nowrap;}
+  #coal-total .coalchip{flex:none;}
+  @media(max-width:600px){ #coal-total{font-size:1.05rem; gap:4px;} #coal-total .coalchip, #coal-total .coalsep{display:none;} }   /* phones: just the seat count + outcome */
+  #coal-total.gov .coaloutcome{color:#16a34a;} #coal-total.short .coaloutcome{color:#dc2626;}
+  #coal-total .coalnum{display:inline-flex; align-items:baseline; gap:7px;}   /* seat number + outcome share a baseline; the pair is centred with the chips */
   #coal-total .coalsep{color:var(--faint); font-weight:200; opacity:.45; margin:0 3px; transform:scaleX(.6); display:inline-block;}
   #coal-parties{display:flex; flex-wrap:wrap; gap:7px; justify-content:center; margin-top:16px;}
   .coalbtn{display:flex; flex-direction:column; align-items:center; gap:1px; min-width:44px; padding:5px 9px 6px; border-radius:8px; color:#fff; cursor:pointer; border:1.5px solid transparent; opacity:.38; filter:saturate(.85); transition:all .16s ease;}
   .coalbtn .cab{font-size:.58rem; font-weight:800; letter-spacing:.06em; text-transform:uppercase; opacity:.92;}
   .coalbtn .cn{font-size:.92rem; font-weight:900; line-height:1; font-variant-numeric:tabular-nums;}
+  @media(max-width:600px){ .coalbtn .cn{display:none;} .coalbtn{min-width:0; padding:3px 6px; border-radius:6px;} .coalbtn .cab{font-size:.55rem;} #coal-parties{gap:4px; margin-top:10px;} }   /* phones: party code only on the selection buttons */
   .coalbtn:hover{opacity:.7;}
   .coalbtn.on{opacity:1; filter:none; box-shadow:0 2px 8px rgba(0,0,0,.16); transform:translateY(-1px);}
   .coalbar{height:26px; border-radius:8px; overflow:hidden; display:flex; margin:14px 0 4px; background:var(--line2); position:relative;}
   .coalbar .majmark{}
+  #coalbar{height:auto; background:none; border-radius:0; overflow:visible; display:block; margin:6px auto 2px; max-width:none;}
+  /* fixed-height block: the chamber is scaled to fit inside it, so adding/removing parties (which changes the
+     column count) never makes the box jump in height */
+  #coalbar svg{display:block; width:100%; max-width:960px; height:170px; margin:0 auto;}
+  @media(max-width:600px){ #coalbar svg{height:120px;} }
 
   .table-tools{display:flex; justify-content:space-between; align-items:center; margin:0 0 12px;}
   .table-tools{display:flex; gap:10px; align-items:center; flex-wrap:wrap; margin:0 0 12px;}
@@ -168,14 +294,24 @@
   .tblsearch::placeholder{color:var(--faint); font-weight:500;}
   .tblsearch:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,77,77,.08);}
   td.code{font-variant-numeric:tabular-nums; color:var(--faint); font-size:.74rem;}
-  .table-wrap{display:none; border:1px solid var(--line); border-radius:var(--radius); overflow:auto; max-height:620px;}
+  .table-wrap{display:none; background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); overflow:auto; max-height:620px;}
   table{width:100%; border-collapse:separate; border-spacing:0; font-size:.78rem;}
   th,td{padding:8px 10px; text-align:center; border-bottom:1px solid var(--line2); white-space:nowrap;}
   th:first-child,td:first-child{text-align:left; position:sticky; left:0; background:var(--panel); z-index:1;}
-  th{position:sticky; top:0; z-index:2; background:#fbfbfa; font-size:.65rem; text-transform:uppercase; letter-spacing:.05em; color:var(--faint); font-weight:700; cursor:pointer; border-bottom:2px solid var(--line);}
-  th:first-child{z-index:3;}
-  th:hover{color:var(--accent);}
+  th{position:sticky; top:0; z-index:2; background:#fbfbfa; font-size:.65rem; text-transform:uppercase; letter-spacing:.05em; color:var(--faint); font-weight:700; border-bottom:2px solid var(--line);}
+  th:first-child{z-index:3; background:#fbfbfa;}
   tbody tr:hover td{background:#faf9f6;}
+  td:first-child{color:var(--ink); font-weight:600;}
+  /* sortable headers: a faint arrow says "clickable"; it brightens and points once the column is sorted,
+     and columns still sorting underneath show their rank */
+  #constitTable th{cursor:pointer; user-select:none; -webkit-user-select:none;}
+  #constitTable th:hover{color:var(--accent);}
+  #constitTable th::after{content:' \2195'; opacity:.3; font-weight:400;}
+  #constitTable th.sorted-asc::after{content:' \2191' attr(data-rank); opacity:1;}
+  #constitTable th.sorted-desc::after{content:' \2193' attr(data-rank); opacity:1;}
+  #constitTable th.sorted-sub::after{opacity:.5; font-size:.9em;}
+  .winpill{display:inline-block; padding:2px 9px; border-radius:6px; font-weight:800; font-size:.68rem; min-width:42px;}
+  #constitTable td.rgn{white-space:nowrap; font-weight:700; letter-spacing:.01em; text-decoration:underline dotted rgba(0,0,0,.28); text-underline-offset:3px; cursor:help;}
   td{color:var(--muted); font-variant-numeric:tabular-nums;}
   td:first-child{color:var(--ink); font-weight:600;}
   td.win{font-weight:800; text-align:center; font-size:.7rem; padding:6px 8px;}
@@ -183,12 +319,12 @@
   td.sh{text-align:center; font-variant-numeric:tabular-nums; color:var(--muted);}
   .loading{padding:60px; text-align:center; color:var(--muted); font-weight:600;}
   /* ---- mobile ---- */
-  @media(max-width:880px){ .grid{gap:16px;} #map-container{height:560px; min-height:560px;} }
+  @media(max-width:880px){ .grid{gap:16px;} #map-container{height:588px; min-height:588px;} }
   @media(max-width:600px){
     .wrap{padding:16px 12px 56px;}
     .panel{padding:15px;}
     .masthead{margin-bottom:10px;}
-    #map-container{height:430px; min-height:430px;}
+    #map-container{height:546px; min-height:546px;}
     .headline .big{font-size:1.2rem;} .headline .maj{font-size:.8rem;}
     .tot{padding:9px 9px;} .tot .n{font-size:1.4rem;} .tot .nm{font-size:.62rem;}
     .seatbar{height:30px;}
@@ -201,7 +337,7 @@
   html,body{overflow-x:hidden; max-width:100%;}
   img,svg{max-width:100%;}
   .table-wrap{-webkit-overflow-scrolling:touch;}
-  @media(max-width:480px){ .totstrip{grid-template-columns:repeat(2,minmax(0,1fr));} #map-container{height:380px;min-height:380px;} .wrap{padding:14px 10px 50px;} }
+  @media(max-width:480px){ .totstrip{grid-template-columns:repeat(2,minmax(0,1fr));} #map-container{height:483px;min-height:483px;} .wrap{padding:14px 10px 50px;} }
 </style>
 </head>
 <body>
@@ -247,10 +383,15 @@
         <div id="copied" style="display:none; text-align:center; font-size:.78rem; color:var(--accent); grid-column:1 / -1; margin:0;">Link copied</div>
       </div>
 
-      <div id="map-container"><div class="map-hint">Scroll to zoom &middot; drag to pan &middot; click to pin</div></div>
+      <div id="map-container"><button class="mapreset" id="mapreset" title="Reset zoom" aria-label="Reset map zoom">R</button></div>
+      <div class="panel insetbox" id="insetbox"></div>
+      <div class="panel vsbox" id="vsbox">
+        <h2>National vote share</h2>
+        <div class="totstrip vsstrip" id="vsstrip"></div>
+      </div>
 
       <div class="panel slidersbox">
-        <h2>National vote share</h2>
+        <h2>Custom scenario</h2>
         <div id="sliders"></div>
         <div class="total-line"><span>GB total (excl. SNP/Plaid)</span><b id="gbtotal">100%</b></div>
         <div class="group-label">Nations</div>
@@ -261,8 +402,8 @@
     </div>
 
     <div class="fullspan">
-      <div class="panel" id="coalition" style="margin-top:24px;">
-        <h2>Coalition builder &mdash; click parties to reach 326</h2>
+      <div class="section-h" style="margin-top:36px;">Coalition builder</div>
+      <div class="panel" id="coalition" style="margin-top:0;">
         <div id="coal-total">0 / 326</div>
         <div class="coalbar" id="coalbar"><div class="majmark"></div></div>
         <div id="coal-parties"></div>
@@ -270,7 +411,7 @@
 
       <div class="table-tools" style="margin-top:48px;">
         <div class="section-h" style="margin:0;">All constituencies</div>
-        <input id="tablesearch" class="tblsearch" placeholder="Filter by name or code…" autocomplete="off" aria-label="Filter constituencies by name or code">
+        <input id="tablesearch" class="tblsearch" placeholder="Filter by name, region or code…" autocomplete="off" aria-label="Filter constituencies by name or code">
         <button class="btn" id="toggle-table" style="flex:none; padding:7px 16px;">Hide table</button>
       </div>
       <div class="table-wrap" id="table-wrap"></div>
@@ -287,7 +428,7 @@ document.addEventListener('DOMContentLoaded', function(){
   var GEOJSON_URL='https://raw.githubusercontent.com/electionmapsuk/custom-nowcast/refs/heads/main/Westminster_Parliamentary_Constituencies_July_2024_Boundaries_UK_BUC_4872633423108313063.geojson';
   var HEX_URL='https://raw.githubusercontent.com/electionmapsuk/custom-nowcast/refs/heads/main/uk-wpc-hex-constitcode-v5-june-2024.geojson';  // hex cartogram (Automatic Knowledge, CC BY 4.0)
 
-  var PI={ LAB:{n:'Lab',c:'#E4003B'},CON:{n:'Con',c:'#0393D3'},RFM:{n:'Reform',c:'#2BC5DB'},LDM:{n:'Lib Dem',c:'#ff6400'},
+  var PI={ LAB:{n:'Lab',c:'#E4003B'},CON:{n:'Con',c:'#4167d1'},RFM:{n:'Reform',c:'#17B9D1'},LDM:{n:'Lib Dem',c:'#ff6400'},
     GRN:{n:'Green',c:'#00A85A'},RES:{n:'Restore',c:'#051e40'},SNP:{n:'SNP',c:'#e6d62e'},PLC:{n:'Plaid',c:'#075d55'},
     MIN:{n:'Ind/Minor',c:'#ca80a8'},OTH:{n:'Other',c:'#9ca3af'},WPB:{n:'Workers',c:'#2853a5'},SPKR:{n:'Speaker',c:'#374151'},
     DUP:{n:'DUP',c:'#d46a4c'},ALL:{n:'Alliance',c:'#F4C72E'},SDLP:{n:'SDLP',c:'#FF0000'},UUP:{n:'UUP',c:'#48A5EE'},
@@ -319,7 +460,7 @@ document.addEventListener('DOMContentLoaded', function(){
     buildSliders(); loading.style.display='none'; app.style.display='grid';
     setSliders(centralSliderVals()); setMode('central');
     var p=new URLSearchParams(location.search); var hasC=false;
-    for(var id in URLP){ if(p.has(URLP[id])){ hasC=true; var el=$(id); if(el) el.value=p.get(URLP[id]); var n=$('n_'+id); if(n)n.value=(+el.value).toFixed(1);} }
+    for(var id in URLP){ if(p.has(URLP[id])){ hasC=true; var el=$(id); if(el) el.value=p.get(URLP[id]); var n=$('n_'+id); if(n)n.value=fmtPct(el.value);} }
     if(hasC) setMode('custom');
     recompute();
   }
@@ -339,6 +480,7 @@ document.addEventListener('DOMContentLoaded', function(){
     $('modepill').textContent = m==='custom' ? 'User Input' : 'Central projection';
     $('modebtn').textContent = m==='custom' ? 'Back to Central' : 'Switch to User Input';
     $('modebtn').className = m==='custom' ? 'btn primary' : 'btn purple';
+    if(typeof syncMapLayout==='function' && results) syncMapLayout(false);
   }
   $('modebtn').addEventListener('click',function(){ if(mode==='custom'){ setSliders(centralSliderVals()); setMode('central'); recompute(); } else { setMode('custom'); refreshMC(); } });
 
@@ -351,15 +493,23 @@ document.addEventListener('DOMContentLoaded', function(){
     document.querySelectorAll('#sliders input[type=range],#sliders-nat input[type=range]').forEach(function(r){ r.addEventListener('input',function(e){ syncFromSlider(e.target.id); }); });
     document.querySelectorAll('#sliders input.num,#sliders-nat input.num').forEach(function(n){ n.addEventListener('input',function(e){ syncFromNum(e.target.id.slice(2)); }); });
     document.querySelectorAll('#sliders input[type=range],#sliders-nat input[type=range]').forEach(setTrack);
+    // arrow keys move in 0.1 steps (Shift = 1), even though typed values may have 2 decimals
+    document.querySelectorAll('#sliders input,#sliders-nat input').forEach(function(el){ el.addEventListener('keydown',function(e){
+      var up=(e.key==='ArrowUp'||e.key==='ArrowRight'), dn=(e.key==='ArrowDown'||e.key==='ArrowLeft');
+      if(!up&&!dn) return; if(el.type==='number' && (e.key==='ArrowLeft'||e.key==='ArrowRight')) return;   // left/right move the text cursor in the box
+      e.preventDefault(); var id=el.type==='range'?el.id:el.id.slice(2), rg=$(id), st=e.shiftKey?1:0.1;
+      var v=Math.round(((parseFloat(rg.value)||0)+(up?st:-st))*10)/10; v=Math.max(+rg.min||0, Math.min(+rg.max||100, v));
+      rg.value=v; $('n_'+id).value=v.toFixed(1); setTrack(rg); schedule(); }); });
   }
   function rowHTML(s){ var id=s[0],p=s[1],sub=s[2],c=PI[p].c;
-    return '<div class="sld"><div class="top"><span class="lab"><span class="dot" style="background:'+c+'"></span>'+PI[p].n+' <small>'+sub+'</small></span>'
-      +'<span class="val"><input class="num" id="n_'+id+'" type="number" step="0.1" min="0" max="'+(p==='SNP'?60:60)+'" value="0" disabled aria-label="'+PI[p].n+' '+sub+' vote share, percent"><small>%</small></span></div>'
-      +'<input type="range" id="'+id+'" min="0" max="'+(p==='SNP'?60:55)+'" step="0.1" value="0" style="--c:'+c+'" aria-label="'+PI[p].n+' '+sub+' vote share, percent"></div>';
+    return '<div class="sld"><div class="top"><span class="lab"><span class="dot" style="background:'+c+'"></span>'+p+'<span class="sseat" id="ss_'+p+'"></span> <small>'+sub+'</small></span>'
+      +'<span class="val"><input class="num" id="n_'+id+'" type="number" step="0.01" min="0" max="'+(p==='SNP'?60:60)+'" value="0" disabled aria-label="'+PI[p].n+' '+sub+' vote share, percent"><small>%</small></span></div>'
+      +'<input type="range" id="'+id+'" min="0" max="'+(p==='SNP'?60:55)+'" step="0.01" value="0" style="--c:'+c+'" aria-label="'+PI[p].n+' '+sub+' vote share, percent"></div>';
   }
-  function syncFromSlider(id){ $('n_'+id).value=(parseFloat($(id).value)||0).toFixed(1); setTrack($(id)); schedule(); }
-  function syncFromNum(id){ var v=parseFloat($('n_'+id).value)||0; $(id).value=v; setTrack($(id)); schedule(); }
-  function setSliders(v){ for(var id in v){ var el=$(id); if(el){ el.value=v[id]; var n=$('n_'+id); if(n)n.value=(+v[id]).toFixed(1); setTrack(el);} } }
+  function syncFromSlider(id){ var v=Math.round((parseFloat($(id).value)||0)*10)/10; $(id).value=v; $('n_'+id).value=v.toFixed(1); setTrack($(id)); schedule(); }   // dragging snaps to 0.1
+  function syncFromNum(id){ var v=Math.round((parseFloat($('n_'+id).value)||0)*100)/100; $(id).value=v; setTrack($(id)); schedule(); }   // typing: up to 2 decimal places kept
+  function fmtPct(x){ x=Math.round((+x||0)*100)/100; return (Math.round(x*10)/10===x)?x.toFixed(1):x.toFixed(2); }   // 1dp normally, 2dp when one was typed/shared
+  function setSliders(v){ for(var id in v){ var el=$(id); if(el){ el.value=v[id]; var n=$('n_'+id); if(n)n.value=fmtPct(v[id]); setTrack(el);} } }
   function getVal(id){ return (parseFloat($(id).value)||0)/100; }
   function compactInputs(){ return { gb:{LAB:getVal('s_lab'),CON:getVal('s_con'),RFM:getVal('s_ref'),LDM:getVal('s_lib'),GRN:getVal('s_grn'),RES:getVal('s_res')}, snpScotland:getVal('s_snp'), plcWales:getVal('s_plc') }; }
   function centralSliderVals(){ var g=CENTRAL.gb; return {s_lab:(100*g.LAB).toFixed(1),s_con:(100*g.CON).toFixed(1),s_ref:(100*g.RFM).toFixed(1),s_lib:(100*g.LDM).toFixed(1),s_grn:(100*g.GRN).toFixed(1),s_res:(100*g.RES).toFixed(1),s_snp:(100*((CENTRAL.scotland&&CENTRAL.scotland.SNP)||0)).toFixed(1),s_plc:(100*((CENTRAL.wales&&CENTRAL.wales.PLC)||0)).toFixed(1)}; }
@@ -382,15 +532,15 @@ document.addEventListener('DOMContentLoaded', function(){
     results.forEach(function(s){ byName[norm(s.seatName)]=s; if(s.code) byCode[s.code]=s; });
     NIFIXED.forEach(function(s){ byName[norm(s.name)]={seatName:s.name,winner:s.winner,winner2024:s.w24,winner2019:s.w19,mp:s.mp,shares:s.shares,fixed:true}; });
     if(mode==='custom'){ mcRanges=null; mcSeatWin=null; }   // drop stale sim outputs once inputs change
-    var t=tallies(); renderTotals(t); maybeDrawMap(); updateGbTotal(); buildCoalition(t);
-    if(tableBuilt){ buildTable(); if(sortCol) sortTable(sortCol,true); }
+    var t=tallies(); renderTotals(t); paintSliderSeats(t); renderVoteShare(); maybeDrawMap(); updateGbTotal(); buildCoalition(t);
+    if(tableBuilt) buildTable();
     if(pinned) showTip(pinned._evt,pinned._d,true);
     setTimeout(refreshMC,0);
   }
   // ---- Monte Carlo majority odds (correlated swing, chunked on the main thread) ----
   // sigma = std dev of each party's vote-share error (0.015 = 1.5pp). rho = share of that error
   // that is a common left/right national swing vs party-specific (0 = independent, 1 = pure bloc swing).
-  var MC={ simsCentral:1000, simsCustom:300, sigma:0.015, rho:0.5, localSigma:0.04, batch:5,
+  var MC={ simsCentral:1000, simsCustom:250, sigma:0.015, rho:0.5, localSigma:0.04, batch:5,
            sign:{LAB:-1,GRN:-1,LDM:-1,CON:1,RFM:1,RES:1,SNP:0,PLC:0} };  // +1 right bloc, -1 left bloc
   var mcSeq=0, mcCache={}, mcRanges=null, mcSeatWin=null, mcSeatN=0, lastTallies={};
   var precompMC=(typeof window!=='undefined'&&window.__CENTRAL_MC__)||null;  // pre-baked central simulation
@@ -407,7 +557,87 @@ document.addEventListener('DOMContentLoaded', function(){
     $('mc-list').innerHTML=''; $('mc-sims').textContent='';
     var rb=$('mc-run'); if(rb) rb.addEventListener('click',function(){ runMC(MC.simsCustom); });
   }
+  // ---- Monte Carlo in parallel Web Workers: the same simulation, split across the machine's cores
+  // (each worker runs the identical engine bundle). Falls back to the main-thread loop if workers
+  // are unavailable (old browser, file:// restrictions, etc.).
+  var MCW={ pool:null, failed:false, job:0 };
+  var MC_WORKER_MAIN=[
+    'var ENG=null;',
+    'function g(){ var u=0,v=0; while(!u)u=Math.random(); while(!v)v=Math.random(); return Math.sqrt(-2*Math.log(u))*Math.cos(6.283185307*v); }',
+    'onmessage=function(e){ var m=e.data; if(m.type==="init"){ ENG=m.engine; return; }',
+    '  var P=m.P, inp=m.inp, n=m.n, sign=P.sign, sg=P.sigma, rho=P.rho, kk=Math.sqrt(1-rho*rho), ni=P.ni;',
+    '  var large={}, maj={}, hung=0, seatDist={}, seatWin={}, sent=0;',
+    '  for(var i=0;i<n;i++){',
+    '    var Z=g(), gb={};',
+    '    for(var p in inp.gb){ var sn=sign[p]||0; gb[p]=Math.max(0, inp.gb[p]+(sn?sg*(rho*sn*Z+kk*g()):sg*g())); }',
+    '    var o; try{ o=self.NowcastEngine.runNowcast({gb:gb, snpScotland:Math.max(0,inp.snpScotland+sg*g()), plcWales:Math.max(0,inp.plcWales+sg*g())}, ENG); }catch(err){ o=null; }',
+    '    if(o){ var t={}; o.individualSeatResults.forEach(function(r){ var sh=r.shares, bw=null, bv=-1;',
+    '        for(var pp in sh){ if(sh[pp]<=0) continue; var val=sh[pp]+g()*P.localSigma; if(val>bv){ bv=val; bw=pp; } }',
+    '        var w=(bw==="MIN"&&r.minType)?r.minType:(bw||r.winner);',
+    '        t[w]=(t[w]||0)+1; var sw=seatWin[r.code]||(seatWin[r.code]={}); sw[w]=(sw[w]||0)+1; });',
+    '      for(var k in ni) t[k]=(t[k]||0)+ni[k];',
+    '      ["LAB","CON","RFM","LDM","GRN","RES","SNP","PLC","MIN","WPB"].forEach(function(dp){ (seatDist[dp]||(seatDist[dp]=[])).push(t[dp]||0); });',
+    '      var top=null, tn=-1; for(var q in t){ if(t[q]>tn){ tn=t[q]; top=q; } }',
+    '      large[top]=(large[top]||0)+1; if(tn>=326) maj[top]=(maj[top]||0)+1; else hung++; }',
+    '    if(i-sent>=4){ postMessage({type:"prog", job:m.job, k:i+1-sent}); sent=i+1; }',
+    '  }',
+    '  postMessage({type:"done", job:m.job, k:n-sent, res:{large:large, maj:maj, hung:hung, seatDist:seatDist, seatWin:seatWin}});',
+    '};'].join('\n');
+  function mcEngineSrc(cb){ var el=document.getElementById('nowcast-engine-src');
+    if(el && el.textContent.length>1000) return cb(el.textContent);
+    if(!window.fetch) return cb(null);
+    fetch('build/nowcast.browser.js').then(function(r){ return r.ok?r.text():null; }).then(cb).catch(function(){ cb(null); }); }
+  function mcPool(cb){
+    if(MCW.pool) return cb(MCW.pool); if(MCW.failed || !window.Worker || !window.Blob || !window.URL) return cb(null);
+    mcEngineSrc(function(src){
+      if(!src){ MCW.failed=true; return cb(null); }
+      try{
+        var url=URL.createObjectURL(new Blob(['var window=self;\n'+src+'\n'+MC_WORKER_MAIN],{type:'text/javascript'}));
+        var nw=Math.max(1, Math.min(8, (navigator.hardwareConcurrency||4)-1)), ws=[];
+        for(var k=0;k<nw;k++){ var w=new Worker(url); w.postMessage({type:'init', engine:ENGINE}); ws.push(w); }
+        MCW.pool=ws; MCW.url=url; cb(ws);
+      }catch(e){ MCW.failed=true; cb(null); }
+    }); }
+  function mcKillPool(){ if(MCW.pool){ MCW.pool.forEach(function(w){ w.terminate(); }); MCW.pool=null; } }
   function runMC(n){
+    if(!ENGINE||!window.NowcastEngine){ var m0=$('mc'); if(m0) m0.style.display='none'; return; }
+    n=n||MC.simsCentral;
+    var inp=compactInputs(); var key=JSON.stringify([inp,n,MC.sigma,MC.rho]);
+    if(mcCache[key]) return runMCMain(n);              // cached: the main-thread path just re-renders it
+    if(MCW.busy) mcKillPool();                          // a run is still going: drop it and start afresh
+    var seq=++mcSeq;
+    $('mc-headline').innerHTML='<div class="mc-sub">Simulating '+n+' elections…</div><div class="mc-prog"><i id="mc-progbar"></i></div>';
+    $('mc-list').innerHTML='';
+    mcPool(function(ws){
+      if(seq!==mcSeq) return;
+      if(!ws){ mcSeq--; return runMCMain(n); }
+      var job=++MCW.job, done=0, finished=0, parts=[];
+      var P={sign:MC.sign, sigma:MC.sigma, rho:MC.rho, localSigma:MC.localSigma, ni:niWinCounts()};
+      MCW.busy=true;
+      ws.forEach(function(w,k){
+        var nk=Math.floor(n/ws.length)+(k<n%ws.length?1:0);
+        w.onerror=function(){ if(job!==MCW.job) return; MCW.busy=false; MCW.failed=true; mcKillPool(); mcSeq--; runMCMain(n); };
+        w.onmessage=function(e){ var m=e.data; if(m.job!==job || seq!==mcSeq) return;
+          done+=m.k; var pb=$('mc-progbar'); if(pb) pb.style.width=(100*done/n)+'%';
+          if(m.type!=='done') return;
+          parts.push(m.res); if(++finished<ws.length) return;
+          MCW.busy=false;
+          var large={}, maj={}, hung=0, seatDist={}, seatWin={};
+          parts.forEach(function(r){ var x;
+            for(x in r.large) large[x]=(large[x]||0)+r.large[x];
+            for(x in r.maj) maj[x]=(maj[x]||0)+r.maj[x];
+            hung+=r.hung;
+            for(x in r.seatDist) seatDist[x]=(seatDist[x]||[]).concat(r.seatDist[x]);
+            for(x in r.seatWin){ var sw=seatWin[x]||(seatWin[x]={}); for(var y in r.seatWin[x]) sw[y]=(sw[y]||0)+r.seatWin[x][y]; } });
+          var ranges={}; for(var rp in seatDist){ var arr=seatDist[rp].slice().sort(function(a,b){return a-b;}); var lo=arr[Math.floor(0.05*arr.length)]; var hi=arr[Math.min(arr.length-1,Math.ceil(0.95*arr.length)-1)]; ranges[rp]=[lo,hi]; }
+          mcRanges=ranges; mcSeatWin=seatWin; mcSeatN=n;
+          var res={N:n,large:large,maj:maj,hung:hung,ranges:ranges,seatWin:seatWin}; mcCache[key]=res;
+          renderMC(res); renderTotals(tallies()); if(pinned) showTip(pinned._evt,pinned._d,true); };
+        if(nk>0) w.postMessage({type:'run', job:job, inp:inp, n:nk, P:P}); else { finished++; }
+      });
+    });
+  }
+  function runMCMain(n){
     if(!ENGINE||!window.NowcastEngine){ var m=$('mc'); if(m) m.style.display='none'; return; }
     n=n||MC.simsCentral;
     var inp=compactInputs(); var key=JSON.stringify([inp,n,MC.sigma,MC.rho]);
@@ -459,6 +689,8 @@ document.addEventListener('DOMContentLoaded', function(){
     $('mc-sims').textContent=N+' sims';
   }
 
+  // projected seats in brackets beside each party's slider (as on the Holyrood/Senedd pages); updates on every drag
+  function paintSliderSeats(t){ ROWS.concat(NATS).forEach(function(r){ var el=$('ss_'+r[1]); if(el) el.textContent=t?' ('+(t[r[1]]||0)+')':''; }); }
   function tallies(){ var t={}; results.forEach(function(r){ var w=dispWin(r); t[w]=(t[w]||0)+1; });
     NIFIXED.forEach(function(s){ t[s.winner]=(t[s.winner]||0)+1; }); return t; }
 
@@ -473,6 +705,20 @@ document.addEventListener('DOMContentLoaded', function(){
     var M=pres.filter(function(p){return LEAN[p]!=='L'&&LEAN[p]!=='R';}).sort(function(a,b){return t[b]-t[a];});
     return L.concat(M,R);
   }
+  // ---- projected national (GB) vote share, from the model's seat-level output ----
+  var VS24=null;
+  function renderVoteShare(){ var el=$('vsstrip'); if(!el||!results) return;
+    var P=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC'], v={}, v24={}, T=0;
+    P.concat(['OTH']).forEach(function(p){ v[p]=0; v24[p]=0; });
+    results.forEach(function(r){ var s=SEATBASE[r.code]; if(!s||r.fixed) return; var w=(s.electorate||0)*(s.turnout||0); T+=w;
+      var oth=1; P.forEach(function(p){ var x=(r.shares&&r.shares[p])||0; v[p]+=w*x; oth-=x; }); v.OTH+=w*Math.max(0,oth);
+      var a=s.a24||{}, o24=1; P.forEach(function(p){ var x=a[p]||0; v24[p]+=w*x; o24-=x; }); v24.OTH+=w*Math.max(0,o24); });
+    if(!T) return;
+    var order=P.slice().sort(function(a,b){ return v[b]-v[a]; }).filter(function(p){ return v[p]/T>0.0005; });
+    el.style.setProperty('--vsn', order.length);
+    el.innerHTML=order.map(function(p){ var sh=100*v[p]/T, ch=sh-100*v24[p]/T, c=(PI[p]||PI.OTH).c;
+      if(Math.abs(ch)<0.05) ch=0;   // avoid a "-0.0" pill
+      return '<div class="tot" title="'+fullName(p)+'" style="background:'+c+';color:'+textOn(c)+'"><div class="nm">'+p+'</div><div class="n">'+sh.toFixed(1)+'%</div><div class="ch">'+(ch>0?'+':'')+ch.toFixed(1)+'</div></div>'; }).join(''); }
   function renderTotals(t){
     if(!t||!Object.keys(t).length) return;   // never blank the header on an empty tally
     lastTallies=t;
@@ -493,26 +739,112 @@ document.addEventListener('DOMContentLoaded', function(){
   function ensureMapData(cb){ if(activeGeo()){ cb(); return; }
     if(mapType==='hex'){ if(window.__HEX__){ hexGeo=window.__HEX__; cb(); } else { d3.json(HEX_URL).then(function(j){ hexGeo=j; cb(); }).catch(function(e){ console.error('hex map unavailable:',e); }); } }
     else if(window.__GEO__){ geo=window.__GEO__; cb(); } else { d3.json(GEOJSON_URL).then(function(j){ geo=j; cb(); }).catch(function(e){ console.error('map unavailable:',e); }); } }
-  function maybeDrawMap(){ if(!activeGeo()||!results||typeof d3==='undefined') return; if(!mapDrawn) drawMap(); else renderMapColors(); }
+  function maybeDrawMap(){ if(results && typeof d3!=='undefined' && dualOn() && !map2Drawn){ lastLayout='dual'; drawMap2(); }
+    if(!activeGeo()||!results||typeof d3==='undefined') return; if(!mapDrawn) drawMap(); else renderMapColors(); }
   function drawMap(){ var g=activeGeo(); if(!g||typeof d3==='undefined') return;
+    document.body.classList.toggle('hexmap', mapType==='hex');   // before measuring: the layout depends on it
     var c=d3.select('#map-container'); c.select('svg').remove();
     var rect=c.node().getBoundingClientRect(); var w=Math.round(rect.width)||800; var h=(rect.height>300?Math.round(rect.height):720);
     var svg=c.append('svg').attr('width','100%').attr('height',h).attr('viewBox','0 0 '+w+' '+h).attr('role','img').attr('aria-label','Map of constituencies coloured by projected winning party. The same data is available as a sortable table further down the page.'); mapG=svg.append('g'); mapSvg=svg;
     var proj=(mapType==='hex'?d3.geoIdentity().reflectY(true):d3.geoMercator()).fitExtent([[16,16],[w-16,h-16]],g); var path=d3.geoPath().projection(proj); mapPath=path;
-    function strokeForK(k){ var hx=(mapType==='hex'); return Math.min(hx?3.4:2.2, (hx?1.05:0.55)*Math.pow(k,0.32))+'px'; }
-    function rgnStrokeForK(k){ return (2*Math.min(2.2, 0.55*Math.pow(k,0.32)))+'px'; }  // always 2x constituency borders
+    function strokeForK(k){ var hx=(mapType==='hex'); return Math.min(hx?3.4:2.2, (hx?1.05:0.55)*Math.pow(k,0.32)*(1-0.20/k))+'px'; }   // (1-0.20/k): ~20% thinner fully zoomed out, fading to unchanged once zoomed in
+    function rgnStrokeForK(k){ return (2*Math.min(2.2, 0.55*Math.pow(k,0.32))*(1-0.25/k))+'px'; }   // ~25% thinner fully zoomed out  // always 2x constituency borders
     mapZoom=d3.zoom().scaleExtent([1,40]).on('zoom',function(e){ mapG.attr('transform',e.transform); mapG.attr('stroke-width',strokeForK(e.transform.k)); mapG.select('.rgn').attr('stroke-width',rgnStrokeForK(e.transform.k)); if(!pinned) tip.style.display='none'; });
     svg.call(mapZoom); mapG.attr('stroke-width',strokeForK(1));
     mapG.selectAll('path.cp').data(g.features).enter().append('path').attr('class','cp').attr('d',path).attr('fill','#e5e7eb')
       .on('mousemove',function(e,d){ if(pinned) return; showTip(e,d,false); })
       .on('mouseout',function(){ if(!pinned) tip.style.display='none'; })
-      .on('click',function(e,d){ pinned=(pinned&&pinned._d===d)?null:{_d:d,_evt:e}; mapG.selectAll('.cp').classed('pinned',false); if(pinned){ d3.select(this).classed('pinned',true); showTip(e,d,true);} else tip.style.display='none'; });
+      .on('click',function(e,d){ pinned=(pinned&&pinned._d===d)?null:{_d:d,_evt:e}; d3.selectAll('.cp').classed('pinned',false); if(pinned){ d3.select(this).classed('pinned',true); showTip(e,d,true);} else tip.style.display='none'; });
     drawRegionBorders(g, path);
     buildSeatList();
     var cr=$('mapcredit'); if(cr) cr.innerHTML = (mapType==='hex')
       ? 'Hex cartogram &mdash; one equal-size hexagon per constituency. Layout: <b>Automatic Knowledge</b> (Philip Brown &amp; Alasdair Rae), CC BY 4.0.'
       : 'Geographic boundaries &copy; ONS / Boundary Commission (OGL).';
+    drawInsets(svg, g, path, w, h);
     mapDrawn=true; renderMapColors();
+  }
+  // ---- insets: zoomed views of dense urban seats in the empty margins either side of the
+  // geographic map (desktop only; hidden while the main map is zoomed in) ----
+  // combined-authority areas (2024 constituencies). London = the whole Greater London region.
+  var CA_SEATS={tw:["E14001106", "E14001183", "E14001244", "E14001295", "E14001307", "E14001377", "E14001378", "E14001379", "E14001492", "E14001531", "E14001557", "E14001567"],cb:["S14000063", "S14000068", "S14000070", "S14000072", "S14000077", "S14000021", "S14000078", "S14000079", "S14000080", "S14000081", "S14000082", "S14000083", "S14000084", "S14000085", "S14000086", "S14000087", "S14000088", "S14000089", "S14000092", "S14000093", "S14000095", "S14000097", "S14000099", "S14000101", "S14000102", "S14000104", "S14000106", "S14000045"],extra:["E14001564", "E14001565", "E14001163", "E14001222"],gm:["E14001065", "E14001070", "E14001103", "E14001110", "E14001111", "E14001112", "E14001144", "E14001145", "E14001158", "E14001251", "E14001277", "E14001286", "E14001329", "E14001350", "E14001352", "E14001353", "E14001354", "E14001415", "E14001416", "E14001446", "E14001459", "E14001515", "E14001517", "E14001528", "E14001585", "E14001598", "E14001602"],lcr:["E14001337", "E14001338", "E14001339", "E14001340", "E14001341", "E14001317", "E14001584", "E14001455", "E14001113", "E14001463", "E14001509", "E14001510", "E14001091", "E14001561", "E14001589", "E14001504"],wm:["E14001092", "E14001093", "E14001094", "E14001095", "E14001096", "E14001097", "E14001098", "E14001099", "E14001100", "E14001535", "E14001180", "E14001181", "E14001182", "E14001204", "E14001524", "E14001261", "E14001478", "E14001547", "E14001574", "E14001358", "E14001479", "E14001562", "E14001064", "E14001594", "E14001595", "E14001596"],wy:["E14001118", "E14001120", "E14001119", "E14001472", "E14001308", "E14001147", "E14001262", "E14001177", "E14001196", "E14001297", "E14001506", "E14001319", "E14001320", "E14001321", "E14001322", "E14001323", "E14001324", "E14001325", "E14001383", "E14001418", "E14001428", "E14001560"],sy:["E14001074", "E14001075", "E14001198", "E14001200", "E14001436", "E14001451", "E14001452", "E14001466", "E14001467", "E14001468", "E14001469", "E14001470", "E14001423"]};
+  var inCA=function(keys){ var set={}; keys.forEach(function(k){ CA_SEATS[k].forEach(function(c){ set[c]=1; }); }); return function(s){ return !!(s && set[s.code]); }; };
+  var INSETS=[   // north to south
+    {name:'Central Belt', test:inCA(['cb'])},
+    {name:'Tyne and Wear', test:inCA(['tw'])},   // Glasgow, Edinburgh, Lanarkshire, Renfrewshire, Dunbartonshire, West Lothian, Falkirk
+    {name:'LCR, GM, WY & SY', test:inCA(['gm','lcr','wy','sy','extra'])},   // Gtr Manchester, Liverpool CR, West & South Yorkshire + Warrington, Chester N, Ellesmere Port
+    {name:'West Midlands', test:inCA(['wm'])},
+    {name:'Greater London', test:function(s){ return s && s.region==='Greater London'; }}
+  ];
+  // Zoomed regions layout: each map is sized as if it had a fixed share of the column (INSET_SHARE), then the
+  // label+map blocks are stacked with EQUAL gaps between them and only a small margin at the top/bottom,
+  // so the spare space goes between regions rather than above/below them. Returns [{pj, top, line}] per region.
+  var INSET_UI={LB:22, PADV:10, PADI:22, GAP:12, GAPMAX:18, FONT:8.5, W:250, H:650};   // on-screen panel geometry (px); the PNG scales the same numbers
+  var INSET_TO_SCALE=true;
+  var INSET_MAG=[1,1,1,1.75,1.75];   // per-region enlargement on top of the common scale (West Midlands, London x1.75)   // all zoomed regions drawn at the same km scale (false = each sized to fill its slot)
+  var INSET_SHARE=[0.17,0.15,0.28,0.18,0.26];   // Central Belt, Tyne and Wear, Urban North, West Midlands, London
+  function insetPack(fcs, xL, xR, y0, H, LB, PADV, EDGE, GAPMIN){
+    // scale every region's height allowance (INSET_SHARE x f) up together until the stack just fills the
+    // column (gaps no smaller than GAPMIN); regions that hit the full width stop growing, the rest keep going
+    GAPMIN=GAPMIN||PADV*2;
+    var asp=fcs.map(function(fc){ if(!fc) return 0; var pj=d3.geoMercator().fitWidth(1000,fc), b=d3.geoPath().projection(pj).bounds(fc);
+      return (b[1][1]-b[0][1])/Math.max(1,(b[1][0]-b[0][0])); });
+    var n=fcs.filter(Boolean).length, wmax=xR-xL;
+    var mapH=function(f,k){ return Math.max(10, Math.min(asp[k]*wmax, f*H*INSET_SHARE[k]-LB-2*PADV)); };
+    var need=function(f){ var t=2*EDGE+GAPMIN*Math.max(0,n-1); fcs.forEach(function(fc,k){ if(fc) t+=LB+mapH(f,k); }); return t; };
+    var out;
+    if (INSET_TO_SCALE) {
+      // ONE common scale (the same magnification of the main map for every region), as large as
+      // the widest region's width and the total height allow
+      var U=fcs.map(function(fc){ if(!fc) return null; var c=1;   // same magnification of the main (Mercator) map for every region, so the x-factors match
+        var b=d3.geoPath().projection(d3.geoMercator().scale(c).translate([0,0])).bounds(fc); return {c:c, w:b[1][0]-b[0][0], h:b[1][1]-b[0][1]}; });
+      var S=Infinity, sh=0; U.forEach(function(u,k){ if(!u) return; var m=INSET_MAG[k]||1; S=Math.min(S,(xR-xL)/(u.w*m)); sh+=u.h*m; });
+      S=Math.min(S, Math.max(1,H-2*EDGE-GAPMIN*Math.max(0,n-1)-n*LB)/(sh||1));
+      out=fcs.map(function(fc,k){ if(!fc) return null; var u=U[k];
+        var pj=d3.geoMercator().scale(S*u.c*(INSET_MAG[k]||1)).translate([0,0]), b=d3.geoPath().projection(pj).bounds(fc);
+        pj.translate([(xL+xR)/2-(b[0][0]+b[1][0])/2, 0]); b=d3.geoPath().projection(pj).bounds(fc);
+        return {pj:pj, b:b, h:LB+(b[1][1]-b[0][1])}; });
+    } else {
+    var lo=0.2, hi=6; for(var it=0; it<40; it++){ var mid=(lo+hi)/2; if(need(mid)<=H) lo=mid; else hi=mid; }
+    out=fcs.map(function(fc,k){ if(!fc) return null; var mh=mapH(lo,k);
+      var pj=d3.geoMercator().fitExtent([[xL,0],[xR,mh]],fc), b=d3.geoPath().projection(pj).bounds(fc);
+      return {pj:pj, b:b, h:LB+(b[1][1]-b[0][1])}; });
+    }
+    var live=out.filter(Boolean), tot=live.reduce(function(a,o){return a+o.h;},0);
+    var gap=n>1?Math.max(GAPMIN,Math.min(GAPMIN*INSET_UI.GAPMAX/INSET_UI.GAP,(H-2*EDGE-tot)/(n-1))):0, y=y0+EDGE, first=true;   // capped: spare height goes above/below the stack, not between regions
+    out.forEach(function(o){ if(!o) return; o.line=first?null:y-gap/2; first=false; o.top=y;
+      var tr=o.pj.translate(); o.pj.translate([tr[0], tr[1]+(y+LB)-o.b[0][1]]); y+=o.h+gap; });
+    return out;
+  }
+  function drawInsets(svg, g, path, w, h){
+    var box=document.getElementById('insetbox'); if(!box || typeof d3==='undefined' || !geo) return;
+    var c=d3.select(box); c.select('svg').remove(); if(mapG) mapG.selectAll('.insbox').remove();
+    var r=box.getBoundingClientRect(); var W=box.clientWidth, H=box.clientHeight;   // inside the border
+    if(W<120||H<200) return;   // panel hidden (narrow screens)
+    var regOf=function(f){ var o=seatOf(f); var code=o.s&&o.s.code; return code?SEATBASE[code]:null; };
+    var isvg0=c.append('svg').attr('width',W).attr('height',H).attr('viewBox','0 0 '+W+' '+H);   // exact pixels: never rescaled by the browser
+    drawInsets._wh=W+'x'+H;
+    var isvg=isvg0.append('g').attr('class','insall');
+    var LB=INSET_UI.LB, PADV=INSET_UI.PADV, PADI=INSET_UI.PADI;   // LB = label row + gap down to the map; PADI = padding all round the panel
+    var FEATS=INSETS.map(function(ins){ var f=geo.features.filter(function(x){ return ins.test(regOf(x)); }); return f.length>=6?f:null; });
+    var PK=insetPack(FEATS.map(function(f){ return f?{type:'FeatureCollection',features:f}:null; }), PADI, W-PADI, 0, H, LB, PADV, PADI, INSET_UI.GAP);
+    INSETS.forEach(function(ins,k){ var nm=ins.name;
+      var feats=FEATS[k], o=PK[k]; if(!feats) return;
+      var fc={type:'FeatureCollection',features:feats};
+      if(mapType!=='hex' && path && mapG){ var bb=path.bounds(fc);
+        mapG.append('rect').attr('class','insbox').attr('x',bb[0][0]-2).attr('y',bb[0][1]-2).attr('width',bb[1][0]-bb[0][0]+4).attr('height',bb[1][1]-bb[0][1]+4); }
+      var gi=isvg.append('g').attr('class','insg');
+      if(false && o.line!=null) gi.append('line').attr('class','insdiv').attr('x1',PADI).attr('x2',W-PADI).attr('y1',o.line).attr('y2',o.line);
+      var pp=d3.geoPath().projection(o.pj);
+      var mp=(path||mapPath), ms=mp&&mp.projection&&mp.projection().scale?mp.projection().scale():0, zf=ms?o.pj.scale()/ms:0;   // magnification vs the main map
+      gi.append('text').attr('class','inslabel').attr('x',PADI).attr('y',o.top+10).text(nm+' ('+feats.length+')'+(zf?' \u00b7 \u00d7'+(zf<10?zf.toFixed(1):Math.round(zf)):''));
+      gi.selectAll('path.cp').data(feats).enter().append('path').attr('class','cp').attr('d',pp).attr('fill','#e5e7eb').attr('stroke-width','0.6px')
+        .on('mousemove',function(e,d){ if(pinned) return; showTip(e,d,false); })
+        .on('mouseout',function(){ if(!pinned) tip.style.display='none'; })
+        .on('click',function(e,d){ pinned=(pinned&&pinned._d===d)?null:{_d:d,_evt:e}; d3.selectAll('.cp').classed('pinned',false); if(pinned){ d3.select(this).classed('pinned',true); showTip(e,d,true);} else tip.style.display='none'; });
+    });
+    // whatever the maths above gives, centre the finished stack vertically: equal space above the first label
+    // and below the last map (measured from what was actually drawn)
+    try{ var bx=isvg.node().getBBox(); if(bx.height>0) isvg.attr('transform','translate(0,'+((H-bx.height)/2-bx.y)+')'); }catch(e){}
   }
   function drawRegionBorders(g, path){
     try{
@@ -550,8 +882,13 @@ document.addEventListener('DOMContentLoaded', function(){
       var mk=function(){ return mapType==='hex'?d3.geoIdentity().reflectY(true):d3.geoMercator(); };
       var test=mk().fitWidth(EXPW-pad*2, g); var bb=d3.geoPath().projection(test).bounds(g);
       var aspect=(bb[1][1]-bb[0][1])/(bb[1][0]-bb[0][0]); var EXPH=Math.round((EXPW-pad*2)*aspect)+pad*2+foot;
-      var proj=mk().fitExtent([[pad,pad],[EXPW-pad,EXPH-pad-foot]], g); var path=d3.geoPath().projection(proj);
-      var sw=(mapType==='hex'?4.0:1.7*R);
+      // geo: zoomed regions in a column to the right = the on-screen panel scaled up (same width:height and spacing)
+      var MAPW=EXPW, withIns=(mapType!=='hex');
+      var ibx=document.getElementById('insetbox'), SW=(ibx&&ibx.clientWidth>100)?ibx.clientWidth:INSET_UI.W, SH=(ibx&&ibx.clientHeight>200)?ibx.clientHeight:INSET_UI.H;
+      var IK=(EXPH-pad*2-foot)/SH, ICOL=Math.round(SW*IK), IGAP=Math.round(30*R);
+      var INSW=withIns?IGAP+ICOL+Math.round(pad*0.5):0; EXPW=MAPW+INSW;
+      var proj=mk().fitExtent([[pad,pad],[MAPW-pad,EXPH-pad-foot]], g); var path=d3.geoPath().projection(proj);
+      var sw=(mapType==='hex'?4.0:2.2*R);
       var paths=g.features.map(function(ft){ var fill="#e5e7eb"; try{ var o=seatOf(ft); if(o.s) fill=colourFor(o.s); }catch(e){} var d=path(ft)||""; return d?('<path d="'+d+'" fill="'+fill+'" stroke="#ffffff" stroke-width="'+sw+'" stroke-linejoin="round"/>'):""; }).join("");
       var rgnPath='';   // region borders overlay - white, 2x the constituency stroke
       try{ if(mapType!=='hex' && window.topojson && topojson.topology && topojson.mesh){
@@ -561,7 +898,28 @@ document.addEventListener('DOMContentLoaded', function(){
         var mesh=topojson.mesh(topo, topo.objects.c, function(a,b){ return a!==b && (a.properties._rg||'')!==(b.properties._rg||''); });
         var dd=path(mesh)||''; if(dd) rgnPath='<path d="'+dd+'" fill="none" stroke="#ffffff" stroke-width="'+(2*sw)+'" stroke-linejoin="round" stroke-linecap="round"/>';
       } }catch(e){ if(window.console) console.warn('png region borders unavailable:', e); }
-      var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+EXPW+'" height="'+EXPH+'" viewBox="0 0 '+EXPW+' '+EXPH+'"><rect width="100%" height="100%" fill="#fbf7f4"/>'+paths+rgnPath+'</svg>';
+      // zoomed regions (same INSETS as the on-screen panel): dashed outline on the main map, and each
+      // region drawn large in the right-hand column; labels are added on the canvas below (Inter)
+      var insSvg='', insLabels=[];
+      if(withIns){ try{
+        var regOfX=function(f){ var o=seatOf(f); var code=o.s&&o.s.code; return code?SEATBASE[code]:null; };
+        var top0=pad, availH=EXPH-pad*2-foot, cL=MAPW+IGAP, cR=cL+ICOL, U=INSET_UI, K=IK;
+        var XF=INSETS.map(function(ins){ var f=g.features.filter(function(x){ return ins.test(regOfX(x)); }); return f.length>=6?f:null; });
+        var XP=insetPack(XF.map(function(f){ return f?{type:'FeatureCollection',features:f}:null; }), cL+U.PADI*K, cR-U.PADI*K, top0, availH, U.LB*K, U.PADV*K, U.PADI*K, U.GAP*K);
+        // centre the stack vertically, as on screen
+        var live=XP.filter(Boolean); if(live.length){ var t0=live[0].top, last=live[live.length-1], t1=last.top+last.h, dy=(availH-(t1-t0))/2-(t0-top0);
+          live.forEach(function(o){ o.top+=dy; if(o.line!=null) o.line+=dy; var tr=o.pj.translate(); o.pj.translate([tr[0],tr[1]+dy]); }); }
+        insSvg+='<line x1="'+(MAPW+IGAP/2)+'" x2="'+(MAPW+IGAP/2)+'" y1="'+top0+'" y2="'+(top0+availH)+'" stroke="#e2ddd6" stroke-width="'+Math.round(3*R)+'"/>';
+        INSETS.forEach(function(ins,k){ var feats=XF[k], o=XP[k]; if(!feats) return;
+          var fc={type:'FeatureCollection',features:feats};
+          var b0=path.bounds(fc), bp=Math.round(6*R);
+          insSvg+='<rect x="'+(b0[0][0]-bp)+'" y="'+(b0[0][1]-bp)+'" width="'+(b0[1][0]-b0[0][0]+2*bp)+'" height="'+(b0[1][1]-b0[0][1]+2*bp)+'" fill="none" stroke="#6b7280" stroke-width="'+Math.round(3*R)+'" stroke-dasharray="'+Math.round(14*R)+' '+Math.round(10*R)+'"/>';
+          if(false && o.line!=null) insSvg+='<line x1="'+(cL+U.PADI*K)+'" x2="'+(cR-U.PADI*K)+'" y1="'+o.line+'" y2="'+o.line+'" stroke="#e2ddd6" stroke-width="'+(1*K)+'"/>';
+          var pp=d3.geoPath().projection(o.pj);
+          var zf=o.pj.scale()/proj.scale(); insLabels.push({t:(ins.name+' ('+feats.length+')').toUpperCase()+' \u00b7 \u00d7'+(zf<10?zf.toFixed(1):Math.round(zf)), x:cL+U.PADI*K, y:o.top+10*K});
+          insSvg+=feats.map(function(ft){ var fill="#e5e7eb"; try{ var so=seatOf(ft); if(so.s) fill=colourFor(so.s); }catch(e){} var d=pp(ft)||''; return d?('<path d="'+d+'" fill="'+fill+'" stroke="#ffffff" stroke-width="'+(0.6*K)+'" stroke-linejoin="round"/>'):''; }).join(''); });
+      }catch(e){ if(window.console) console.warn('png insets unavailable:', e); insSvg=''; insLabels=[]; } }
+      var svg='<svg xmlns="http://www.w3.org/2000/svg" width="'+EXPW+'" height="'+EXPH+'" viewBox="0 0 '+EXPW+' '+EXPH+'"><rect width="100%" height="100%" fill="#fbf7f4"/>'+paths+rgnPath+insSvg+'</svg>';
       var when=new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"});
       var cap=(mapType==="hex"?"Hex cartogram \u00b7 layout: Automatic Knowledge (CC BY 4.0)":"Constituency projection");
       var title=when;
@@ -573,6 +931,10 @@ document.addEventListener('DOMContentLoaded', function(){
         if(mode==='custom'){ cx.strokeStyle='#7c3aed'; cx.lineWidth=Math.round(12*R); var pf=Math.round(20*R); cx.strokeRect(pf,pf,EXPW-2*pf,EXPH-2*pf); }
         function finish(lg){
           cx.textBaseline='alphabetic';
+          cx.textAlign='left'; cx.fillStyle='#6b7280'; cx.font='800 '+Math.round(INSET_UI.FONT*(typeof IK!=='undefined'?IK:R))+'px '+fontF;
+          cx.textAlign='left';
+          insLabels.forEach(function(L){ if(cx.letterSpacing!==undefined) cx.letterSpacing=Math.round(0.04*INSET_UI.FONT*(typeof IK!=='undefined'?IK:R))+'px'; cx.fillText(L.t, L.x, L.y); });
+          if(cx.letterSpacing!==undefined) cx.letterSpacing='0px';
           var rowY=EXPH-Math.round(46*R);            // bottom row baseline, raised to clear the purple frame
           // centred logo with the url centred directly below it
           var lh=0, lw=0;
@@ -596,8 +958,8 @@ document.addEventListener('DOMContentLoaded', function(){
   }
   var MARGINCOL={
     WPB:{Safe:'#2853a5',Likely:'#5375b7',Lean:'#7e98c9',Tilt:'#a9badb'}, LAB:{Safe:'#e4003b',Likely:'#e93362',Lean:'#ef6689',Tilt:'#f499b1'},
-    RES:{Safe:'#051e40',Likely:'#374b66',Lean:'#69788c',Tilt:'#9ba5b3'}, CON:{Safe:'#0393d3',Likely:'#35a9dc',Lean:'#68bee5',Tilt:'#9ad4ed'},
-    RFM:{Safe:'#2bc5db',Likely:'#55d1e2',Lean:'#80dce9',Tilt:'#aae8f1'}, LDM:{Safe:'#ff6400',Likely:'#ff7633',Lean:'#ff9866',Tilt:'#ffbb99'},
+    RES:{Safe:'#051e40',Likely:'#374b66',Lean:'#69788c',Tilt:'#9ba5b3'}, CON:{Safe:'#4167d1',Likely:'#6785da',Lean:'#8da4e3',Tilt:'#b3c2ed'},
+    RFM:{Safe:'#17b9d1',Likely:'#45c7da',Lean:'#74d5e3',Tilt:'#a2e3ed'}, LDM:{Safe:'#ff6400',Likely:'#ff7633',Lean:'#ff9866',Tilt:'#ffbb99'},
     GRN:{Safe:'#00a85a',Likely:'#33b97b',Lean:'#66cb9c',Tilt:'#99dcbd'}, SNP:{Safe:'#e6d62e',Likely:'#ebde58',Lean:'#f0e682',Tilt:'#f5efab'},
     PLC:{Safe:'#075d55',Likely:'#397d77',Lean:'#6a9e99',Tilt:'#9cbebb'}, MIN:{Safe:'#cb87ae',Likely:'#d59fbe',Lean:'#e0b7ce',Tilt:'#eacfdf'} };
   function bandOf(m){ return m>=0.15?'Safe':m>=0.10?'Likely':m>=0.05?'Lean':'Tilt'; }
@@ -609,7 +971,53 @@ document.addEventListener('DOMContentLoaded', function(){
     if(mapMode==='change'){ return (dw!==r.winner2024)?((PI[dw]&&PI[dw].c)||'#9ca3af'):'#e8e8e4'; }
     if(mapMode==='margin'){ var mc=MARGINCOL[dw]; return mc?mc[classOf(r,seatMaj(r))]:((PI[dw]&&PI[dw].c)||'#9ca3af'); }
     return (PI[dw]&&PI[dw].c)||'#9ca3af'; }
-  function renderMapColors(){ if(!mapDrawn||!mapG) return; var hit=0,tot=0;
+  // ---- second map: hex cartogram beside the geographic map (central projection, wide screens) ----
+  var map2G=null, map2Drawn=false;
+  function dualOn(){ return false; }   // single map (geo/hex toggle); right column = vote share or sliders
+  function drawMap2(){ if(!dualOn()||typeof d3==='undefined') return;
+    if(!hexGeo){ if(window.__HEX__){ hexGeo=window.__HEX__; } else { d3.json(HEX_URL).then(function(j){ hexGeo=j; drawMap2(); }).catch(function(e){ console.error('hex map unavailable:',e); }); return; } }
+    if(!results) return;
+    var c=d3.select('#map-container2'); c.select('svg').remove();
+    var rect=c.node().getBoundingClientRect(); var w=Math.round(rect.width)||600; var h=(rect.height>300?Math.round(rect.height):720);
+    var svg=c.append('svg').attr('width','100%').attr('height',h).attr('viewBox','0 0 '+w+' '+h).attr('role','img').attr('aria-label','Hex cartogram of constituencies coloured by projected winning party');
+    map2G=svg.append('g');
+    var proj=d3.geoIdentity().reflectY(true).fitExtent([[16,16],[w-16,h-16]],hexGeo), path=d3.geoPath().projection(proj);
+    var sk=function(k){ return Math.min(3.4,1.05*Math.pow(k,0.32))+'px'; };
+    svg.call(d3.zoom().scaleExtent([1,40]).on('zoom',function(e){ map2G.attr('transform',e.transform).attr('stroke-width',sk(e.transform.k)); if(!pinned) tip.style.display='none'; }));
+    map2G.attr('stroke-width',sk(1));
+    map2G.selectAll('path.cp2').data(hexGeo.features).enter().append('path').attr('class','cp cp2').attr('d',path).attr('fill','#e5e7eb')
+      .on('mousemove',function(e,d){ if(pinned) return; showTip(e,d,false); })
+      .on('mouseout',function(){ if(!pinned) tip.style.display='none'; })
+      .on('click',function(e,d){ pinned=(pinned&&pinned._d===d)?null:{_d:d,_evt:e}; map2G.selectAll('.cp2').classed('pinned',false); if(mapG) mapG.selectAll('.cp').classed('pinned',false);
+        if(pinned){ d3.select(this).classed('pinned',true); showTip(e,d,true);} else tip.style.display='none'; });
+    map2Drawn=true; renderMap2Colors(); }
+  function renderMap2Colors(){ if(!map2Drawn||!map2G) return;
+    map2G.selectAll('.cp2').attr('fill',function(d){ try{ var o=seatOf(d); return o.s?colourFor(o.s):'#e5e7eb'; }catch(e){ return '#e5e7eb'; } }); }
+  // re-lay out the map panel when the mode or the screen width changes what is shown
+  var lastLayout=null;
+  function syncMapLayout(force){ var lay=dualOn()?'dual':(mode==='custom'?'custom':'single');
+    if(!force && lay===lastLayout) return;
+    // central <-> custom only changes the container's size: no full redraw here (the ResizeObserver
+    // redraws once if, and only if, the map's height actually changed)
+    if(!force && lay!=='dual' && lastLayout!=='dual' && mapDrawn){ lastLayout=lay; return; }
+    lastLayout=lay;
+    if(lay==='dual' && mapType==='hex'){ mapType='geo'; document.querySelectorAll('.mtb[data-t]').forEach(function(x){ x.classList.toggle('active', x.getAttribute('data-t')==='geo'); }); }
+    pinned=null; tip.style.display='none';
+    ensureMapData(function(){ mapDrawn=false; drawMap(); });
+    if(lay==='dual'){ map2Drawn=false; drawMap2(); } else { d3.select('#map-container2').select('svg').remove(); map2Drawn=false; map2G=null; } }
+  (function(){ var mc=document.getElementById('map-container'), lastH=0, t;
+    if(mc && window.ResizeObserver) new ResizeObserver(function(){ var h=Math.round(mc.getBoundingClientRect().height);
+      if(!lastH){ lastH=h; return; } if(Math.abs(h-lastH)<4) return; lastH=h; clearTimeout(t);
+      t=setTimeout(function(){ if(mapDrawn) ensureMapData(function(){ mapDrawn=false; drawMap(); }); },150); }).observe(mc); })();
+  // redraw the zoomed regions whenever their panel changes size (the grid settles after the first draw;
+  // drawing at a stale size made the browser shrink the whole panel's drawing, leaving empty bands)
+  (function(){ var ib=document.getElementById('insetbox'), t;
+    if(ib && window.ResizeObserver) new ResizeObserver(function(){ clearTimeout(t); t=setTimeout(function(){
+      if(!mapDrawn) return; if(drawInsets._wh===ib.clientWidth+'x'+ib.clientHeight) return;
+      drawInsets(null,null,mapPath); renderMapColors(); },60); }).observe(ib); })();
+  window.addEventListener('resize',function(){ clearTimeout(syncMapLayout._t); syncMapLayout._t=setTimeout(function(){ syncMapLayout(false); if(mapDrawn){ drawInsets(null,null,mapPath); renderMapColors(); } },200); });
+  function renderMapColors(){ renderMap2Colors(); if(!mapDrawn||!mapG) return; var hit=0,tot=0;
+    d3.selectAll('#insetbox .cp').attr('fill',function(d){ try{ var o=seatOf(d); return o.s?colourFor(o.s):'#e5e7eb'; }catch(e){ return '#e5e7eb'; } });
     mapG.selectAll('.cp').attr('fill',function(d){ tot++; try{ var o=seatOf(d); if(!o.s) return '#e5e7eb'; hit++; return colourFor(o.s); }catch(e){ return '#e5e7eb'; } });
     if(window.console&&!renderMapColors._l){ renderMapColors._l=1; console.log('[nowcast] map seats matched '+hit+'/'+tot); } }
 
@@ -648,7 +1056,7 @@ document.addEventListener('DOMContentLoaded', function(){
   function buildCoalition(t){
     var order=Object.keys(t).filter(function(p){return t[p]>0&&PI[p]&&p!=='SF'&&p!=='SPKR';}).sort(function(a,b){return t[b]-t[a];});  // SF abstain - exclude from coalitions (326 line unchanged)
     var keep={}; order.forEach(function(p){ keep[p]=(coalSel[p]!==undefined)?coalSel[p]:false; }); coalSel=keep;
-    if(!order.some(function(p){return coalSel[p];}) && order.length) coalSel[order[0]]=true;
+    if(!buildCoalition._init){ buildCoalition._init=true; if(order.length) coalSel[order[0]]=true; }   // largest party pre-selected on first load only; clicking can leave none selected
     $('coal-parties').innerHTML=order.map(function(p){ return '<div class="coalbtn'+(coalSel[p]?' on':'')+'" data-p="'+p+'" style="background:'+PI[p].c+';color:'+textOn(PI[p].c)+'"><span class="cab">'+p+'</span><span class="cn">'+t[p]+'</span></div>'; }).join('');
     $('coal-parties').querySelectorAll('.coalbtn').forEach(function(b){ b.addEventListener('click',function(){ var p=b.getAttribute('data-p'); coalSel[p]=!coalSel[p]; buildCoalition(t); }); });
     var tot=0; order.forEach(function(p){ if(coalSel[p]) tot+=t[p]; });
@@ -656,26 +1064,76 @@ document.addEventListener('DOMContentLoaded', function(){
     var chips=sel.map(function(p){ var c=PI[p].c; return '<span class="coalchip" style="background:'+c+';color:'+textOn(c)+'">'+p+'</span>'; }).join('');
     var ct=$('coal-total');
     if(!sel.length){ ct.innerHTML='<span class="coaloutcome">Select parties</span>'; ct.className=''; }
-    else if(tot>=326){ ct.innerHTML=chips+'<span class="coalsep">|</span><span class="coalseats">'+tot+'</span><span class="coalsep">|</span><span class="coaloutcome">Majority of '+(2*tot-650)+'</span>'; ct.className='gov'; }
-    else { ct.innerHTML=chips+'<span class="coalsep">|</span><span class="coalseats">'+tot+'</span><span class="coalsep">|</span><span class="coaloutcome">'+(326-tot)+' short</span>'; ct.className=''; }
-    $('coalbar').innerHTML='<div class="majmark"></div>'+order.filter(function(p){return coalSel[p];}).map(function(p){ return '<div class="seg" style="width:'+(100*t[p]/642)+'%;background:'+PI[p].c+'"></div>'; }).join('');
+    else if(tot>=326){ ct.innerHTML=chips+'<span class="coalsep">|</span><span class="coalnum"><span class="coalseats">'+tot+'</span><span class="coaloutcome">Majority of '+(2*tot-650)+'</span>'+'</span>'; ct.className='gov'; }
+    else { ct.innerHTML=chips+'<span class="coalsep">|</span><span class="coalnum"><span class="coalseats">'+tot+'</span><span class="coaloutcome">'+(326-tot)+' short</span>'+'</span>'; ct.className='short'; }
+    // Two sides of the Commons: government benches (the selected parties) above the aisle, opposition (everyone
+    // else, fainter) below. Each side is 6 rows deep and 55+ columns wide, filled column by column from the left, front row
+    // (nearest the aisle) first. The dotted line on the government side steps round seat 325: crossing it = majority.
+    var govC=[]; sel.forEach(function(p){ for(var i=0;i<t[p];i++) govC.push(PI[p].c); });
+    var oppP=Object.keys(t).filter(function(p){ return t[p]>0 && !coalSel[p] && p!=='SPKR' && p!=='SF'; })   // Sinn Fein (abstentionist) not shown.sort(function(a,b){ return t[b]-t[a]; });
+    var oppC=[]; oppP.forEach(function(p){ for(var i=0;i<t[p];i++) oppC.push((PI[p]||PI.OTH).c); });
+    var R=6, C=Math.max(55, Math.ceil(govC.length/R), Math.ceil(oppC.length/R)), d=10, r=3.7, AISLE=22, W=C*d, H=R*d, svgd='', blank='#e7e3dc';   // 55 columns (330 seats, just past a majority), widening only when a side needs more
+    var yGov=function(row){ return (R-1-row)*d+d/2; }, yOpp=function(row){ return H+AISLE+row*d+d/2; };
+    for(var i=0;i<R*C;i++){ var cx=Math.floor(i/R)*d+d/2, row=i%R;
+      if(i<govC.length || i<Math.ceil(326/R)*R) svgd+='<circle cx="'+cx+'" cy="'+yGov(row)+'" r="'+r+'" fill="'+(i<govC.length?govC[i]:blank)+'"/>';   // blanks to the end of the column holding seat 326
+      if(i<oppC.length) svgd+='<circle cx="'+cx+'" cy="'+yOpp(row)+'" r="'+r+'" fill="'+oppC[i]+'" fill-opacity="0.32"/>'; }
+    var mc=Math.floor(325/R), mr=325%R;   // seat 326 = column 33, 6th row back from the aisle
+    svgd+='<path d="'+(mr? 'M'+(mc*d)+' -4 V'+((R-mr)*d)+' H'+((mc+1)*d)+' V'+(H+3) : 'M'+(mc*d)+' -4 V'+(H+3))+'" fill="none" stroke="#15171a" stroke-width="1.5" stroke-dasharray="2 2.5"/>';
+    var lab='font-size="8.5" font-weight="800" fill="#9ca3af" letter-spacing=".5"';
+    svgd+='<text x="'+W+'" y="'+(H+AISLE/2+3)+'" text-anchor="end" '+lab+'>GOVERNMENT \u25B2 \u00B7 \u25BC OPPOSITION</text>';
+    var HT=H*2+AISLE;
+    if(t.SPKR) svgd+='<circle cx="'+(-1.5*d)+'" cy="'+(H+AISLE/2)+'" r="'+(r+0.6)+'" fill="#111"><title>Speaker</title></circle>';   // Speaker's chair at the end of the aisle
+    $('coalbar').innerHTML='<svg viewBox="'+(-2.5*d)+' -6 '+(W+2.5*d+2)+' '+(HT+10)+'" role="img" aria-label="Government '+tot+' seats, opposition '+(oppC.length)+'; 326 needed for a majority">'+svgd+'</svg>';
   }
 
-  var tableBuilt=false, sortCol=null, sortDir=1;
-  function buildTable(){ var tp=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','OTH'];
-    var h='<table><thead><tr><th data-c="name">Constituency</th><th data-c="code">Code</th><th data-c="win">Now</th><th>2024</th>'+tp.map(function(p){return '<th data-c="'+p+'">'+p+'</th>';}).join('')+'</tr></thead><tbody>';
-    results.forEach(function(s){ var dw=dispWin(s); var wc=(PI[dw]||PI.OTH).c, w2=(PI[s.winner2024]||PI.OTH).c;
-      h+='<tr><td>'+s.seatName+'</td><td class="code">'+(s.code||'')+'</td><td class="win"><span style="background:'+wc+';color:'+textOn(wc)+'">'+dw+'</span></td><td class="win"><span style="background:'+w2+';color:'+textOn(w2)+'">'+s.winner2024+'</span></td>'+tp.map(function(p){var v=s.shares[p]||0;return '<td class="sh">'+(v>=0.005?(v*100).toFixed(0)+'%':v>=0.0001?'0%':'&middot;')+'</td>';}).join('')+'</tr>'; });
-    h+='</tbody></table>'; $('table-wrap').innerHTML=h;
-    $('table-wrap').querySelectorAll('th[data-c]').forEach(function(th){ th.addEventListener('click',function(){ sortTable(th.getAttribute('data-c')); }); }); tableBuilt=true; applyTableSearch(); }
-  function sortTable(col,keep){ if(!keep){ sortDir=(sortCol===col)?-sortDir:1; } sortCol=col; var tb=$('table-wrap').querySelector('tbody'); var rows=Array.prototype.slice.call(tb.querySelectorAll('tr'));
-    rows.sort(function(a,b){ if(col==='name'){return a.cells[0].textContent.localeCompare(b.cells[0].textContent)*sortDir;} if(col==='code'){return a.cells[1].textContent.localeCompare(b.cells[1].textContent)*sortDir;} if(col==='win'){return a.cells[2].textContent.localeCompare(b.cells[2].textContent)*sortDir;}
-      var tp=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','OTH']; var i=4+tp.indexOf(col); var av=parseFloat(a.cells[i].textContent)||-1, bv=parseFloat(b.cells[i].textContent)||-1; return (av-bv)*sortDir; });
-    tb.innerHTML=''; rows.forEach(function(r){tb.appendChild(r);}); applyTableSearch(); }
-  function applyTableSearch(){ var el=$('tablesearch'); var q=(el&&el.value||'').trim().toLowerCase(); var tb=$('table-wrap').querySelector('tbody'); if(!tb) return;
-    Array.prototype.slice.call(tb.querySelectorAll('tr')).forEach(function(r){ var nm=r.cells[0].textContent.toLowerCase(), cd=r.cells[1].textContent.toLowerCase(); r.style.display=(!q||nm.indexOf(q)>=0||cd.indexOf(q)>=0)?'':'none'; }); }
+  // ---- constituency table (design and sort logic as on the Holyrood page) ----
+  // A STACK of sort keys, most recent first: sort by Labour share, then by region, and you get the
+  // regions alphabetically with Labour's best seats first inside each. Name is the final tiebreak.
+  var TBL_P=['LAB','CON','RFM','LDM','GRN','RES','MIN','OTH','SNP','PLC'];
+  var REGION_CODE={'North East':'NE','North West':'NW','Yorkshire and the Humber':'YH','East Midlands':'EM','West Midlands':'WM',
+    'East of England':'EA','Greater London':'LD','South East':'SE','South West':'SW','Wales':'WA','Scotland':'SC'};
+  var tableBuilt=false, tableSort=[{k:'name',dir:1}], TABLE_SORT_DEPTH=4;
+  function darkenForText(bg){ var r=parseInt(bg.substr(1,2),16), g=parseInt(bg.substr(3,2),16), b=parseInt(bg.substr(5,2),16);
+    var lum=(0.299*r+0.587*g+0.114*b)/255; if(lum<=0.62) return bg; var k=0.45/lum;
+    var h=function(v){ v=Math.round(v*k).toString(16); return v.length<2?'0'+v:v; }; return '#'+h(r)+h(g)+h(b); }
+  function tblRegion(s){ var b=s.code&&SEATBASE[s.code]; return (b&&b.region)||''; }
+  function sortValue(s,k){
+    if(k==='name') return s.seatName; if(k==='code') return s.code||''; if(k==='region') return tblRegion(s); if(k==='win') return dispWin(s); if(k==='w24') return s.winner2024||'';
+    if(k==='margin') return seatMaj(s); return (s.shares&&s.shares[k])||0; }
+  function cmpOn(a,b,key){ var x=sortValue(a,key.k), y=sortValue(b,key.k);
+    if(typeof x==='string') return key.dir*x.localeCompare(y); return x===y?0:key.dir*(x-y); }
+  function buildTable(){
+    var wrap=$('table-wrap');
+    if(!wrap.querySelector('table')){
+      wrap.innerHTML='<table id="constitTable"><thead><tr><th data-k="name" data-t="text">Constituency</th><th data-k="code" data-t="text">Code</th><th data-k="region" data-t="text">Region</th>'+
+        '<th data-k="w24" data-t="text">2024</th><th data-k="win" data-t="text">Winner</th>'+
+        TBL_P.map(function(p){ return '<th data-k="'+p+'" data-t="num">'+(p==='MIN'?'Ind':p==='OTH'?'Oth':p)+'</th>'; }).join('')+
+        '<th data-k="margin" data-t="num">Maj (pts)</th></tr></thead><tbody id="constitBody"></tbody></table>';
+      // text columns open A-Z, number columns biggest first; clicking the primary column reverses it,
+      // any other column becomes primary and the previous sort survives as the tiebreak
+      wrap.querySelectorAll('th').forEach(function(th){ th.addEventListener('click',function(){ var k=th.getAttribute('data-k');
+        if(tableSort.length && tableSort[0].k===k) tableSort[0].dir=-tableSort[0].dir;
+        else tableSort=[{k:k, dir:th.getAttribute('data-t')==='num'?-1:1}].concat(tableSort.filter(function(e){ return e.k!==k; })).slice(0,TABLE_SORT_DEPTH);
+        buildTable(); }); });
+    }
+    var rows=results.slice().sort(function(a,b){ for(var i=0;i<tableSort.length;i++){ var r=cmpOn(a,b,tableSort[i]); if(r) return r; } return a.seatName.localeCompare(b.seatName); });
+    wrap.querySelectorAll('th').forEach(function(th){ var k=th.getAttribute('data-k'), at=-1;
+      for(var i=0;i<tableSort.length;i++) if(tableSort[i].k===k){ at=i; break; }
+      th.classList.toggle('sorted-asc', at>=0 && tableSort[at].dir===1); th.classList.toggle('sorted-desc', at>=0 && tableSort[at].dir===-1);
+      th.classList.toggle('sorted-sub', at>0); if(at>0) th.setAttribute('data-rank',String(at+1)); else th.removeAttribute('data-rank'); });
+    var pill=function(w){ var c=(PI[w]||PI.OTH).c; return '<span class="winpill" style="background:'+c+';color:'+textOn(c)+'">'+w+'</span>'; };
+    $('constitBody').innerHTML=rows.map(function(s){ var dw=dispWin(s), rg=tblRegion(s), wc=(PI[dw]||PI.OTH).c;
+      var cells=TBL_P.map(function(p){ var v=((s.shares&&s.shares[p])||0)*100, win=(p===s.winner);
+        return '<td'+(win?' style="font-weight:800; color:'+darkenForText(wc)+'"':'')+'>'+(v>=0.05?v.toFixed(1)+'%':'&mdash;')+'</td>'; }).join('');
+      return '<tr data-code="'+(s.code||'')+'"><td>'+s.seatName+'</td><td class="code">'+(s.code||'')+'</td><td class="rgn" title="'+rg+'" data-region="'+rg+'">'+(REGION_CODE[rg]||rg)+'</td>'+
+        '<td>'+(s.winner2024?pill(s.winner2024):'&mdash;')+'</td><td>'+pill(dw)+'</td>'+cells+'<td>'+(seatMaj(s)*100).toFixed(1)+'</td></tr>'; }).join('');
+    tableBuilt=true; applyTableSearch(); }
+  function applyTableSearch(){ var el=$('tablesearch'); var q=(el&&el.value||'').trim().toLowerCase(); var tb=$('constitBody'); if(!tb) return;
+    Array.prototype.slice.call(tb.querySelectorAll('tr')).forEach(function(r){
+      var hay=(r.cells[0].textContent+' '+r.cells[2].textContent+' '+(r.cells[2].getAttribute('data-region')||'')+' '+(r.getAttribute('data-code')||'')).toLowerCase();
+      r.style.display=(!q||hay.indexOf(q)>=0)?'':'none'; }); }
   $('toggle-table').addEventListener('click',function(){ var w=$('table-wrap'); if(w.style.display==='block'){ w.style.display='none'; this.textContent='Show table'; } else { if(!tableBuilt) buildTable(); w.style.display='block'; this.textContent='Hide table'; } });
-  function downloadTableCSV(){ if(!results) return; var tp=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','OTH'];
+  function downloadTableCSV(){ if(!results) return; var tp=['LAB','CON','RFM','LDM','GRN','RES','MIN','OTH','SNP','PLC'];
     var rows=[['Constituency','Code','Winner','2024'].concat(tp)];
     var all=results.concat(NIFIXED.map(function(s){return {seatName:s.name,code:s.code,winner:s.winner,winner2024:s.w24,minType:'MIN',shares:s.shares||{}};}));
     all.forEach(function(s){ var r=[s.seatName,s.code||'',dispWin(s),s.winner2024||'']; tp.forEach(function(p){ r.push((((s.shares||{})[p]||0)*100).toFixed(1)); }); rows.push(r); });
@@ -688,6 +1146,7 @@ document.addEventListener('DOMContentLoaded', function(){
   if(!tableBuilt) buildTable(); $('table-wrap').style.display='block'; $('toggle-table').textContent='Hide table';
 
   document.querySelectorAll('.mmb').forEach(function(b){ b.addEventListener('click',function(){ mapMode=b.getAttribute('data-m'); document.querySelectorAll('.mmb').forEach(function(x){x.classList.remove('active');}); b.classList.add('active'); renderMapColors(); }); });
+  (function(){ var rb=$('mapreset'); if(rb) rb.addEventListener('click',function(){ if(mapSvg&&mapZoom) mapSvg.transition().duration(500).call(mapZoom.transform, d3.zoomIdentity); }); })();
   document.querySelectorAll('.mtb').forEach(function(b){ b.addEventListener('click',function(){ var t=b.getAttribute('data-t'); if(!t || t===mapType) return;
     document.querySelectorAll('.mtb').forEach(function(x){x.classList.remove('active');}); b.classList.add('active');
     mapType=t; pinned=null; tip.style.display='none';
