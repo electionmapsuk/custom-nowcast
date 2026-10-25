@@ -61,13 +61,49 @@ const S_SC = {
 };
 F_SC.RES = F_SC.RFM; S_SC.RES = S_SC.RFM;   // Restore voters (not surveyed) treated like Reform voters in Scotland
 const DONORS = ['LAB','LDM','GRN','CON','RFM','SNP','PLC','RES'];
+// ---- Find Out Now / Electoral Calculus tactical preferences (Oct 2026), blended in ----
+// [nation, donor, A, B, % to A, % to B]. Scaled by FON_R (= YouGov's overall switching level / FON's, on the 16
+// England cells both cover) so the model's calibration (TSCALE) is unchanged, then averaged FON_W : (1-FON_W) with
+// the existing table: YouGov (England/GB), Survation (Scotland). Cells only FON covers are used as they are
+// (Restore donors everywhere; Wales, incl. Plaid voters and Plaid contests). Wales: FON Wales blended with the GB table.
+const FON = [
+ ['E','LDM','CON','LAB',18,62],['E','RFM','CON','LAB',47,2],
+ ['E','LAB','CON','LDM',9,69],['E','RFM','CON','LDM',44,5],['E','GRN','CON','LDM',2,69],['E','RES','CON','LDM',30,7],
+ ['E','LAB','CON','RFM',50,4],['E','LDM','CON','RFM',64,3],['E','GRN','CON','RFM',38,1],['E','RES','CON','RFM',9,56],
+ ['E','CON','GRN','LAB',12,28],['E','LDM','GRN','LAB',28,48],['E','RFM','GRN','LAB',10,9],['E','RES','GRN','LAB',7,8],
+ ['E','CON','LAB','RFM',21,43],['E','LDM','LAB','RFM',75,7],['E','GRN','LAB','RFM',84,1],['E','RES','LAB','RFM',3,60],
+ ['E','CON','LDM','RFM',26,34],['E','LAB','LDM','RFM',77,3],
+ ['S','LAB','CON','SNP',34,39],['S','LDM','CON','SNP',36,34],['S','RFM','CON','SNP',57,11],['S','GRN','CON','SNP',0,79],['S','RES','CON','SNP',29,20],
+ ['S','CON','LAB','SNP',74,3],['S','LDM','LAB','SNP',49,25],['S','RFM','LAB','SNP',30,18],['S','GRN','LAB','SNP',25,50],['S','RES','LAB','SNP',20,21],
+ ['S','CON','LDM','SNP',61,14],['S','LAB','LDM','SNP',58,23],['S','RFM','LDM','SNP',29,13],['S','GRN','LDM','SNP',7,66],['S','RES','LDM','SNP',20,21],
+ ['S','CON','RFM','SNP',49,17],['S','LAB','RFM','SNP',15,52],['S','LDM','RFM','SNP',6,57],['S','GRN','RFM','SNP',0,77],['S','RES','RFM','SNP',56,12],
+ ['W','LDM','CON','LAB',31,42],['W','RFM','CON','LAB',54,1],['W','GRN','CON','LAB',2,71],['W','RES','CON','LAB',32,3],['W','PLC','CON','LAB',3,52],
+ ['W','LAB','CON','RFM',31,0],['W','LDM','CON','RFM',66,7],['W','GRN','CON','RFM',40,2],['W','RES','CON','RFM',0,55],['W','PLC','CON','RFM',26,3],
+ ['W','CON','LAB','RFM',30,37],['W','LDM','LAB','RFM',82,7],['W','GRN','LAB','RFM',71,3],['W','RES','LAB','RFM',2,67],['W','PLC','LAB','RFM',53,5],
+ ['W','CON','PLC','RFM',33,37],['W','LAB','PLC','RFM',67,0],['W','LDM','PLC','RFM',56,6],['W','GRN','PLC','RFM',77,1],['W','RES','PLC','RFM',1,65],
+];
+const FON_R = 0.868, FON_W = 0.5;
+const F_WA={}, S_WA={}; let _WALES=false, loans24G=null;
+(function(){
+  F_SC.RES=Object.assign({},F_SC.RFM); S_SC.RES=Object.assign({},S_SC.RFM);
+  const put=(Ft,St,d,a,b,ta,tb,mode)=>{ const [x,y]=[a,b].sort(), k=x+'_'+y, tx=(x===a?ta:tb)/100*FON_R, ty=(x===a?tb:ta)/100*FON_R;
+    Ft[d]=Ft[d]||{}; St[d]=St[d]||{};
+    if (mode==='blend' && k in Ft[d] && k in St[d]) { Ft[d][k]=(1-FON_W)*Ft[d][k]+FON_W*tx; St[d][k]=(1-FON_W)*St[d][k]+FON_W*ty; }
+    else { Ft[d][k]=tx; St[d][k]=ty; } };
+  FON.forEach(([n,d,a,b,ta,tb])=>{
+    if(n==='E') put(F,S,d,a,b,ta,tb, d==='RES'?'replace':'blend');
+    if(n==='S') put(F_SC,S_SC,d,a,b,ta,tb, d==='RES'?'replace':'blend');
+    if(n==='W'){ const [x,y]=[a,b].sort(),k=x+'_'+y, g=(F[d]&&k in F[d]&&!('__const' in F[d]))?[F[d][k],S[d][k]]:null;
+      F_WA[d]=F_WA[d]||{}; S_WA[d]=S_WA[d]||{}; const tx=(x===a?ta:tb)/100*FON_R, ty=(x===a?tb:ta)/100*FON_R;
+      if(g && d!=='RES'){ F_WA[d][k]=(1-FON_W)*g[0]+FON_W*tx; S_WA[d][k]=(1-FON_W)*g[1]+FON_W*ty; } else { F_WA[d][k]=tx; S_WA[d][k]=ty; } } });
+})();
 const CANON = ['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','WPB','OTH'];
 
 const logistic=(k,mid,x)=>1/(1+Math.exp(-k*(x-mid)));
 // Realism scaling applied per flow on top of the YouGov rates: a vote lent to a party in the donor's
 // OWN bloc (e.g. LD->Lab, Con->Reform) is scaled by INTRA; a vote lent ACROSS blocs (e.g. Lab->Con,
 // Con->Lab) by INTER. Parties outside both blocs (MIN/OTH) count as intra.
-const INTRA_BLOC = 1, INTER_BLOC = 1;   // bloc limits OFF (was 0.8 / 0.6); double-counting now handled by NET_OF_2024
+const INTRA_BLOC = 1, INTER_BLOC = 1;   // bloc limits OFF (was 0.8 / 0.6); double-counting now handled by the 2024 loan unwind
 function blocScale(donor, recip){
   const L=LEFT.has(donor)&&LEFT.has(recip), R=RIGHT.has(donor)&&RIGHT.has(recip);
   const cross=(LEFT.has(donor)&&RIGHT.has(recip))||(RIGHT.has(donor)&&LEFT.has(recip));
@@ -79,9 +115,11 @@ function blocScale(donor, recip){
 const RES_RFM_T = { CON:[.05,.30], LAB:[.01,.15], LDM:[.01,.15], GRN:[.01,.10] };
 // Global realism scale: stated tactical intentions (hypothetical survey Qs) overstate real behaviour
 // (2019->24 squeezes were well below face value), so every transfer rate is scaled by TSCALE.
-const TSCALE = 2/3;   // realisation rate TODAY: share of stated (YouGov) tactical switching that actually happens (strong within-bloc squeezing, supported by post-Burnham by-elections)
+const COMP_FLOOR = 0.5;
+const TSCALE = 1;   // realisation rate of stated tactical intentions today. Oct 2026: backtest + by-elections best at 0.75-1.0
 function frac(tbl, party, matchup, scot){ return TSCALE*fracRaw(tbl, party, matchup, scot); }
 function fracRaw(tbl, party, matchup, scot){
+  if (_WALES) { const st=(tbl===F?F_WA:S_WA)[party]; if (st && matchup in st) return st[matchup]; }   // Wales-specific (FON-blended)
   if (scot) { const key=matchup.indexOf('RES')<0 ? matchup : null;
     const st=(tbl===F?F_SC:S_SC)[party]; if (key && st && key in st) return st[key]; }
   const t=tbl[party]; if(!t) return 0; if('__const'in t) return t.__const;
@@ -108,23 +146,18 @@ function bloc2(base, members){
   return (vals[0]||0)-(vals[1]||0);
 }
 
+// ---- UNWINDING 2024's TACTICAL VOTE: loans measured from REAL results (build/fit_unwind.py -> seats.json loans24) ----
+// Each seat carries [donor, recipient, pts] loans made in 2024, from the British Election Study (voters' own reports of
+// voting tactically and the party they really preferred, by race type and closeness) - see build/fit_unwind.py.
+// Today: each loan is handed back, shrunk if the donor has fallen since 2024 (never grown - growth may already be those
+// voters returning), then today's tactical voting is applied.
+// (Replaced Oct 2026: the survey-based 'working backwards' unwind and the 2019-notional Labour loans.)
 function seatTactical(base, incumbent, prev, gaza, scot){
-  const delta = tacticalDelta(base, base, incumbent, null, gaza, scot);
-  if(prev && NET_OF_2024>0){
-    // The 2024 result already contains the tactical squeeze of 2024's contest. Only apply the
-    // CHANGE: subtract the flows the 2024 contest would have produced (same YouGov rates, same
-    // current donor volumes). Where the contest is unchanged this nets to ~0; where it has
-    // changed, old tactical votes unwind and new ones form.
-    // Scotland: 2024 flows can't exceed the donor votes that existed in 2024 (or exist now), so use
-    // min(current, 2024) volumes; and, as in England, only unwind left/nationalist donors' 2024 squeezing.
-    // England & Wales: 2024 tactical voting was INTRA-bloc (left voters squeezing to Lab/LD against the
-    // Tories; Reform/Restore voters squeezing to the Tories in Con-v-Lab seats) - cross-bloc lending
-    // (e.g. Con->Lab) is treated as not having happened. All donors, capped at 2024 volumes.
-    const vol24 = Object.fromEntries(CANON.map(p=>[p, Math.min(base[p]||0, prev[p]||0)]));
-    const d24 = tacticalDelta(vol24, prev, incumbent, scot ? NET_DONORS_SC : DONORS, gaza, scot, !scot);
-    CANON.forEach(p=>{ delta[p] -= NET_OF_2024*d24[p]; });
-  }
-  const out={}; CANON.forEach(p=>out[p]=Math.max(0,(base[p]||0)+delta[p]));
+  const sb={}; CANON.forEach(p=>sb[p]=base[p]||0);
+  if (prev) (loans24G||[]).forEach(([d,r,v])=>{ const k=(prev[d]||0)>0?Math.min(1,(base[d]||0)/prev[d]):1, m=Math.min(v*k, sb[r]||0); sb[d]+=m; sb[r]-=m; });
+  // voters judge which race they're in from the last ACTUAL result (swung to today), not from the sincere vote
+  const dT=tacticalDelta(sb, base, incumbent, null, gaza, scot);
+  const out={}; CANON.forEach(p=>out[p]=Math.max(0,sb[p]+(dT[p]||0)));
   return out;
 }
 // Tactical flows given donor volumes (base) and the race as voters perceive it (perc).
@@ -153,7 +186,7 @@ function tacticalDelta(base, perc, incumbent, donors, gaza, scot, intraOnly){
     const clarForSC = p => { const b=SC_BLOC[p]; if(!b) return 1;
       return (SC_BLOC[firstP]===b || SC_BLOC[secondP]===b) ? clarCurve(bloc2(perc, scBlocMembers(b))) : LESSER_EVIL; };
     const clarFor = scot ? clarForSC : clarForEW;
-    const comp = Math.pow(Math.max(0, 1-(Math.abs(va-vb)/0.25)), 1.5);   // 5pt lead 72%, 10pt 46%, 15pt 25%, 25pt+ 0
+    const comp = COMP_FLOOR + (1-COMP_FLOOR)*Math.pow(Math.max(0, 1-(Math.abs(va-vb)/0.25)), 1.5);   // closer race -> more squeezing, but never below COMP_FLOOR (BES 2024: squeezing persists in safe seats)   // 5pt lead 72%, 10pt 46%, 15pt 25%, 25pt+ 0
     const lost={}, gainedFirst={}, gainedSecond={};
     DONORS_.forEach(p=>{
       const cl=clarFor(p);
@@ -208,9 +241,6 @@ function tacticalDelta(base, perc, incumbent, donors, gaza, scot, intraOnly){
   return out;
 }
 
-const NET_OF_2024 = (1/3)/(2/3);  // 2024 realisation = TSCALE*0.5 = 1/3 (2019->24 backtest, boundary-stable seats ~0.3); subtract tactical flows already embedded in the 2024 result (left-bloc donors)
-const NET_DONORS = ['LAB','LDM','GRN'];   // 2024 tactical voting was an anti-Conservative, left-bloc phenomenon
-const NET_DONORS_SC = ['LAB','LDM','GRN','SNP'];
 const CONC_RESCALE = (typeof process!=='undefined'&&process.env&&process.env.CONC) ? true : false;
 const GAZA_RATE = 0.65;   // stated-equivalent rate Green<->pro-Gaza IND/WPB (like GRN->LAB vs RFM 0.63)
 const GAZA_MIN_IND = 0.10, GAZA_MIN_MUS = 0.10;   // seats: organised IND/WPB (>=10% base) with >=10% Muslim population, plus the listed seats
@@ -220,18 +250,29 @@ function Phi(z){ const t=1/(1+0.2316419*Math.abs(z)); const d=0.3989423*Math.exp
   const p=d*t*(0.3193815+t*(-0.3565638+t*(1.781478+t*(-1.821256+t*1.330274)))); return z>0?1-p:p; }
 // P(parties i,j both finish above every other listed party) = integral over m = max(rest) of
 // dF_max(m) * P(x_i>m) * P(x_j>m). One shared grid of normal CDFs per seat -> fast enough for the MC.
+// Same arithmetic as before (identical results), written for speed: party CDFs and survival midpoints
+// computed once per seat instead of once per pair, typed arrays, no closures in the inner loop, and a
+// small memo (the 2024-unwind call sees the same 2024 race in every Monte Carlo simulation).
+const _PW_MEMO = new Map(), _PW_MEMO_MAX = 4000;
 function pairWeights(top, scot){
-  const s=CONTEST_SIGMA, n=top.length, G=121;
-  const vs=top.map(t=>t[1]), lo=Math.min(...vs)-5*s, hi=Math.max(...vs)+5*s;
-  const grid=[]; for(let g=0;g<G;g++) grid.push(lo+(hi-lo)*g/(G-1));
-  const F=top.map(t=>grid.map(m=>Phi((m-t[1])/s)));
-  const pairs=[];
+  const n=top.length;
+  let key=scot?'S':'E'; for(let k=0;k<n;k++) key+='|'+top[k][0]+':'+top[k][1];
+  const hit=_PW_MEMO.get(key); if(hit) return hit.map(p=>({i:p.i,j:p.j,w:p.w}));
+  const s=CONTEST_SIGMA, G=121;
+  let lo=Infinity, hi=-Infinity; for(let k=0;k<n;k++){ const v=top[k][1]; if(v<lo) lo=v; if(v>hi) hi=v; }
+  lo-=5*s; hi+=5*s;
+  const F=[], SM=[];
+  for(let k=0;k<n;k++){ const f=new Float64Array(G), sm=new Float64Array(G), v=top[k][1];
+    for(let g=0;g<G;g++){ f[g]=Phi(((lo+(hi-lo)*g/(G-1))-v)/s); if(g>0) sm[g]=1-(f[g]+f[g-1])/2; }
+    F.push(f); SM.push(sm); }
+  const pairs=[], rest=[];
   for(let i=0;i<n;i++) for(let j=i+1;j<n;j++){
-    const rest=[...Array(n).keys()].filter(k=>k!==i&&k!==j);
+    rest.length=0; for(let k=0;k<n;k++) if(k!==i&&k!==j) rest.push(k);
+    const Si=SM[i], Sj=SM[j], nr=rest.length;
     let pr=0, prevFM=0;
     for(let g=0;g<G;g++){
-      let FM=1; rest.forEach(k=>{ FM*=F[k][g]; });
-      if(g>0){ const Si=1-(F[i][g]+F[i][g-1])/2, Sj=1-(F[j][g]+F[j][g-1])/2; pr+=(FM-prevFM)*Si*Sj; }
+      let FM=1; for(let r=0;r<nr;r++) FM*=F[rest[r]][g];
+      if(g>0) pr+=(FM-prevFM)*Si[g]*Sj[g];
       prevFM=FM;
     }
     const cross= scot ? (SC_BLOC[top[i][0]] && SC_BLOC[top[j][0]] && SC_BLOC[top[i][0]]!==SC_BLOC[top[j][0]])
@@ -239,6 +280,8 @@ function pairWeights(top, scot){
     pairs.push({i,j,w:pr*(cross?1+CROSS_BLOC_SALIENCE:1)});
   }
   const t=pairs.reduce((a,p)=>a+p.w,0)||1; pairs.forEach(p=>p.w/=t);
+  if(_PW_MEMO.size>=_PW_MEMO_MAX) _PW_MEMO.clear();
+  _PW_MEMO.set(key, pairs.map(p=>({i:p.i,j:p.j,w:p.w})));
   return pairs;
 }
 
@@ -250,7 +293,7 @@ function apply(seats, transShare, cfg){
   seats.forEach(s=>{
     const base = transShare[s.code]; if(!base) return;
     const gaza = (cfg&&cfg.greenIndBlocSeats||[]).includes(s.code) || (((s.base&&s.base.MIN)||0) >= GAZA_MIN_IND && (s.mus||0) >= GAZA_MIN_MUS);
-    const t = seatTactical(base, s.incumbent2024, s.a24, gaza, (s.engine==='Scotland'));
+    _WALES=(s.engine==='Wales'); loans24G=s.loans24||null; const t = seatTactical(base, s.incumbent2024, s.a24, gaza, (s.engine==='Scotland')); _WALES=false;
     tac[s.code]=t;
     if (CONC_RESCALE) { // P(party is in the genuine top two) from the same contest weights used for tactical voting
       const top = RANK_PARTIES.map(p=>[p, base[p]||0]).sort((x,y)=>y[1]-x[1]).slice(0,4);
@@ -311,6 +354,8 @@ const CONFIG = {
   londonMRPFree: true,     // MRPs keep their own London split (main model still forced to the London row); final London = the blend
   minorsFromModel: true,   // MIN + OTH from the main model only; MRPs blended for named parties within the rest
   greenMuslimTilt: 1.0, // log-multiplier on Green vote per unit Muslim share (seats WITHOUT a standing Gaza-IND/WPB); refitted to GM mayoral 2026 after adding indAbsentSeats
+  greenAgeTilt: 0,          // log-multiplier on Green vote per unit 16-34 share (centred on greenAgeMean): the post-2024 Green rise is a young voters' surge
+  greenAgeMean: 0.2913,     // mean 16-34 share across E&W seats (Census 2021); seats without a1634 (Scotland) are untouched
   greenMuslimTiltLondon: 0,   // London local elections 2026: Muslim-area anti-Labour vote went to local independents, not Greens -> no tilt in London
   indAbsentSeats: [],   // DEFAULT: every 2024 candidate stands again. List seats here only where told otherwise (40% of their vote -> Green)
   indToGreenShare: 0.4,
@@ -328,18 +373,18 @@ const CONFIG = {
   regionalAnchor: {
     // national = GB-wide at the central projection; regional = that nation at the central projection.
     // Auto-generated by update_central.py from central_inputs.json.
-    Scotland: { national:{LAB:0.274,CON:0.198,RFM:0.233,LDM:0.099,GRN:0.097,RES:0.038},
-                regional:{LAB:0.2001,CON:0.111,RFM:0.1677,LDM:0.0866,GRN:0.0688,RES:0.0345} },
-    Wales:    { national:{LAB:0.274,CON:0.198,RFM:0.233,LDM:0.099,GRN:0.097,RES:0.038},
-                regional:{LAB:0.2129,CON:0.1445,RFM:0.2449,LDM:0.0507,GRN:0.0698,RES:0.0293} },
-    London:   { national:{LAB:0.274,CON:0.198,RFM:0.233,LDM:0.099,GRN:0.097,RES:0.038},
-                regional:{LAB:0.341,CON:0.2095,RFM:0.1594,LDM:0.1111,GRN:0.1385,RES:0.0185} },
+    Scotland: { national:{LAB:0.288,CON:0.215,RFM:0.223,LDM:0.095,GRN:0.091,RES:0.038},
+                regional:{LAB:0.2142,CON:0.1218,RFM:0.1634,LDM:0.0758,GRN:0.0651,RES:0.0398} },
+    Wales:    { national:{LAB:0.288,CON:0.215,RFM:0.223,LDM:0.095,GRN:0.091,RES:0.038},
+                regional:{LAB:0.2233,CON:0.1612,RFM:0.2397,LDM:0.046,GRN:0.0691,RES:0.0252} },
+    London:   { national:{LAB:0.288,CON:0.215,RFM:0.223,LDM:0.095,GRN:0.091,RES:0.038},
+                regional:{LAB:0.3398,CON:0.2066,RFM:0.1509,LDM:0.1123,GRN:0.1417,RES:0.0201} },
   },
   regionalSwingMix: 0.5,   // (unused since 24 Sep 2026: regional swing now uses the J-curve, see regionalSwing)
   // When SNP/Plaid fall below their central level the freed vote is re-spread to the main
   // parties (mostly LAB/GRN) instead of leaking to MIN/OTH. natBaseline = central nationalist
   // shares (kept in sync by update_central.py). Set a weight to 0 to exclude a party.
-  natBaseline: { SNP: 0.3085, PLC: 0.231 },
+  natBaseline: { SNP: 0.3123, PLC: 0.2202 },
   natRealloc: {   // where SNP/Plaid losses go, per nation (must each sum to ~1, MIN included)
     Scotland: { LAB: 0.35, GRN: 0.30, LDM: 0.15, CON: 0.05, RFM: 0.00, MIN: 0.15 },
     Wales:    { LAB: 0.40, GRN: 0.25, LDM: 0.10, CON: 0.05, RFM: 0.05, MIN: 0.15 },
@@ -430,12 +475,18 @@ function regionalTargets(inp, cfg) {
   // (otherwise unallocated nationalist vote inflates OTH and trips the ^10 minor-suppression).
   const snpGB = (inp.scotland&&inp.scotland.SNP||0)*P.scotland;
   const plcGB = (inp.wales&&inp.wales.PLC||0)*P.wales;
+  // Over-full inputs (named parties summing to >100%, e.g. every slider at 55%): scale the named parties
+  // down to fit, rather than letting the overflow turn into negative 'Others' in the nations, which then
+  // re-appeared as a large POSITIVE 'Others' in England and inflated the independents' targets.
+  { const room = Math.max(0, P.gb - snpGB - plcGB), used = sum(main.map(p=>gbV[p]));
+    if (used > room && used > 0) main.forEach(p => gbV[p] *= room/used); }
   gbV.OTH = Math.max(0, P.gb - sum(main.map(p=>gbV[p])) - snpGB - plcGB);
 
   const regionVotes = (share, pool, extra) => {
     const v = {}; main.forEach(p => v[p] = (share[p]||0)*pool);
     let used = sum(main.map(p=>v[p]));
     if (extra) { v[extra.key] = (share[extra.key]||0)*pool; used += v[extra.key]; }
+    if (used > pool && used > 0) { const k = pool/used; main.forEach(p => v[p] *= k); if (extra) v[extra.key] *= k; used = pool; }   // over-full: scale to fit
     v.OTH = pool - used;            // residual (absorbs nationalist where not broken out)
     return v;
   };
@@ -571,6 +622,8 @@ function swingEngine(seatsR, target, parties, cfg, opts) {
               (((r.s.base&&r.s.base.MIN)||0) >= (cfg.indStandingThreshold||0.10) && !(cfg.indAbsentSeats||[]).includes(r.s.code));
         if (!indStanding) fin.GRN *= m;
       } }
+    // Green age realignment: tilt by exp(k * (16-34 share - mean)); calibration below keeps each engine's Green total on target
+    if (cfg.greenAgeTilt && fin.GRN!=null && r.s.a1634!=null) fin.GRN *= Math.exp(cfg.greenAgeTilt * (r.s.a1634 - (cfg.greenAgeMean||0.29)));
     const tot = sum(parties.map(p=>fin[p]));
     r.share = {}; parties.forEach(p => r.share[p] = tot>0 ? fin[p]/tot : 0);
   });
@@ -649,7 +702,10 @@ function applySpecialSeats(seatShares, inputs, cfg){
     curNat.PLC = (x.s.nation==='Wales') ? plcNow : 0;
     const est={}; let es=0;
     keys.forEach(p=>{ const sv=sd.seatPoll[p]||0, nt=sd.natAtTime[p]||0, cn=curNat[p]||0;
-      const add=sv+(cn-nt), prop=nt>0?sv*(cn/nt):sv; est[p]=Math.max(0, mix*add+(1-mix)*prop); es+=est[p]; });
+      // additive swing is faded out as the party's national share falls below its level at the time of the
+      // by-election/poll, so a party polling 0% nationally also gets ~0% here (proportional part already does)
+      const fade = nt>0 ? Math.min(1, cn/nt) : 1;
+      const add=(sv+(cn-nt))*fade, prop=nt>0?sv*(cn/nt):sv; est[p]=Math.max(0, mix*add+(1-mix)*prop); es+=est[p]; });
     if(es>0) keys.forEach(p=>est[p]/=es);
     const f=x.final, fM=f.MIN||0, fO=f.OTH||0, os=fM+fO, rM=os>0?fM/os:1;
     const out={}; CANON.forEach(p=>out[p]=(1-blend)*(f[p]||0));

@@ -1,0 +1,38 @@
+{
+  "_comment": "EDIT THESE NUMBERS as plain percentages, then run:  python3 build/update_central.py",
+  "_comment2": "GB = the GB-wide row. scotland/wales/london = that nation's party shares. SNP goes in scotland, PLC (Plaid) in wales.",
+  "gb": {
+    "LAB": 28.8,
+    "CON": 21.5,
+    "RFM": 22.3,
+    "LDM": 9.5,
+    "GRN": 9.1,
+    "RES": 3.8
+  },
+  "scotland": {
+    "LAB": 21.42,
+    "CON": 12.18,
+    "RFM": 16.34,
+    "LDM": 7.58,
+    "GRN": 6.51,
+    "RES": 3.98,
+    "SNP": 31.23
+  },
+  "wales": {
+    "LAB": 22.33,
+    "CON": 16.12,
+    "RFM": 23.97,
+    "LDM": 4.6,
+    "GRN": 6.91,
+    "RES": 2.52,
+    "PLC": 22.02
+  },
+  "london": {
+    "LAB": 33.98,
+    "CON": 20.66,
+    "RFM": 15.09,
+    "LDM": 11.23,
+    "GRN": 14.17,
+    "RES": 2.01
+  }
+}
