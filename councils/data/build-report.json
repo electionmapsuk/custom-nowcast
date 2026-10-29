@@ -1,5 +1,5 @@
 {
- "generated": "2026-10-28T13:12:11+00:00",
+ "generated": "2026-10-29T13:18:45+00:00",
  "year": 2026,
  "csvRows": 19273,
  "councilsParsed": 384,
@@ -22,9 +22,9 @@
   "Northern Ireland": 11,
   "Wales": 22
  },
- "councillors": 18697,
+ "councillors": 18696,
  "partyTotals": {
-  "LAB": 4559,
+  "LAB": 4558,
   "CON": 3734,
   "LDM": 3154,
   "RFM": 2291,
@@ -37,7 +37,7 @@
   "DUP": 119,
   "ALL": 65,
   "UUP": 51,
-  "VAC": 42,
+  "VAC": 43,
   "RES": 38,
   "SDLP": 34,
   "ASP": 32,
@@ -191,7 +191,7 @@
   "The Oldham Group Party": 10,
   "Traditional Unionist Voice - TUV": 10,
   "Great Yarmouth First": 9,
-  "Oxted & Limpsfield Residents Group": 8,
+  "Oxted & Limpsfield Residents Group": 9,
   "The Liberal Party": 7,
   "Workers Party of Britain": 7,
   "Radcliffe First": 7,
