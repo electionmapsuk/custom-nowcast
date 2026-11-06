@@ -36,7 +36,7 @@ PARTIES = {
     "SDP":  ("SDP",                  "#d25469"),
     # local parties and residents' groups: one shared pink, except those big
     # enough to have been given their own colour
-    "LOC":  ("Localist",             "#EC8BD3"),
+    "LOC":  ("Localist",             "#E28CDB"),
     "NIP":  ("Newham Independents",  "#F3EB51"),
     "CIP":  ("Canvey Island Independents", "#333333"),
     "VAC":  ("Vacant",               "#d8d8d4"),
