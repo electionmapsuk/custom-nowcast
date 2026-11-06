@@ -1,10 +1,10 @@
 {
- "generated": "2026-11-06T14:26:15+00:00",
+ "generated": "2026-11-06T20:04:58+00:00",
  "year": 2026,
  "csvRows": 19273,
  "councilsParsed": 384,
  "councilsOnMap": 372,
- "councilsWithSplitDetail": 319,
+ "councilsWithSplitDetail": 364,
  "byGroup": {
   "Scottish unitary authority": 32,
   "Non-metropolitan district": 153,
@@ -22,27 +22,30 @@
   "Northern Ireland": 11,
   "Wales": 22
  },
- "councillors": 18696,
+ "councillors": 18697,
  "partyTotals": {
   "LAB": 4555,
   "CON": 3734,
-  "LDM": 3156,
-  "IND": 2290,
+  "LDM": 3157,
   "RFM": 2287,
+  "IND": 1994,
   "GRN": 1316,
+  "LOC": 474,
   "SNP": 413,
-  "OTH": 220,
   "PLC": 203,
   "SF": 144,
   "DUP": 118,
   "ALL": 65,
   "UUP": 51,
-  "VAC": 43,
+  "VAC": 42,
   "RES": 38,
   "SDLP": 34,
   "ASP": 32,
+  "NIP": 18,
+  "CIP": 14,
   "YRP": 11,
   "TUV": 10,
+  "OTH": 10,
   "WPB": 7,
   "LIB": 7,
   "SDP": 5
@@ -52,12 +55,12 @@
   "LDM": 70,
   "CON": 67,
   "RFM": 35,
-  "IND": 27,
   "GRN": 21,
+  "IND": 21,
   "SNP": 15,
   "NOC": 12,
+  "LOC": 7,
   "PLC": 4,
-  "OTH": 1,
   "ASP": 1
  },
  "notShown": [],
@@ -180,30 +183,55 @@
  "othBucket": {
   "Aspire": 32,
   "Restore Britain": 29,
+  "The People's Independent Party": 25,
   "Broxtowe Alliance": 20,
   "Residents for Uttlesford": 19,
+  "Ashfield Independents": 18,
+  "Newham Independents Party": 18,
   "Farnham Residents": 16,
   "Canvey Island Independent Party": 14,
   "Our West Lancashire": 13,
   "Community Campaign (Hart)": 12,
+  "Basingstoke & Deane Independents": 12,
+  "Independent Loughton Residents Association": 12,
   "Your Party": 11,
+  "Lincolnshire Independents Lincolnshire First": 11,
   "Temple and Farringdon Together": 11,
   "The Oldham Group Party": 10,
   "Traditional Unionist Voice - TUV": 10,
   "Great Yarmouth First": 9,
+  "Ashtead Independents": 9,
+  "Ashford Independent": 9,
+  "South Holland Independents": 9,
   "Oxted & Limpsfield Residents Group": 9,
+  "Redbridge Independents": 9,
+  "Your Bradford Independent group": 9,
+  "Stafford Borough Independents": 8,
+  "Swale Independents": 8,
+  "Walsall Community Independents Party": 8,
+  "Peterborough First": 8,
+  "Christchurch Independents": 8,
+  "Whitehill & Bordon Community Party": 7,
   "The Liberal Party": 7,
   "Workers Party of Britain": 7,
   "Radcliffe First": 7,
   "Flintshire People's Voice": 7,
+  "West Suffolk Independents": 7,
+  "Broxtowe Independent Group": 6,
   "Nork Residents' Association": 6,
+  "Rother Association of Independent Councillors": 6,
   "South Devon Alliance": 6,
   "Upminster and Cranham Residents Association": 6,
+  "Independent Oxford Alliance": 5,
   "Residents Associations of Epsom and Ewell": 5,
   "Thames Ditton / Weston Green Residents' Association": 5,
   "The Molesey Residents Association": 5,
   "Local Alliance": 5,
+  "The Maldon District Independent Group": 5,
+  "Runnymede Independent Residents' Group": 5,
   "Social Democratic Party": 5,
+  "Horwich & Blackrod First Independents": 5,
+  "Lydiate and Maghull Community Independent": 5,
   "Nottingham People\u2019s Alliance": 5,
   "The Party for Poole People Ltd.": 5,
   "Henley Residents Group": 4,
@@ -212,33 +240,946 @@
   "Rochford District Residents": 4,
   "Hornchurch Residents Association": 4,
   "Residents of Wilmslow": 4,
-  "the Borough first": 4,
-  "Residents' Association of Cuddington": 3,
-  "Esher Residents Association": 3,
-  "Tattenhams & Preston Residents": 3,
-  "Harold Wood Hill Park Residents Association": 3,
-  "Farnworth and Kearsley First Party": 3,
-  "Mebyon Kernow - The Party for Cornwall": 3,
-  "Residents for Guildford and Villages": 2,
-  "Halstead Residents' Association": 2,
-  "The All In Party": 2,
-  "Hinchley Wood Residents Association": 2,
-  "Tunbridge Wells Alliance": 2,
-  "Together for Bury": 2,
-  "It's Our County (Herefordshire)": 2,
-  "Old Windsor Residents Association": 2,
-  "Uplands": 2,
-  "Poole Engage Party": 2,
-  "People Before Profit Alliance": 2,
-  "Blue Revolution": 1,
-  "Ewell Court Residents' Association": 1,
-  "Party of Women": 1,
-  "Tendring First": 1,
-  "Consensus": 1,
-  "People Against Bureaucracy Group": 1,
-  "The Walton Society": 1,
-  "Community First": 1
+  "Thornaby Independent Association": 4
  },
+ "localists": [
+  {
+   "name": "The People's Independent Party",
+   "councillors": 25,
+   "council": "Castle Point",
+   "seats": 24,
+   "of": 39,
+   "share": 0.615,
+   "ownColourCandidate": true
+  },
+  {
+   "name": "Broxtowe Alliance",
+   "councillors": 20,
+   "council": "Broxtowe",
+   "seats": 19,
+   "of": 44,
+   "share": 0.432,
+   "ownColourCandidate": true
+  },
+  {
+   "name": "Residents for Uttlesford",
+   "councillors": 19,
+   "council": "Uttlesford",
+   "seats": 18,
+   "of": 39,
+   "share": 0.462,
+   "ownColourCandidate": true
+  },
+  {
+   "name": "Ashfield Independents",
+   "councillors": 18,
+   "council": "Ashfield",
+   "seats": 18,
+   "of": 35,
+   "share": 0.514,
+   "ownColourCandidate": true
+  },
+  {
+   "name": "Our West Lancashire",
+   "councillors": 13,
+   "council": "West Lancashire",
+   "seats": 11,
+   "of": 45,
+   "share": 0.244,
+   "ownColourCandidate": true
+  },
+  {
+   "name": "Basingstoke & Deane Independents",
+   "councillors": 12,
+   "council": "Basingstoke and Deane",
+   "seats": 12,
+   "of": 54,
+   "share": 0.222,
+   "ownColourCandidate": true
+  },
+  {
+   "name": "Community Campaign (Hart)",
+   "councillors": 12,
+   "council": "Hart",
+   "seats": 11,
+   "of": 33,
+   "share": 0.333,
+   "ownColourCandidate": true
+  },
+  {
+   "name": "Independent Loughton Residents Association",
+   "councillors": 12,
+   "council": "Epping Forest",
+   "seats": 12,
+   "of": 54,
+   "share": 0.222,
+   "ownColourCandidate": true
+  },
+  {
+   "name": "Lincolnshire Independents Lincolnshire First",
+   "councillors": 11,
+   "council": "North Kesteven",
+   "seats": 8,
+   "of": 43,
+   "share": 0.186,
+   "ownColourCandidate": true
+  },
+  {
+   "name": "Temple and Farringdon Together",
+   "councillors": 11,
+   "council": "City of London",
+   "seats": 11,
+   "of": 125,
+   "share": 0.088,
+   "ownColourCandidate": true
+  },
+  {
+   "name": "The Oldham Group Party",
+   "councillors": 10,
+   "council": "Oldham",
+   "seats": 10,
+   "of": 60,
+   "share": 0.167,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Ashford Independent",
+   "councillors": 9,
+   "council": "Ashford",
+   "seats": 9,
+   "of": 47,
+   "share": 0.191,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Redbridge Independents",
+   "councillors": 9,
+   "council": "Redbridge",
+   "seats": 9,
+   "of": 63,
+   "share": 0.143,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "South Holland Independents",
+   "councillors": 9,
+   "council": "South Holland",
+   "seats": 9,
+   "of": 37,
+   "share": 0.243,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Your Bradford Independent group",
+   "councillors": 9,
+   "council": "Bradford",
+   "seats": 9,
+   "of": 90,
+   "share": 0.1,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Christchurch Independents",
+   "councillors": 8,
+   "council": "Bournemouth, Christchurch and Poole",
+   "seats": 8,
+   "of": 76,
+   "share": 0.105,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Peterborough First",
+   "councillors": 8,
+   "council": "Peterborough",
+   "seats": 8,
+   "of": 60,
+   "share": 0.133,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Stafford Borough Independents",
+   "councillors": 8,
+   "council": "Stafford",
+   "seats": 7,
+   "of": 40,
+   "share": 0.175,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Swale Independents",
+   "councillors": 8,
+   "council": "Swale",
+   "seats": 8,
+   "of": 47,
+   "share": 0.17,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Walsall Community Independents Party",
+   "councillors": 8,
+   "council": "Walsall",
+   "seats": 8,
+   "of": 60,
+   "share": 0.133,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Flintshire People's Voice",
+   "councillors": 7,
+   "council": "Flintshire",
+   "seats": 7,
+   "of": 67,
+   "share": 0.104,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Radcliffe First",
+   "councillors": 7,
+   "council": "Bury",
+   "seats": 7,
+   "of": 51,
+   "share": 0.137,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "West Suffolk Independents",
+   "councillors": 7,
+   "council": "West Suffolk",
+   "seats": 7,
+   "of": 64,
+   "share": 0.109,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Whitehill & Bordon Community Party",
+   "councillors": 7,
+   "council": "East Hampshire",
+   "seats": 6,
+   "of": 43,
+   "share": 0.14,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Broxtowe Independent Group",
+   "councillors": 6,
+   "council": "Broxtowe",
+   "seats": 5,
+   "of": 44,
+   "share": 0.114,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Rother Association of Independent Councillors",
+   "councillors": 6,
+   "council": "Rother",
+   "seats": 6,
+   "of": 38,
+   "share": 0.158,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "South Devon Alliance",
+   "councillors": 6,
+   "council": "Teignbridge",
+   "seats": 6,
+   "of": 47,
+   "share": 0.128,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Upminster and Cranham Residents Association",
+   "councillors": 6,
+   "council": "Havering",
+   "seats": 6,
+   "of": 55,
+   "share": 0.109,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Horwich & Blackrod First Independents",
+   "councillors": 5,
+   "council": "Bolton",
+   "seats": 5,
+   "of": 60,
+   "share": 0.083,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Independent Oxford Alliance",
+   "councillors": 5,
+   "council": "Oxford",
+   "seats": 4,
+   "of": 48,
+   "share": 0.083,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Local Alliance",
+   "councillors": 5,
+   "council": "Chichester",
+   "seats": 4,
+   "of": 36,
+   "share": 0.111,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Lydiate and Maghull Community Independent",
+   "councillors": 5,
+   "council": "Sefton",
+   "seats": 5,
+   "of": 66,
+   "share": 0.076,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Nottingham People\u2019s Alliance",
+   "councillors": 5,
+   "council": "Nottingham",
+   "seats": 5,
+   "of": 55,
+   "share": 0.091,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "The Maldon District Independent Group",
+   "councillors": 5,
+   "council": "Maldon",
+   "seats": 5,
+   "of": 31,
+   "share": 0.161,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "The Party for Poole People Ltd.",
+   "councillors": 5,
+   "council": "Bournemouth, Christchurch and Poole",
+   "seats": 5,
+   "of": 76,
+   "share": 0.066,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Henley Residents Group",
+   "councillors": 4,
+   "council": "South Oxfordshire",
+   "seats": 3,
+   "of": 36,
+   "share": 0.083,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Hornchurch Residents Association",
+   "councillors": 4,
+   "council": "Havering",
+   "seats": 4,
+   "of": 55,
+   "share": 0.073,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Llantwit First Independents",
+   "councillors": 4,
+   "council": "Vale of Glamorgan",
+   "seats": 4,
+   "of": 54,
+   "share": 0.074,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Residents of Wilmslow",
+   "councillors": 4,
+   "council": "Cheshire East",
+   "seats": 4,
+   "of": 82,
+   "share": 0.049,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Rochford District Residents",
+   "councillors": 4,
+   "council": "Rochford",
+   "seats": 4,
+   "of": 39,
+   "share": 0.103,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Thornaby Independent Association",
+   "councillors": 4,
+   "council": "Stockton-on-Tees",
+   "seats": 4,
+   "of": 56,
+   "share": 0.071,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Whitnash Residents Association",
+   "councillors": 4,
+   "council": "Warwick",
+   "seats": 3,
+   "of": 44,
+   "share": 0.068,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "the Borough first",
+   "councillors": 4,
+   "council": "Windsor and Maidenhead",
+   "seats": 4,
+   "of": 41,
+   "share": 0.098,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Chislehurst Matters",
+   "councillors": 3,
+   "council": "Bromley",
+   "seats": 3,
+   "of": 58,
+   "share": 0.052,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Edgeley Community Association",
+   "councillors": 3,
+   "council": "Stockport",
+   "seats": 3,
+   "of": 63,
+   "share": 0.048,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Farnworth and Kearsley First Party",
+   "councillors": 3,
+   "council": "Bolton",
+   "seats": 3,
+   "of": 60,
+   "share": 0.05,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Garforth and Swillington Independents Party",
+   "councillors": 3,
+   "council": "Leeds",
+   "seats": 3,
+   "of": 99,
+   "share": 0.03,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Harold Wood Hill Park Residents Association",
+   "councillors": 3,
+   "council": "Havering",
+   "seats": 3,
+   "of": 55,
+   "share": 0.055,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Hertsmere First Independents",
+   "councillors": 3,
+   "council": "Hertsmere",
+   "seats": 3,
+   "of": 39,
+   "share": 0.077,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Ingleby Barwick Independent Society",
+   "councillors": 3,
+   "council": "Stockton-on-Tees",
+   "seats": 3,
+   "of": 56,
+   "share": 0.054,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Morley Borough Independents",
+   "councillors": 3,
+   "council": "Leeds",
+   "seats": 3,
+   "of": 99,
+   "share": 0.03,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Newport Independents Party",
+   "councillors": 3,
+   "council": "Newport",
+   "seats": 3,
+   "of": 51,
+   "share": 0.059,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Newton-le-Willows Independents",
+   "councillors": 3,
+   "council": "St. Helens",
+   "seats": 3,
+   "of": 48,
+   "share": 0.062,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Nottingham Independents",
+   "councillors": 3,
+   "council": "Nottingham",
+   "seats": 3,
+   "of": 55,
+   "share": 0.055,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Portishead Independents",
+   "councillors": 3,
+   "council": "North Somerset",
+   "seats": 3,
+   "of": 50,
+   "share": 0.06,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Rainhill Independents",
+   "councillors": 3,
+   "council": "St. Helens",
+   "seats": 3,
+   "of": 48,
+   "share": 0.062,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Wales Communities First Independent Party",
+   "councillors": 3,
+   "council": "Neath Port Talbot",
+   "seats": 3,
+   "of": 60,
+   "share": 0.05,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Wickford Independents",
+   "councillors": 3,
+   "council": "Basildon",
+   "seats": 3,
+   "of": 42,
+   "share": 0.071,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Ashtead Independents",
+   "councillors": 2,
+   "council": "East Surrey",
+   "seats": 2,
+   "of": 72,
+   "share": 0.028,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Brighton & Hove Independents",
+   "councillors": 2,
+   "council": "Brighton and Hove",
+   "seats": 2,
+   "of": 54,
+   "share": 0.037,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "East Wycombe Independent Party",
+   "councillors": 2,
+   "council": "Buckinghamshire",
+   "seats": 2,
+   "of": 97,
+   "share": 0.021,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Farnham Residents",
+   "councillors": 2,
+   "council": "West Surrey",
+   "seats": 2,
+   "of": 90,
+   "share": 0.022,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Halstead Residents' Association",
+   "councillors": 2,
+   "council": "Braintree",
+   "seats": 2,
+   "of": 49,
+   "share": 0.041,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Independent Alliance (Kent)",
+   "councillors": 2,
+   "council": "Tonbridge and Malling",
+   "seats": 2,
+   "of": 44,
+   "share": 0.045,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Independents for Dorset",
+   "councillors": 2,
+   "council": "Dorset",
+   "seats": 2,
+   "of": 82,
+   "share": 0.024,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "It's Our County (Herefordshire)",
+   "councillors": 2,
+   "council": "Herefordshire",
+   "seats": 2,
+   "of": 53,
+   "share": 0.038,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Kingston Independent Residents Group",
+   "councillors": 2,
+   "council": "Kingston upon Thames",
+   "seats": 2,
+   "of": 48,
+   "share": 0.042,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Malvern Hills Independents",
+   "councillors": 2,
+   "council": "Malvern Hills",
+   "seats": 2,
+   "of": 31,
+   "share": 0.065,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Merton Park Ward Independent Residents",
+   "councillors": 2,
+   "council": "Merton",
+   "seats": 2,
+   "of": 57,
+   "share": 0.035,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Morecambe Bay Independents",
+   "councillors": 2,
+   "council": "Lancaster",
+   "seats": 2,
+   "of": 61,
+   "share": 0.033,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Nork Residents' Association",
+   "councillors": 2,
+   "council": "East Surrey",
+   "seats": 2,
+   "of": 72,
+   "share": 0.028,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Old Windsor Residents Association",
+   "councillors": 2,
+   "council": "Windsor and Maidenhead",
+   "seats": 2,
+   "of": 41,
+   "share": 0.049,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "People Before Profit Alliance",
+   "councillors": 2,
+   "council": "Belfast",
+   "seats": 1,
+   "of": 60,
+   "share": 0.017,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Poole Engage Party",
+   "councillors": 2,
+   "council": "Bournemouth, Christchurch and Poole",
+   "seats": 2,
+   "of": 76,
+   "share": 0.026,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Residents Associations of Epsom and Ewell",
+   "councillors": 2,
+   "council": "East Surrey",
+   "seats": 2,
+   "of": 72,
+   "share": 0.028,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Rushcliffe Independents",
+   "councillors": 2,
+   "council": "Rushcliffe",
+   "seats": 2,
+   "of": 44,
+   "share": 0.045,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Tewkesbury and Twyning Independents",
+   "councillors": 2,
+   "council": "Tewkesbury",
+   "seats": 2,
+   "of": 38,
+   "share": 0.053,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "The All In Party",
+   "councillors": 2,
+   "council": "Basingstoke and Deane",
+   "seats": 2,
+   "of": 54,
+   "share": 0.037,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Together for Bury",
+   "councillors": 2,
+   "council": "Bury",
+   "seats": 2,
+   "of": 51,
+   "share": 0.039,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Tunbridge Wells Alliance",
+   "councillors": 2,
+   "council": "Tunbridge Wells",
+   "seats": 2,
+   "of": 39,
+   "share": 0.051,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Tytherington Ward Independents",
+   "councillors": 2,
+   "council": "Cheshire East",
+   "seats": 2,
+   "of": 82,
+   "share": 0.024,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Uplands",
+   "councillors": 2,
+   "council": "Swansea",
+   "seats": 2,
+   "of": 75,
+   "share": 0.027,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Alderley Edge First",
+   "councillors": 1,
+   "council": "Cheshire East",
+   "seats": 1,
+   "of": 82,
+   "share": 0.012,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Aont\u00fa",
+   "councillors": 1,
+   "council": "Causeway Coast and Glens",
+   "seats": 1,
+   "of": 40,
+   "share": 0.025,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Arise",
+   "councillors": 1,
+   "council": "Harrow",
+   "seats": 1,
+   "of": 55,
+   "share": 0.018,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Blue Revolution",
+   "councillors": 1,
+   "council": "Boston",
+   "seats": 1,
+   "of": 30,
+   "share": 0.033,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Brentford, Isleworth, Heston & Hounslow Independents",
+   "councillors": 1,
+   "council": "Hounslow",
+   "seats": 1,
+   "of": 62,
+   "share": 0.016,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Camden People's Alliance",
+   "councillors": 1,
+   "council": "Camden",
+   "seats": 1,
+   "of": 55,
+   "share": 0.018,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Community First",
+   "councillors": 1,
+   "council": "Rossendale",
+   "seats": 1,
+   "of": 30,
+   "share": 0.033,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Consensus",
+   "councillors": 1,
+   "council": "West Lindsey",
+   "seats": 1,
+   "of": 36,
+   "share": 0.028,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "East Cleveland Independent",
+   "councillors": 1,
+   "council": "Redcar and Cleveland",
+   "seats": 1,
+   "of": 59,
+   "share": 0.017,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "East Lindsey Independent Group",
+   "councillors": 1,
+   "council": "East Lindsey",
+   "seats": 1,
+   "of": 55,
+   "share": 0.018,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Failsworth Independent Party",
+   "councillors": 1,
+   "council": "Oldham",
+   "seats": 1,
+   "of": 60,
+   "share": 0.017,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Independents for Tunbridge Wells",
+   "councillors": 1,
+   "council": "Tunbridge Wells",
+   "seats": 1,
+   "of": 39,
+   "share": 0.026,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Liverpool Community Independents",
+   "councillors": 1,
+   "council": "Liverpool",
+   "seats": 1,
+   "of": 85,
+   "share": 0.012,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "People Against Bureaucracy Group",
+   "councillors": 1,
+   "council": "Cheltenham",
+   "seats": 1,
+   "of": 40,
+   "share": 0.025,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Progressive Unionist Party of Northern Ireland",
+   "councillors": 1,
+   "council": "Causeway Coast and Glens",
+   "seats": 1,
+   "of": 40,
+   "share": 0.025,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Rainham Resident's Association",
+   "councillors": 1,
+   "council": "Havering",
+   "seats": 1,
+   "of": 55,
+   "share": 0.018,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Residents for Guildford and Villages",
+   "councillors": 1,
+   "council": "West Surrey",
+   "seats": 1,
+   "of": 90,
+   "share": 0.011,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Runnymede Independent Residents' Group",
+   "councillors": 1,
+   "council": "West Surrey",
+   "seats": 1,
+   "of": 90,
+   "share": 0.011,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "Tendring First",
+   "councillors": 1,
+   "council": "Tendring",
+   "seats": 1,
+   "of": 48,
+   "share": 0.021,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "The Molesey Residents Association",
+   "councillors": 1,
+   "council": "East Surrey",
+   "seats": 1,
+   "of": 72,
+   "share": 0.014,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "The Potteries Party",
+   "councillors": 1,
+   "council": "Stoke-on-Trent",
+   "seats": 1,
+   "of": 44,
+   "share": 0.023,
+   "ownColourCandidate": false
+  },
+  {
+   "name": "The Rubbish Party",
+   "councillors": 1,
+   "council": "East Ayrshire",
+   "seats": 1,
+   "of": 32,
+   "share": 0.031,
+   "ownColourCandidate": false
+  }
+ ],
  "warnings": [
   "1951 councillor rows had a party code missing from the register; fell back to name matching"
  ],
