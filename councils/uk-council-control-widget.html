@@ -445,7 +445,9 @@
   var PARTY_FALLBACK = {
     ASP: {name: 'Aspire', colour: '#c54e0a'}, YRP: {name: 'Your Party', colour: '#ff3131'},
     WPB: {name: 'Workers Party', colour: '#0b5394'}, LIB: {name: 'Liberal Party', colour: '#e77500'},
-    SDP: {name: 'SDP', colour: '#d25469'}, RES: {name: 'Restore Britain', colour: '#051e40'}
+    SDP: {name: 'SDP', colour: '#d25469'}, RES: {name: 'Restore Britain', colour: '#051e40'},
+    LOC: {name: 'Localist', colour: '#EC8BD3'}, NIP: {name: 'Newham Independents', colour: '#F3EB51'},
+    CIP: {name: 'Canvey Island Independents', colour: '#333333'}
   };
   function pInfo(code){
     var p = (DATA && DATA.parties[code]) || PARTY_FALLBACK[code];
@@ -455,7 +457,7 @@
   var ABBREV = {LAB:'LAB',CON:'CON',LDM:'LDM',RFM:'RFM',GRN:'GRN',SNP:'SNP',PLC:'PLC',
                 SF:'SF',DUP:'DUP',SDLP:'SDLP',ALL:'ALL',UUP:'UUP',TUV:'TUV',UKI:'UKI',
                 RES:'RES',ASP:'ASP',YRP:'YRP',WPB:'WPB',LIB:'LIB',SDP:'SDP',
-                IND:'Ind',OTH:'Oth',VAC:'Vac'};
+                LOC:'Loc',NIP:'NIP',CIP:'CIP',IND:'Ind',OTH:'Oth',VAC:'Vac'};
   function abbrev(code){ return ABBREV[code] || code; }
 
   // No overall control
@@ -708,9 +710,10 @@
 
   // -------------------------------------------------------------- nat. bar --
   // Parties the key never lists on their own, however many seats they hold:
-  // Restore Britain and the Northern Ireland parties fold into the Oth figure.
+  // Restore Britain, Newham Independents and the Northern Ireland parties
+  // fold into the Oth figure.
   // The bar still draws them as their own coloured segments.
-  var KEY_ROLLUP = {RES:1, SF:1, DUP:1, SDLP:1, ALL:1, UUP:1, TUV:1};
+  var KEY_ROLLUP = {RES:1, SF:1, DUP:1, SDLP:1, ALL:1, UUP:1, TUV:1, NIP:1, CIP:1};
   var KEY_MIN = 0.01;   // below this share a party folds into Oth as well
 
   function buildNatBar(){
@@ -1210,7 +1213,7 @@
       // The group's own name under the councillor, for the catch-all tags
       // only - and not when it just repeats the tag (RES / Restore Britain).
       var own = p.pn && !/^independent( \/ other)?$/i.test(p.pn) &&
-                ['OTH', 'IND', 'RES'].indexOf(p.p) >= 0 &&
+                ['OTH', 'IND', 'RES', 'LOC', 'NIP', 'CIP'].indexOf(p.p) >= 0 &&
                 bare(p.pn) !== bare(pInfo(p.p).name) ? '<small>' + esc(p.pn) + '</small>' : '';
       return '<div class="cr"><div class="ab" title="' + esc(pInfo(p.p).name) + '" style="background:' + col +
         '; color:' + txtOn(col) + '">' + abbrev(p.p) + '</div><div class="who">' +
@@ -1644,7 +1647,7 @@
   // left-right spectrum. LIB sits with the Lib Dems and UKIP with the SDP; the
   // Northern Ireland parties only ever appear in the NI table.
   var TABLE_ORDER = ['ASP','YRP','WPB','SF','PLC','SNP','GRN','SDLP','LAB','LDM','LIB','ALL',
-                     'IND','UUP','CON','DUP','TUV','RFM','SDP','UKI','RES','OTH','VAC'];
+                     'IND','LOC','NIP','CIP','UUP','CON','DUP','TUV','RFM','SDP','UKI','RES','OTH','VAC'];
   function tableOrder(){
     var extra = DATA.spectrum.filter(function(p){ return TABLE_ORDER.indexOf(p) < 0; });
     return TABLE_ORDER.slice(0, -2).concat(extra, ['OTH', 'VAC']);
