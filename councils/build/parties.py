@@ -19,7 +19,7 @@ PARTIES = {
     "LAB":  ("Labour",               "#E4003B"),
     "ALL":  ("Alliance",             "#F6CB2F"),
     "LDM":  ("Liberal Democrat",     "#ff6400"),
-    "IND":  ("Independent",          "#727272"),
+    "IND":  ("Independent",          "#858585"),
     "OTH":  ("Other",                "#484848"),
     "UKI":  ("UKIP",                 "#6D3177"),
     "UUP":  ("UUP",                  "#48A5EE"),
@@ -39,7 +39,7 @@ PARTIES = {
     "LOC":  ("Localist",             "#E28CDB"),
     "NIP":  ("Newham Independents",  "#F3EB51"),
     "CIP":  ("Canvey Island Independents", "#333333"),
-    "VAC":  ("Vacant",               "#d8d8d4"),
+    "VAC":  ("Vacant",               "#dfdfdb"),
 }
 
 # Left-to-right ordering for stacked bars and table columns.
