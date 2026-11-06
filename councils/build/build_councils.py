@@ -48,7 +48,7 @@ from parties import (CONTROL_TOKENS, NOC_COLOUR, OCD_CODES, OTH_REFINEMENTS,  # 
 # report so the bucket's raw composition stays visible after promotion - which
 # is what lets you compare a party's raw CSV count against the seats the split
 # actually allocated it.
-REFINED_FROM_OTH = {code for _, code in OTH_REFINEMENTS}
+REFINED_FROM_OTH = {code for _, code in OTH_REFINEMENTS} | {"LOC"}
 from tables import largest_table, parse_tables  # noqa: E402
 
 BASE = "https://opencouncildata.co.uk/"
@@ -181,7 +181,7 @@ def load_party_register() -> dict:
 # Seat buckets rather than single parties. "Ind" on a council is often several
 # unrelated independent groups, so the bucket holding half the seats tells you
 # nothing about whether one group does - never let those trigger an override.
-OVERRIDE_EXCLUDED = {"IND", "OTH", "VAC"}
+OVERRIDE_EXCLUDED = {"IND", "LOC", "OTH", "VAC"}
 
 
 def _outright(seats: dict, total: int, nation: str = ""):
@@ -254,6 +254,13 @@ def parse_control(label: str, seats: dict, total: int, nation: str = "") -> dict
                  once_key="ctrl:" + tok)
             if "OTH" not in parts:
                 parts.append("OTH")
+
+    # OCD's "IND" in a control label means independents and local groups
+    # alike. Where named local groups (LOC) hold more of the council's seats
+    # than plain independents, it is them the label refers to.
+    if "IND" in parts and seats.get("LOC", 0) > seats.get("IND", 0):
+        parts = [("LOC" if p == "IND" else p) for p in parts]
+    parts = [p for i, p in enumerate(parts) if p not in parts[:i]]
 
     if not parts:
         return _apply_outright({"label": raw, "type": "noc", "parties": [],
@@ -1171,6 +1178,28 @@ def build(year: int, out_dir: str) -> int:
             moves_log.append({**m, "status": "NOT applied - no council of that name in the source"})
             warn(f"manual move for {m['council']!r} matched no council")
 
+    # Localists: every named local group now drawn in the shared LOC pink,
+    # largest first. One with more than 10 councillors, or more than a third
+    # of a council, is flagged as worth a colour of its own (as NIP has).
+    loc: dict[str, Counter] = defaultdict(Counter)
+    for key, people in roster.items():
+        if key in SUPERSEDED:
+            continue
+        for p in people:
+            if p.get("p") == "LOC":
+                loc[(p.get("pn") or "").strip()][key] += 1
+    localists = []
+    for nm, by in loc.items():
+        k, top = by.most_common(1)[0]
+        tot = comps.get(k, {}).get("total") or 0
+        n = sum(by.values())
+        share = top / tot if tot else 0
+        localists.append({"name": nm, "councillors": n,
+                          "council": comps.get(k, {}).get("ocdName", k),
+                          "seats": top, "of": tot, "share": round(share, 3),
+                          "ownColourCandidate": n > 10 or share > 1 / 3})
+    localists.sort(key=lambda x: (-x["ownColourCandidate"], -x["councillors"], x["name"]))
+
     os.makedirs(out_dir, exist_ok=True)
     report = {
         "generated": payload["meta"]["generated"],
@@ -1196,6 +1225,7 @@ def build(year: int, out_dir: str) -> int:
         "gssReassigned": regssed,
         "othNotSplit": split_failed,
         "othBucket": dict(oth_names.most_common(60)),
+        "localists": localists,
         "warnings": warnings[:400],
         "warningCount": len(warnings),
     }

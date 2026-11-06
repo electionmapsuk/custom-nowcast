@@ -7,6 +7,7 @@ authority; the name rules below are only a fallback for codes it doesn't cover.
 
 Colours follow the ElectionMapsUK Nowcast palette (electionmaps_nowcast.prod.html).
 """
+import re
 
 # canonical code -> (display name, colour)
 PARTIES = {
@@ -33,12 +34,18 @@ PARTIES = {
     "WPB":  ("Workers Party",        "#0b5394"),
     "LIB":  ("Liberal Party",        "#e77500"),
     "SDP":  ("SDP",                  "#d25469"),
+    # local parties and residents' groups: one shared pink, except those big
+    # enough to have been given their own colour
+    "LOC":  ("Localist",             "#EC8BD3"),
+    "NIP":  ("Newham Independents",  "#F3EB51"),
+    "CIP":  ("Canvey Island Independents", "#333333"),
     "VAC":  ("Vacant",               "#d8d8d4"),
 }
 
 # Left-to-right ordering for stacked bars and table columns.
 SPECTRUM = ["SF", "YRP", "WPB", "GRN", "SNP", "PLC", "SDLP", "LAB", "ASP",
-            "ALL", "LDM", "LIB", "IND", "OTH", "SDP", "UKI", "UUP", "CON",
+            "ALL", "LDM", "LIB", "IND", "LOC", "NIP", "CIP", "OTH", "SDP", "UKI",
+            "UUP", "CON",
             "DUP", "TUV", "RFM", "RES", "VAC"]
 
 NOC_COLOUR = "rgb(20,20,20)"
@@ -69,6 +76,30 @@ OTH_REFINEMENTS = [
     # democratic party" is not one of "Social Democratic and Labour Party"
     ("liberal party", "LIB"),
     ("social democratic party", "SDP"),
+    # localists with a colour of their own (see LOCALIST below)
+    ("newham independents", "NIP"),
+    ("canvey island independent", "CIP"),
+]
+
+# Any other named group filed under OTH or IND is a localist (LOC) - a
+# residents' association, a borough's own independents' party - unless its
+# name is one of the generic independent labels, or it is one of the small
+# parties below that stand beyond a single area. Those stay OTH.
+GENERIC_INDEPENDENT = re.compile(
+    r"(the )?(independents?|independent ?/ ?others?|others?|non[- ]?aligned|unaligned|"
+    r"no description|none|independent group|independent network|independent candidate)")
+NOT_LOCAL = [
+    "mebyon kernow", "gwlad", "propel", "advance uk", "alba party", "british unionist",
+    "trade unionist and socialist", "tusc", "party of women", "national flood prevention",
+    "heritage party", "english democrat", "christian peoples", "christian party",
+    "communist", "monster raving loony", "scottish family", "breakthrough party",
+    "yorkshire party", "freedom alliance", "reclaim", "britain first",
+    "women's equality", "rejoin", "animal welfare", "true & fair", "homeland",
+    "english constitution", "socialist party", "socialist labour", "scottish socialist",
+    "north east party", "northern independence", "climate party", "libertarian",
+    "british national party", "national front", "patriotic alternative", "volt",
+    "alliance for democracy and freedom", "scottish libertarian", "abolish the scottish",
+    "independence for scotland", "sovereignty", "democrats and veterans", "veterans",
 ]
 
 # Fallback only: used when a councillor's Electoral Commission code is missing
@@ -125,7 +156,7 @@ CONTROL_TOKENS = {
     "DUP": "DUP", "ALLI": "ALL", "ALL": "ALL", "UUP": "UUP", "SDLP": "SDLP",
     "TUV": "TUV", "UKIP": "UKI", "RES": "RES",
     # local parties and residents' groups that run councils
-    "RA": "IND", "PIP": "OTH", "CIIP": "OTH", "ASPIRE": "ASP",
+    "RA": "LOC", "PIP": "LOC", "CIIP": "CIP", "CIP": "CIP", "ASPIRE": "ASP", "LOC": "LOC",
     "ASP": "ASP", "YRP": "YRP", "WPB": "WPB", "SDP": "SDP",
 }
 
@@ -142,9 +173,15 @@ def party_from_name(name: str) -> str:
 
 
 def refine_other(name: str) -> str:
-    """Pull a few well-known parties back out of the register's OTH bucket."""
+    """The code for a councillor OCD files as OTH or IND: a promoted party,
+    LOC for a named local group, or "OTH" for no change (the caller keeps
+    IND for a plain independent)."""
     low = (name or "").strip().lower()
     for needle, code in OTH_REFINEMENTS:
         if needle in low:
             return code
-    return "OTH"
+    if not low or GENERIC_INDEPENDENT.fullmatch(low.rstrip(".")):
+        return "OTH"
+    if any(n in low for n in NOT_LOCAL):
+        return "OTH"
+    return "LOC"
