@@ -243,6 +243,7 @@
   #snksvg .sg{stroke:var(--panel); stroke-width:.8px; cursor:pointer;}
   #snksvg .sg:hover{stroke:#15171a; stroke-width:1.6px;}
   #snksvg .snk-mid{stroke:#15171a; stroke-width:2px;}
+  #snksvg .snk-lock{pointer-events:none;}
   .snk-foot{display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:10px; font-size:.74rem; color:var(--muted);}
   .snk-foot b{color:var(--ink);}
   .efilt{display:inline-flex; gap:6px; flex-wrap:wrap; align-items:center;}
@@ -1647,8 +1648,14 @@
     }
 
     var foot = '';
+    var sh = EV ? safeHold(c) : null;
+    if(sh){
+      foot += '<div class="ft" style="color:var(--ink)">' + LOCK_SVG + ' <b>' + abbrev(sh.p) +
+        '</b> can\u2019t lose its majority in ' + nextRound().date.slice(0, 4) + ': ' + sh.keep + ' of its ' +
+        sh.held + ' seats aren\u2019t up (' + sh.need + ' needed)</div>';
+    }
     if(c.nextElection){
-      foot = '<div class="ft">' + cycleWord(cyc.length) + ' · next ' +
+      foot += '<div class="ft">' + cycleWord(cyc.length) + ' · next ' +
              new Date(c.nextElection).toLocaleDateString('en-GB',
                {day:'numeric',month:'short',year:'numeric'}) + '</div>';
     }
@@ -1708,6 +1715,26 @@
   // whether a council counts on the current page: always, except in the
   // elections view, where only the councils voting do
   function inPlay(c){ return !EV || !!upOf(c); }
+  // A party that can't lose its majority at the next election: even losing
+  // every one of its seats that is up, the seats it keeps are still more than
+  // half the council (a council that elects by thirds, mostly). Returns
+  // {p, keep, need, up, held} or null.
+  function safeHold(c){
+    var u = upOf(c);
+    if(!c || !u) return null;
+    var best = null;
+    for(var p in c.seats){
+      if(p === 'VAC' || !c.seats[p]) continue;
+      if(!best || c.seats[p] > c.seats[best]) best = p;
+    }
+    if(!best || c.seats[best] * 2 <= c.total) return null;
+    var up = (u.seats || {})[best] || 0, keep = c.seats[best] - up;
+    if(keep * 2 <= c.total) return null;
+    return {p: best, keep: keep, need: Math.floor(c.total / 2) + 1, up: up, held: c.seats[best]};
+  }
+  var LOCK_SVG = '<svg width="10" height="11" viewBox="-5 -6 10 11" style="vertical-align:-1px">' +
+    '<path d="M-2.4,-1 V-2.8 A2.4,2.4 0 0 1 2.4,-2.8 V-1" fill="none" stroke="currentColor" stroke-width="1.5"/>' +
+    '<rect x="-3.8" y="-1.2" width="7.6" height="6" rx="1.2" fill="currentColor"/></svg>';
 
   var EFILT = {nation: '', runs: '', kind: ''};
   function setupElections(){
@@ -1760,7 +1787,8 @@
     }).map(function(u){
       var seats = {};
       for(var p in u.seats){ if(u.seats[p] && p !== 'VAC') seats[p] = u.seats[p]; }
-      return Object.assign({}, u.c, {seats: seats, _up: u.n, _all: u.all});
+      var sh = safeHold(u.c);
+      return Object.assign({}, u.c, {seats: seats, _up: u.n, _all: u.all, _safe: sh ? sh.p : null});
     });
   }
 
@@ -1969,6 +1997,20 @@
         if(mg && mg.scrollIntoView) mg.scrollIntoView({behavior: 'smooth', block: 'start'});
         gotoCouncil(x.u.c.gss);
       });
+    // a padlock on councils whose majority can't be lost this time
+    items.forEach(function(x){
+      if(!safeHold(x.u.c)) return;
+      var p = at((x.s0 + x.s1) / 2), g = svg.append('g').attr('class', 'snk-lock')
+        .attr('transform', 'translate(' + p[0].toFixed(1) + ',' + p[1].toFixed(1) + ')');
+      // drawn the same size however thin the council, with a dark edge so it
+      // reads on any colour; it may overlap its neighbours a little
+      g.append('path').attr('d', 'M-2.6,-1 V-3 A2.6,2.6 0 0 1 2.6,-3 V-1').attr('fill', 'none')
+        .attr('stroke', '#15171a').attr('stroke-width', 3.2);
+      g.append('path').attr('d', 'M-2.6,-1 V-3 A2.6,2.6 0 0 1 2.6,-3 V-1').attr('fill', 'none')
+        .attr('stroke', '#fff').attr('stroke-width', 1.6);
+      g.append('rect').attr('x', -4.2).attr('y', -1.4).attr('width', 8.4).attr('height', 6.6).attr('rx', 1.3)
+        .attr('fill', '#fff').attr('stroke', '#15171a').attr('stroke-width', 0.9);
+    });
     // where the lead changes hands
     if(level !== null && level > 0 && level < Ltot){
       var p = at(level), q = at(Math.min(Ltot, level + 0.5)), q0 = at(Math.max(0, level - 0.5));
@@ -1996,6 +2038,8 @@
       '<span><i style="background:' + colB + '"></i><b>' + (any ? 'A rival' : abbrev(B)) + '</b> ahead in ' + nB + ' (' +
         fmt(sum(function(x){ return x.lead < 0; })) + ')</span>' +
       (nL ? '<span><i style="background:#c9c9c4"></i>level in ' + nL + '</span>' : '') +
+      (items.some(function(x){ return safeHold(x.u.c); })
+        ? '<span style="color:var(--ink)">' + LOCK_SVG + ' majority can\u2019t be lost this time</span>' : '') +
       (items.some(function(x){ return x.runBy; })
         ? '<span><i style="background:repeating-linear-gradient(45deg,#9a9a96 0 3px,#d9d9d5 3px 7px)"></i>striped: run by a party other than the one ahead</span>' : '') +
       (nats.length === 1 ? '<span>' + nats[0] + ' only</span>' : '') +
@@ -2032,7 +2076,8 @@
         var col = controlSwatch(u.c);
         return '<div class="el" data-g="' + u.c.gss + '" title="' + esc(controlText(u.c)) + '">' +
           '<span class="en">' + esc(u.c.name) + '</span>' +
-          '<span class="es">' + (u.all ? 'all ' + u.n : u.n + ' of ' + u.c.total) + '</span>' +
+          '<span class="es">' + (safeHold(u.c) ? '<span title="Can\u2019t lose its majority this time" style="color:var(--ink)">' + LOCK_SVG + '</span> ' : '') +
+            (u.all ? 'all ' + u.n : u.n + ' of ' + u.c.total) + '</span>' +
           '<span class="ec" style="background:' + col + '; color:' + txtOn(col) + '">' +
           esc(shortControl(u.c)) + '</span></div>';
       }).join('');
@@ -2216,7 +2261,8 @@
         '<td class="ctrl" style="background:'+col+'; color:'+txtOn(col)+'">'+
         shortControl(c)+'</td>' +
         (EV ? '<td class="num" style="color:var(--ink); font-weight:700">' +
-              (c._all ? 'All ' + c._up : c._up + ' of ' + c.total) + '</td>' : '') +
+              (c._all ? 'All ' + c._up : c._up + ' of ' + c.total) +
+              (c._safe ? ' <span title="' + abbrev(c._safe) + ' can\u2019t lose its majority this time">' + LOCK_SVG + '</span>' : '') + '</td>' : '') +
         cols.map(function(p){ return '<td class="num">'+(c.seats[p]||'')+'</td>'; }).join('') +
         '<td class="num" style="color:var(--ink); font-weight:700">'+c.total+'</td></tr>';
     }).join('') + '</tbody>';
