@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-07T13:08:41+00:00",
+ "generated": "2026-11-07T13:14:18+00:00",
  "year": 2026,
  "csvRows": 19273,
  "councilsParsed": 384,
@@ -143,8 +143,8 @@
   "partyNamesNotInRegister": {}
  },
  "wardMatch": {
-  "councils": 360,
-  "withWardView": 360,
+  "councils": 371,
+  "withWardView": 371,
   "partial": [],
   "noWardView": [],
   "fuzzy": [
