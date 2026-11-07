@@ -1910,7 +1910,15 @@
       if(any) return true;                         // A against the field: every council
       return k === A || k === B;
     })
-      .sort(function(x, y){ return y.lead - x.lead || (y.sa - x.sa) || x.u.c.name.localeCompare(y.u.c.name); });
+      // A majority that can't be lost this time is as safe as it gets, so
+      // those councils sit at the very ends of the snake (ordered by lead
+      // among themselves), whatever the size of the lead
+      .map(function(x){
+        var sh = safeHold(x.u.c);
+        x.tier = !sh ? 0 : sh.p === A ? 1 : (x.lead < 0 ? -1 : 0);
+        return x;
+      })
+      .sort(function(x, y){ return (y.tier - x.tier) || y.lead - x.lead || (y.sa - x.sa) || x.u.c.name.localeCompare(y.u.c.name); });
 
     var W = Math.max(280, $('bg').getBoundingClientRect().width);
     var narrow = W < 640;
