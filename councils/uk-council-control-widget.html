@@ -227,6 +227,23 @@
   .bgrow .bc{font-size:9px; font-weight:800; padding:3px 5px; border-radius:4px; white-space:nowrap;}
   .bgcol .none{padding:14px 16px; font-size:.76rem; color:var(--muted);}
   .bgnote{font-size:.72rem; color:var(--muted); margin:8px 2px 0; line-height:1.45;}
+  /* head-to-head snake */
+  .snk{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px 14px;}
+  .snk-hd{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:12px;}
+  .snk-hd select{font:inherit; font-size:.8rem; font-weight:800; height:32px; padding:0 8px;
+    border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); cursor:pointer;}
+  .snk-vs{font-size:.74rem; font-weight:800; color:var(--faint); text-transform:uppercase;}
+  .snk-note{flex:1 1 260px; font-size:.72rem; color:var(--muted); line-height:1.45; margin-left:6px;}
+  .snk-ends{display:flex; justify-content:space-between; font-size:.7rem; font-weight:800; color:var(--muted);
+    text-transform:uppercase; letter-spacing:.05em; margin:0 2px 6px;}
+  .snk-endb{justify-content:flex-end; margin:6px 2px 0;}
+  .snk-ends i, .snk-foot i{display:inline-block; width:10px; height:10px; border-radius:3px; margin:0 5px; vertical-align:-1px;}
+  #snksvg{display:block; width:100%; height:auto; overflow:visible;}
+  #snksvg .sg{stroke:var(--panel); stroke-width:.8px; cursor:pointer;}
+  #snksvg .sg:hover{stroke:#15171a; stroke-width:1.6px;}
+  #snksvg .snk-mid{stroke:#15171a; stroke-width:2px;}
+  .snk-foot{display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:10px; font-size:.74rem; color:var(--muted);}
+  .snk-foot b{color:var(--ink);}
   .efilt{display:inline-flex; gap:6px; flex-wrap:wrap; align-items:center;}
   .efilt select{font:inherit; font-size:.76rem; font-weight:700; height:31px; padding:0 8px;
     border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); cursor:pointer;}
@@ -420,7 +437,7 @@
 
     <!-- elections view only: where control could change -->
     <div id="bgwrap" style="display:none;">
-      <div class="section-h">Battlegrounds</div>
+      <div class="section-h">Head to head</div>
       <div class="bgrid" id="bg"></div>
     </div>
 
@@ -1144,11 +1161,35 @@
     });
     return Math.abs(a);
   }
+  // The parts of a ward the bands are measured across: its biggest pieces of
+  // land, leaving out small offshore islands - a scatter of tiny islands
+  // would otherwise stretch the bands so far that most councillors' bands
+  // fall in open sea. Keeps the largest parts until they hold 90% of the
+  // area, plus any part at least a tenth the size of the largest.
+  function mainParts(m, f){
+    var proj = m.path.projection(), g = f.geometry;
+    var polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+    var parts = polys.map(function(p){
+      var r = (p[0] || []).map(function(pt){ return proj(pt); }), a = 0;
+      for(var i = 0; i < r.length; i++){
+        var u = r[i], v = r[(i + 1) % r.length];
+        a += u[0] * v[1] - v[0] * u[1];
+      }
+      return {ring: r, area: Math.abs(a / 2)};
+    }).filter(function(x){ return x.ring.length; })
+      .sort(function(x, y){ return y.area - x.area; });
+    if(parts.length < 2) return parts.map(function(x){ return x.ring; });
+    var total = parts.reduce(function(a, x){ return a + x.area; }, 0), kept = [], sum = 0;
+    parts.forEach(function(x, i){
+      if(i === 0 || sum < 0.9 * total || x.area >= 0.1 * parts[0].area){ kept.push(x.ring); sum += x.area; }
+    });
+    return kept;
+  }
   function bandFill(m, codes, f){
     var id = 'wb-' + m.key + '-' + String(f.properties.id).replace(/[^\w-]/g, '_') + '-' + codes.join('-');
     if(m.defs && m.defs.select('#' + id).empty()){
-      var rings = wardRings(m, f), lo = Infinity, hi = -Infinity;
-      rings.forEach(function(r){ r.forEach(function(p){
+      var lo = Infinity, hi = -Infinity;
+      mainParts(m, f).forEach(function(r){ r.forEach(function(p){
         var t = p[0] + p[1]; if(t < lo) lo = t; if(t > hi) hi = t;
       }); });
       // equal widths across the ward's full extent at that angle
@@ -1713,80 +1754,163 @@
     });
   }
 
-  // Where control could change: a majority the party could lose because it
-  // is defending at least as many seats as it can spare, or a hung council
-  // whose largest party is a few gains from a majority. The buckets (Ind,
-  // Loc, Oth) are many groups, not one party, so they never count.
+  // Head to head: pick two parties, and every council voting is laid end to
+  // end in one long winding strip - the biggest lead for the first party at
+  // one end, the biggest for the second at the other - each council as long
+  // as its seats up (the way 538's "snake" lined up the states). The lead is
+  // the gap between the two parties' seats on the council now, as a share of
+  // its seats. Ind, Loc and Oth are groups of many, so they aren't offered.
   var BG_BUCKETS = {IND: 1, LOC: 1, OTH: 1, VAC: 1};
-  var BG_RISK = 3, BG_REACH = 4;
-  function battlegrounds(){
-    var E = nextRound(), risk = [], reach = [], safe = 0;
-    (E.up || []).forEach(function(u){
-      var c = u.c, half = Math.floor(c.total / 2), best = null;
-      for(var p in c.seats){
-        if(BG_BUCKETS[p] || !c.seats[p]) continue;
-        if(!best || c.seats[p] > c.seats[best]) best = p;
-      }
-      if(!best) return;
-      var held = c.seats[best], up = (u.seats || {})[best] || 0;
-      if(held * 2 > c.total){
-        var spare = held - half;                 // losses that end the majority
-        if(up < spare){ safe++; return; }
-        if(spare <= BG_RISK) risk.push({u: u, p: best, k: spare, up: up});
-      } else {
-        var need = half + 1 - held;              // gains needed for a majority
-        if(need <= BG_REACH && need <= u.n - up) reach.push({u: u, p: best, k: need});
-      }
-    });
-    var by = function(a, b){ return a.k - b.k || a.u.c.name.localeCompare(b.u.c.name); };
-    return {risk: risk.sort(by), reach: reach.sort(by), safe: safe};
+  var SNAKE = {a: null, b: null, wired: false};
+  function snakeParties(){
+    var E = nextRound();
+    return Object.keys(E.seats || {}).filter(function(p){ return !BG_BUCKETS[p]; })
+      .sort(function(x, y){ return E.seats[y] - E.seats[x]; });
   }
   function buildBattlegrounds(){
-    var B = battlegrounds(), yr = nextRound().date.slice(0, 4);
-    var row = function(x, text){
-      var col = pInfo(x.p).colour, c = x.u.c;
-      return '<div class="bgrow" data-g="' + c.gss + '" title="' + esc(controlText(c)) + '">' +
-        '<span class="bn">' + esc(c.name) + '</span><span class="bd">' + text + '</span>' +
-        '<span class="bc" style="background:' + col + '; color:' + txtOn(col) + '">' + abbrev(x.p) + '</span></div>';
+    var ps = snakeParties();
+    if(ps.length < 2){ $('bgwrap').style.display = 'none'; return; }
+    if(!SNAKE.a || ps.indexOf(SNAKE.a) < 0) SNAKE.a = ps[0];
+    if(!SNAKE.b || ps.indexOf(SNAKE.b) < 0 || SNAKE.b === SNAKE.a) SNAKE.b = ps[1] === SNAKE.a ? ps[0] : ps[1];
+    var opts = function(sel){
+      return ps.map(function(p){
+        return '<option value="' + p + '"' + (p === sel ? ' selected' : '') + '>' + abbrev(p) +
+               ' · ' + esc(pInfo(p).name) + '</option>';
+      }).join('');
     };
-    var col = function(title, blurb, list, fn){
-      return '<div class="bgcol"><h4>' + title + ' <span style="color:var(--faint); font-weight:700">' +
-        list.length + '</span></h4><p>' + blurb + '</p><div class="bglist">' +
-        (list.length ? list.map(fn).join('') : '<div class="none">None this time.</div>') + '</div></div>';
-    };
+    var yr = nextRound().date.slice(0, 4);
+    $('bg').className = 'snk';
     $('bg').innerHTML =
-      col('Majorities on a knife-edge',
-          'A party with a majority that is defending enough seats to lose it - it falls with ' +
-          BG_RISK + ' losses or fewer.', B.risk, function(x){
-            return row(x, 'falls with ' + x.k + (x.k === 1 ? ' loss' : ' losses') + ' \u00b7 ' +
-                       x.up + ' of its ' + x.u.c.seats[x.p] + ' up');
-          }) +
-      col('Majority within reach',
-          'No party has a majority now; the largest is ' + BG_REACH + ' gains or fewer away from one.',
-          B.reach, function(x){
-            return row(x, x.k + ' short \u00b7 ' + (x.u.all ? 'all ' + x.u.n : x.u.n + ' of ' + x.u.c.total) + ' up');
-          });
-    var note = document.getElementById('bgnote');
-    if(!note){ note = document.createElement('div'); note.id = 'bgnote'; note.className = 'bgnote'; $('bg').after(note); }
-    note.textContent = B.safe + ' majorities cannot be lost in ' + yr + ': too few of the ruling ' +
-      "party's seats are up. Seat counts are today's, including defections since the last election.";
-    $('bg').querySelectorAll('.bgrow').forEach(function(r){
-      var g = r.getAttribute('data-g');
-      r.addEventListener('mouseenter', function(){
-        eachShown(function(m){
-          m.g.selectAll('.cp').filter(function(d){ return d.properties.code === g; }).classed('lhl', true).raise();
-        });
-      });
-      r.addEventListener('mouseleave', function(){
-        eachMap(function(m){ m.g.selectAll('.cp.lhl').classed('lhl', false); });
-      });
-      r.addEventListener('click', function(){
-        eachMap(function(m){ m.g.selectAll('.cp.lhl').classed('lhl', false); });
-        var mg = document.querySelector('.mapgrid');
-        if(mg && mg.scrollIntoView) mg.scrollIntoView({behavior: 'smooth', block: 'start'});
-        gotoCouncil(g);
+      '<div class="snk-hd"><select id="snkA" aria-label="First party">' + opts(SNAKE.a) + '</select>' +
+      '<span class="snk-vs">vs</span><select id="snkB" aria-label="Second party">' + opts(SNAKE.b) + '</select>' +
+      '<span class="snk-note">Every council voting in ' + yr + ', as long as its seats up, ordered by the gap ' +
+      'between the two parties’ seats there now. Hover for the numbers; click to open the council.</span></div>' +
+      '<div class="snk-ends"><span id="snkEndA"></span></div>' +
+      '<svg id="snksvg" role="img"></svg>' +
+      '<div class="snk-ends snk-endb"><span id="snkEndB"></span></div>' +
+      '<div class="snk-foot" id="snkfoot"></div>';
+    var old = $('bgnote'); if(old) old.remove();
+    ['snkA', 'snkB'].forEach(function(id){
+      $(id).addEventListener('change', function(){
+        var a = $('snkA').value, b = $('snkB').value;
+        if(a === b){                       // picking the same party swaps them
+          if(id === 'snkA') b = SNAKE.a; else a = SNAKE.b;
+          $('snkA').value = a; $('snkB').value = b;
+        }
+        SNAKE.a = a; SNAKE.b = b;
+        drawSnake();
       });
     });
+    if(!SNAKE.wired){
+      SNAKE.wired = true;
+      var lastW = 0;
+      window.addEventListener('resize', function(){
+        var w = $('bg').getBoundingClientRect().width;
+        if(Math.abs(w - lastW) < 2) return;
+        lastW = w; clearTimeout(SNAKE.t); SNAKE.t = setTimeout(drawSnake, 150);
+      });
+    }
+    drawSnake();
+  }
+
+  function drawSnake(){
+    var svgEl = $('snksvg');
+    if(!svgEl) return;
+    var A = SNAKE.a, B = SNAKE.b, E = nextRound();
+    var items = (E.up || []).map(function(u){
+      var c = u.c, sa = c.seats[A] || 0, sb = c.seats[B] || 0;
+      return {u: u, sa: sa, sb: sb, lead: c.total ? (sa - sb) / c.total : 0};
+    }).filter(function(x){ return x.sa || x.sb; })
+      .sort(function(x, y){ return y.lead - x.lead || (y.sa - x.sa) || x.u.c.name.localeCompare(y.u.c.name); });
+
+    var W = Math.max(280, $('bg').getBoundingClientRect().width);
+    var narrow = W < 640;
+    // an odd number of rows, so it starts top left and ends bottom right
+    var rows = narrow ? 5 : 3, th = narrow ? 26 : 36, gap = narrow ? 16 : 22;
+    var r = (th + gap) / 2, pad = r + th / 2 + 2, R = Math.max(40, W - 2 * pad);
+    var y0 = th / 2 + 3, turn = Math.PI * r, Ltot = rows * R + (rows - 1) * turn;
+    var H = Math.ceil(y0 * 2 + (rows - 1) * 2 * r);
+
+    // a point on the snake's centre line, s along from the start
+    function at(s){
+      for(var i = 0; i < rows; i++){
+        var y = y0 + i * 2 * r, even = i % 2 === 0;
+        if(s <= R || i === rows - 1) return [even ? pad + Math.min(s, R) : pad + R - Math.min(s, R), y];
+        s -= R;
+        if(s <= turn){
+          var t = s / r, cy = y + r;
+          return even ? [pad + R + r * Math.sin(t), cy - r * Math.cos(t)]
+                      : [pad - r * Math.sin(t), cy - r * Math.cos(t)];
+        }
+        s -= turn;
+      }
+    }
+    function band(s0, s1){
+      var n = Math.max(2, Math.ceil((s1 - s0) / 3)), left = [], right = [];
+      for(var k = 0; k <= n; k++){
+        var s = s0 + (s1 - s0) * k / n, p = at(s);
+        var q = at(Math.min(Ltot, s + 0.5)), q0 = at(Math.max(0, s - 0.5));
+        var dx = q[0] - q0[0], dy = q[1] - q0[1], len = Math.sqrt(dx * dx + dy * dy) || 1;
+        var nx = -dy / len * th / 2, ny = dx / len * th / 2;
+        left.push([p[0] + nx, p[1] + ny]); right.push([p[0] - nx, p[1] - ny]);
+      }
+      return 'M' + left.concat(right.reverse()).map(function(p){ return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join('L') + 'Z';
+    }
+    var colA = pInfo(A).colour, colB = pInfo(B).colour;
+    var shade = function(x){
+      if(!x.lead) return '#c9c9c4';
+      var pale = 0.6 * (1 - Math.min(Math.abs(x.lead) / 0.4, 1));
+      return lighten(x.lead > 0 ? colA : colB, pale);
+    };
+    var total = items.reduce(function(a, x){ return a + x.u.n; }, 0) || 1, s = 0, level = null;
+    var svg = d3.select(svgEl).attr('viewBox', '0 0 ' + W + ' ' + H).attr('width', W).attr('height', H)
+      .attr('aria-label', 'Councils voting, from the biggest ' + abbrev(A) + ' lead to the biggest ' + abbrev(B) + ' lead');
+    svg.selectAll('*').remove();
+    items.forEach(function(x){
+      var len = x.u.n / total * Ltot;
+      x.s0 = s; x.s1 = s + len; s += len;
+      if(level === null && x.lead <= 0) level = x.s0;
+    });
+    svg.selectAll('path.sg').data(items).enter().append('path').attr('class', 'sg')
+      .attr('d', function(x){ return band(x.s0, x.s1); })
+      .attr('fill', shade)
+      .on('mousemove', function(e, x){
+        var c = x.u.c;
+        tip.innerHTML = '<div class="hd"><div class="nm">' + esc(c.name) + '</div>' +
+          '<div class="ty">' + esc(controlText(c)) + ' · ' + (x.u.all ? 'all ' + x.u.n : x.u.n + ' of ' + c.total) +
+          ' seats up</div></div><div class="bd" style="padding:10px 12px; font-size:.8rem; line-height:1.6">' +
+          '<b style="color:' + colA + '">' + abbrev(A) + '</b> ' + x.sa + ' &nbsp;·&nbsp; ' +
+          '<b style="color:' + colB + '">' + abbrev(B) + '</b> ' + x.sb + ' of ' + c.total + ' seats<br>' +
+          (x.lead ? abbrev(x.lead > 0 ? A : B) + ' ahead by ' + Math.abs(x.sa - x.sb) : 'Level') + '</div>';
+        place(e);
+      })
+      .on('mouseleave', function(){ tip.style.display = 'none'; })
+      .on('click', function(e, x){
+        tip.style.display = 'none';
+        var mg = document.querySelector('.mapgrid');
+        if(mg && mg.scrollIntoView) mg.scrollIntoView({behavior: 'smooth', block: 'start'});
+        gotoCouncil(x.u.c.gss);
+      });
+    // where the lead changes hands
+    if(level !== null && level > 0 && level < Ltot){
+      var p = at(level), q = at(Math.min(Ltot, level + 0.5)), q0 = at(Math.max(0, level - 0.5));
+      var dx = q[0] - q0[0], dy = q[1] - q0[1], len = Math.sqrt(dx * dx + dy * dy) || 1;
+      var nx = -dy / len * (th / 2 + 5), ny = dx / len * (th / 2 + 5);
+      svg.append('line').attr('class', 'snk-mid')
+        .attr('x1', p[0] - nx).attr('y1', p[1] - ny).attr('x2', p[0] + nx).attr('y2', p[1] + ny);
+    }
+    var sum = function(f){ return items.filter(f).reduce(function(a, x){ return a + x.u.n; }, 0); };
+    var nA = items.filter(function(x){ return x.lead > 0; }).length, nB = items.filter(function(x){ return x.lead < 0; }).length;
+    var nL = items.length - nA - nB;
+    $('snkEndA').innerHTML = '<i style="background:' + colA + '"></i>Biggest ' + abbrev(A) + ' lead';
+    $('snkEndB').innerHTML = 'Biggest ' + abbrev(B) + ' lead<i style="background:' + colB + '"></i>';
+    $('snkfoot').innerHTML =
+      '<span><i style="background:' + colA + '"></i><b>' + abbrev(A) + '</b> ahead in ' + nA + ' councils (' +
+        fmt(sum(function(x){ return x.lead > 0; })) + ' seats up)</span>' +
+      '<span><i style="background:' + colB + '"></i><b>' + abbrev(B) + '</b> ahead in ' + nB + ' (' +
+        fmt(sum(function(x){ return x.lead < 0; })) + ')</span>' +
+      (nL ? '<span><i style="background:#c9c9c4"></i>level in ' + nL + '</span>' : '') +
+      '<span>' + ((E.up || []).length - items.length) + ' councils voting have neither</span>';
   }
 
   function panelDefault(){
