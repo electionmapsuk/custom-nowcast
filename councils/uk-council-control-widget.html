@@ -228,24 +228,34 @@
   .bgrow .bc{font-size:9px; font-weight:800; padding:3px 5px; border-radius:4px; white-space:nowrap;}
   .bgcol .none{padding:14px 16px; font-size:.76rem; color:var(--muted);}
   .bgnote{font-size:.72rem; color:var(--muted); margin:8px 2px 0; line-height:1.45;}
-  /* head-to-head snake */
-  .snk{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px 14px;}
-  .snk-hd{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:12px;}
-  .snk-hd select{font:inherit; font-size:.8rem; font-weight:800; height:32px; padding:0 8px;
+  /* majority meters */
+  .mm{background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:16px 18px 12px;}
+  .mm-hd{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin-bottom:10px;}
+  .mm-hd select{font:inherit; font-size:.8rem; font-weight:800; height:32px; padding:0 8px;
     border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); cursor:pointer;}
-  .snk-vs{font-size:.74rem; font-weight:800; color:var(--faint); text-transform:uppercase;}
-  .snk-note{flex:1 1 260px; font-size:.72rem; color:var(--muted); line-height:1.45; margin-left:6px;}
-  .snk-ends{display:flex; justify-content:space-between; font-size:.7rem; font-weight:800; color:var(--muted);
-    text-transform:uppercase; letter-spacing:.05em; margin:0 2px 6px;}
-  .snk-endb{justify-content:flex-end; margin:6px 2px 0;}
-  .snk-ends i, .snk-foot i{display:inline-block; width:10px; height:10px; border-radius:3px; margin:0 5px; vertical-align:-1px;}
-  #snksvg{display:block; width:100%; height:auto; overflow:visible;}
-  #snksvg .sg{stroke:var(--panel); stroke-width:.8px; cursor:pointer;}
-  #snksvg .sg:hover{stroke:#15171a; stroke-width:1.6px;}
-  #snksvg .snk-mid{stroke:#15171a; stroke-width:2px;}
-  #snksvg .snk-safe{fill:none; stroke:#15171a; stroke-width:2px; stroke-linejoin:round; pointer-events:none;}
-  .snk-foot{display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:10px; font-size:.74rem; color:var(--muted);}
-  .snk-foot b{color:var(--ink);}
+  .mm-note{flex:1 1 260px; font-size:.72rem; color:var(--muted); line-height:1.45; margin-left:6px;}
+  .mm-key{display:flex; flex-wrap:wrap; gap:6px 16px; font-size:.72rem; color:var(--muted); margin:0 0 8px;}
+  .mm-key i{display:inline-block; width:12px; height:10px; border-radius:2px; margin-right:5px; vertical-align:-1px;}
+  .mm-list{border-top:1px solid var(--line2);}
+  .mm-row{display:grid; grid-template-columns:minmax(0,210px) minmax(0,1fr) 210px; gap:12px; align-items:center;
+    padding:6px 4px; border-bottom:1px solid var(--line2); cursor:pointer;}
+  .mm-row:hover{background:#f4f7f6;}
+  .mm-name{font-size:.78rem; font-weight:700; color:var(--ink); display:flex; align-items:center; gap:6px; min-width:0;}
+  .mm-ctrl{font-size:9px; font-weight:800; padding:2px 5px; border-radius:4px; white-space:nowrap; flex:none;}
+  .mm-bar{position:relative; display:flex; height:16px; border-radius:3px; overflow:visible; background:#f1f1ee;}
+  .mm-bar i{display:block; height:100%; flex:none;}
+  .mm-bar i:first-child{border-radius:3px 0 0 3px;}
+  .mm-bar em{position:absolute; top:-4px; bottom:-4px; width:2px; margin-left:-1px; background:#15171a;}
+  .mm-txt{font-size:.72rem; color:var(--muted); line-height:1.3;}
+  .mm-txt b{color:var(--ink);}
+  .mm-txt small{display:block; font-size:.66rem; color:var(--faint);}
+  .mm-row.st-safe .mm-txt{color:var(--ink);}
+  .mm-foot{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:10px;
+    font-size:.72rem; color:var(--muted);}
+  @media(max-width:640px){
+    .mm-row{grid-template-columns:minmax(0,1fr); gap:5px;}
+    .mm-txt small{display:inline; margin-left:6px;}
+  }
   .efilt{display:inline-flex; gap:6px; flex-wrap:wrap; align-items:center;}
   .efilt select{font:inherit; font-size:.76rem; font-weight:700; height:31px; padding:0 8px;
     border:1px solid var(--line); border-radius:8px; background:#fff; color:var(--ink); cursor:pointer;}
@@ -439,7 +449,7 @@
 
     <!-- elections view only: where control could change -->
     <div id="bgwrap" style="display:none;">
-      <div class="section-h">Head to head</div>
+      <div class="section-h">Majority meters</div>
       <div class="bgrid" id="bg"></div>
     </div>
 
@@ -730,14 +740,18 @@
       var code = e[0];
       var col  = code === 'NOC' ? NOC_COLOUR : pInfo(code).colour;
       var name = code === 'NOC' ? 'NOC' : abbrev(code);
-      var full = code === 'NOC' ? 'No overall control, no administration' : pInfo(code).name;
+      var full = code === 'NOC' ? 'No overall control: no party has a majority (minority and coalition administrations included)' : pInfo(code).name;
       // headline: councils run with a majority; then those including the ones
       // it leads as a minority or coalition; then its seats
-      var head = code === 'NOC' ? e[1] : (maj[code] || 0);
+      // NOC's headline is every council without a single-party majority -
+      // the minority and coalition administrations as well as those with none
+      var allRun = Object.keys(runs).reduce(function(a, k){ return a + runs[k]; }, 0);
+      var allMaj = Object.keys(maj).reduce(function(a, k){ return a + maj[k]; }, 0);
+      var head = code === 'NOC' ? allRun - allMaj : (maj[code] || 0);
       var sub1 = code === 'NOC'
         ? 'of ' + fmt(EV ? nextRound().up.length : DATA.meta.councils) + ' councils' + (EV ? ' up' : '')
         : fmt(e[1]) + ' incl. minority-led';
-      var sub2 = code === 'NOC' ? 'no overall control'
+      var sub2 = code === 'NOC' ? fmt(e[1]) + ' with no administration'
         : EV ? fmt(nextRound().seats[code] || 0) + ' seats up'
              : fmt((DATA.meta.partyTotals || {})[code] || 0) + ' councillors';
       return '<div class="tot" data-p="'+code+'" title="'+full+'" style="background:'+col+'; color:'+txtOn(col)+'">' +
@@ -1830,265 +1844,137 @@
     });
   }
 
-  // Head to head: pick two parties, and every council voting is laid end to
-  // end in one long winding strip - the biggest lead for the first party at
-  // one end, the biggest for the second at the other - each council as long
-  // as its seats up (the way 538's "snake" lined up the states). The lead is
-  // the gap between the two parties' seats on the council now, as a share of
-  // its seats. Ind, Loc and Oth are groups of many, so they aren't offered.
-  var BG_BUCKETS = {IND: 1, LOC: 1, OTH: 1, VAC: 1};
-  var SNAKE = {a: null, b: null, wired: false};
-  function snakeParties(){
-    var E = nextRound();
-    return Object.keys(E.seats || {}).filter(function(p){ return !BG_BUCKETS[p] && Object.keys(partyNations(p)).length; })
-      .sort(function(x, y){ return E.seats[y] - E.seats[x]; });
-  }
-  // Which nations a party has councillors in, among the councils voting. Two
-  // parties can only be compared where they both stand - so not SNP with Plaid,
-  // or Sinn Féin with the Conservatives - and the snake keeps to those nations.
-  function partyNations(p){
-    SNAKE.nat = SNAKE.nat || {};
-    if(!SNAKE.nat[p]){
-      var out = {};
-      // Northern Ireland is left out of the snake: its councils are power-shared
-      // and its parties don't stand against Britain's
-      (nextRound().up || []).forEach(function(u){
-        if(u.c.seats[p] && u.c.nation !== 'Northern Ireland') out[u.c.nation] = 1;
+  // Majority meters: one bar per council voting, against its own majority
+  // line. The bar is the council's seats: first the lead party's seats that
+  // aren't up (solid), then its seats that are (hatched), then everyone
+  // else's - up (hatched grey) and not up (grey). Where the solid part alone
+  // passes the line the majority can't be lost; otherwise the hatched part
+  // shows how much of what is up it has to hold, or win. Sorted from the
+  // councils closest to changing hands. Northern Ireland, with its power-shared
+  // councils, is left out.
+  var MM = {party: '', show: 'all', open: false};
+  var MM_ROWS = 25;
+  function meterRows(){
+    return (nextRound().up || []).filter(function(u){ return u.c.nation !== 'Northern Ireland'; })
+      .map(function(u){
+        var c = u.c, up = u.seats || {}, total = c.total, half = Math.floor(total / 2);
+        var R = runsKey(c), noc = !R || R === 'NOC';
+        if(noc){ var tp = topParties(c); R = tp[0] || null; }
+        var held = R ? c.seats[R] || 0 : 0, rUp = R ? up[R] || 0 : 0, keep = held - rUp;
+        var vac = c.seats.VAC || 0, othUp = Math.max(0, u.n - rUp);
+        var othKeep = Math.max(0, total - held - othUp - vac);
+        var st, rank;
+        if(keep > half){ st = 'safe'; rank = 4e6 + (keep - half); }
+        else if(held > half){
+          var k = held - half;              // losses that end the majority
+          st = 'risk'; rank = k;
+        } else {
+          var need = half + 1 - held;       // gains needed for a majority
+          // a majority k losses from falling and one n gains from being won
+          // are interleaved, closest first
+          if(need <= othUp){ st = 'reach'; rank = need + 0.5; }
+          else { st = 'out'; rank = 2e6 + need; }
+        }
+        return {u: u, c: c, R: R, noc: noc, held: held, rUp: rUp, keep: keep, othUp: othUp,
+                othKeep: othKeep, vac: vac, total: total, half: half, st: st, rank: rank};
       });
-      SNAKE.nat[p] = out;
-    }
-    return SNAKE.nat[p];
   }
-  // "ANY" as the second party: each council's biggest rival to the first,
-  // whoever that is (Ind and Loc groups included), wherever the first stands
-  var ANY = 'ANY', ANY_COLOUR = '#8d8d88';
-  function sharedNations(a, b){
-    var na = partyNations(a), nb = b === ANY ? na : partyNations(b);
-    return NATIONS.filter(function(n){ return na[n] && nb[n]; });
+  function meterText(x){
+    var a = abbrev(x.R);
+    if(x.st === 'safe') return 'can’t lose its majority';
+    if(x.st === 'risk'){ var k = x.held - x.half; return 'loses its majority with ' + k + (k === 1 ? ' loss' : ' losses'); }
+    var need = x.half + 1 - x.held;
+    if(x.st === 'reach') return need + ' gain' + (need === 1 ? '' : 's') + ' from a majority';
+    return 'can’t reach a majority this time';
   }
   function buildBattlegrounds(){
-    var ps = snakeParties();
-    if(ps.length < 2){ $('bgwrap').style.display = 'none'; return; }
-    if(!SNAKE.a || ps.indexOf(SNAKE.a) < 0) SNAKE.a = ps[0];
-    // the parties standing where `a` does, biggest there first
-    var partners = function(a){
-      var here = function(p){
-        var nats = sharedNations(a, p);
-        return (nextRound().up || []).reduce(function(t, u){
-          return t + (nats.indexOf(u.c.nation) >= 0 ? (u.seats || {})[p] || 0 : 0);
-        }, 0);
-      };
-      return ps.filter(function(p){ return p !== a && sharedNations(a, p).length; })
-        .map(function(p){ return [p, here(p)]; })
-        .sort(function(x, y){ return y[1] - x[1]; })
-        .map(function(x){ return x[0]; });
-    };
-    if(!SNAKE.b || SNAKE.b === SNAKE.a || (SNAKE.b !== ANY && partners(SNAKE.a).indexOf(SNAKE.b) < 0)) SNAKE.b = partners(SNAKE.a)[0];
-    var opts = function(list, sel, any){
-      return (any ? '<option value="' + ANY + '"' + (sel === ANY ? ' selected' : '') +
-                    '>Anyone \u00b7 biggest rival in each council</option>' : '') +
-        list.map(function(p){
-        return '<option value="' + p + '"' + (p === sel ? ' selected' : '') + '>' + abbrev(p) +
-               ' \u00b7 ' + esc(pInfo(p).name) + '</option>';
-      }).join('');
-    };
-    var yr = nextRound().date.slice(0, 4);
-    $('bg').className = 'snk';
+    var rows = meterRows();
+    if(!rows.length){ $('bgwrap').style.display = 'none'; return; }
+    var parties = {};
+    rows.forEach(function(x){ if(x.R) parties[x.R] = (parties[x.R] || 0) + 1; });
+    var plist = Object.keys(parties).sort(function(a, b){ return parties[b] - parties[a]; });
+    var opt = function(v, t, sel){ return '<option value="' + v + '"' + (v === sel ? ' selected' : '') + '>' + t + '</option>'; };
+    $('bg').className = 'mm';
     $('bg').innerHTML =
-      '<div class="snk-hd"><select id="snkA" aria-label="First party">' + opts(ps, SNAKE.a) + '</select>' +
-      '<span class="snk-vs">vs</span><select id="snkB" aria-label="Second party">' + opts(partners(SNAKE.a), SNAKE.b, true) + '</select>' +
-      '<span class="snk-note" id="snknote"></span></div>' +
-      '<div class="snk-ends"><span id="snkEndA"></span></div>' +
-      '<svg id="snksvg" role="img"></svg>' +
-      '<div class="snk-ends snk-endb"><span id="snkEndB"></span></div>' +
-      '<div class="snk-foot" id="snkfoot"></div>';
-    var old = $('bgnote'); if(old) old.remove();
-    $('snkA').addEventListener('change', function(){
-      // the second list only offers parties standing where the first does
-      var a = $('snkA').value, list = partners(a), b = SNAKE.b;
-      if(b !== ANY && (b === a || list.indexOf(b) < 0)) b = list.indexOf(SNAKE.a) >= 0 ? SNAKE.a : list[0];
-      $('snkB').innerHTML = opts(list, b, true);
-      SNAKE.a = a; SNAKE.b = b;
-      drawSnake();
-    });
-    $('snkB').addEventListener('change', function(){ SNAKE.b = $('snkB').value; drawSnake(); });
-    if(!SNAKE.wired){
-      SNAKE.wired = true;
-      var lastW = 0;
-      window.addEventListener('resize', function(){
-        var w = $('bg').getBoundingClientRect().width;
-        if(Math.abs(w - lastW) < 2) return;
-        lastW = w; clearTimeout(SNAKE.t); SNAKE.t = setTimeout(drawSnake, 150);
-      });
-    }
-    drawSnake();
+      '<div class="mm-hd">' +
+        '<select id="mmParty" aria-label="Party">' + opt('', 'All parties', MM.party) +
+          plist.map(function(p){ return opt(p, abbrev(p) + ' · ' + esc(pInfo(p).name), MM.party); }).join('') + '</select>' +
+        '<select id="mmShow" aria-label="Which councils">' +
+          opt('all', 'Every council voting', MM.show) +
+          opt('change', 'Where control can change', MM.show) +
+          opt('risk', 'Majorities that can be lost', MM.show) +
+          opt('reach', 'Majorities within reach', MM.show) +
+          opt('safe', 'Majorities that can’t be lost', MM.show) + '</select>' +
+        '<span class="mm-note">Each council’s seats against its majority line, for the party running it ' +
+          '(or the largest party where no one does). Solid: its seats not up; hatched: its seats up; grey: everyone else’s.</span>' +
+      '</div>' +
+      '<div class="mm-key">' +
+        '<span><i style="background:#8d8d88"></i>seats not up</span>' +
+        '<span><i style="background:repeating-linear-gradient(45deg,#8d8d88 0 2px,#d6d6d2 2px 5px)"></i>seats up</span>' +
+        '<span><i style="background:#dcdcd8"></i>other parties</span>' +
+        '<span><i style="background:#15171a; width:2px; border-radius:0"></i>majority</span>' +
+      '</div>' +
+      '<div class="mm-list" id="mmList"></div>' +
+      '<div class="mm-foot"><span id="mmCount"></span><button type="button" class="mmb" id="mmMore"></button></div>';
+    $('mmParty').addEventListener('change', function(){ MM.party = this.value; drawMeters(); });
+    $('mmShow').addEventListener('change', function(){ MM.show = this.value; drawMeters(); });
+    $('mmMore').addEventListener('click', function(){ MM.open = !MM.open; drawMeters(); });
+    drawMeters();
   }
-
-  function drawSnake(){
-    var svgEl = $('snksvg');
-    if(!svgEl) return;
-    var A = SNAKE.a, B = SNAKE.b, E = nextRound(), nats = sharedNations(A, B);
-    var any = B === ANY;
-    var items = (E.up || []).map(function(u){
-      // The margin in the contest itself, as 538's snake used: the two
-      // parties' share of the seats being fought this time, by who holds them
-      // now. Seats not up don't enter into it (a majority they make unlosable
-      // gets its black border instead), and a party's real strength in those
-      // seats does.
-      var c = u.c, up = u.seats || {}, ua = up[A] || 0, rival = B;
-      if(any){                     // the biggest other group among the seats up
-        rival = null;
-        for(var p in up){
-          if(p === A || p === 'VAC' || !up[p]) continue;
-          if(!rival || up[p] > up[rival]) rival = p;
-        }
-      }
-      var ub = rival ? up[rival] || 0 : 0;
-      return {u: u, ua: ua, ub: ub, sa: c.seats[A] || 0, sb: rival ? c.seats[rival] || 0 : 0,
-              rival: rival, lead: u.n ? (ua - ub) / u.n : 0};
-    // only councils one of the two parties runs now (leads the administration),
-    // in the nations where both stand (never Northern Ireland)
-    }).filter(function(x){
-      var c = x.u.c, k = runsKey(c);
-      if(nats.indexOf(c.nation) < 0) return false;
-      if(any) return true;                         // A against the field: every council
-      return k === A || k === B;
-    })
-      // A majority that can't be lost this time is as safe as it gets, so
-      // those councils sit at the very ends of the snake (ordered by lead
-      // among themselves), whatever the size of the lead
-      .map(function(x){
-        var sh = safeHold(x.u.c);
-        x.tier = !sh ? 0 : sh.p === A ? 1 : (x.lead < 0 ? -1 : 0);
-        return x;
-      })
-      .sort(function(x, y){ return (y.tier - x.tier) || y.lead - x.lead || (y.sa - x.sa) || x.u.c.name.localeCompare(y.u.c.name); });
-
-    var W = Math.max(280, $('bg').getBoundingClientRect().width);
-    var narrow = W < 640;
-    // an odd number of rows, so it starts top left and ends bottom right
-    var rows = narrow ? 5 : 3, th = narrow ? 26 : 36, gap = narrow ? 16 : 22;
-    var r = (th + gap) / 2, pad = r + th / 2 + 2, R = Math.max(40, W - 2 * pad);
-    var y0 = th / 2 + 3, turn = Math.PI * r, Ltot = rows * R + (rows - 1) * turn;
-    var H = Math.ceil(y0 * 2 + (rows - 1) * 2 * r);
-
-    // a point on the snake's centre line, s along from the start
-    function at(s){
-      for(var i = 0; i < rows; i++){
-        var y = y0 + i * 2 * r, even = i % 2 === 0;
-        if(s <= R || i === rows - 1) return [even ? pad + Math.min(s, R) : pad + R - Math.min(s, R), y];
-        s -= R;
-        if(s <= turn){
-          var t = s / r, cy = y + r;
-          return even ? [pad + R + r * Math.sin(t), cy - r * Math.cos(t)]
-                      : [pad - r * Math.sin(t), cy - r * Math.cos(t)];
-        }
-        s -= turn;
-      }
-    }
-    function band(s0, s1){
-      var n = Math.max(2, Math.ceil((s1 - s0) / 3)), left = [], right = [];
-      for(var k = 0; k <= n; k++){
-        var s = s0 + (s1 - s0) * k / n, p = at(s);
-        var q = at(Math.min(Ltot, s + 0.5)), q0 = at(Math.max(0, s - 0.5));
-        var dx = q[0] - q0[0], dy = q[1] - q0[1], len = Math.sqrt(dx * dx + dy * dy) || 1;
-        var nx = -dy / len * th / 2, ny = dx / len * th / 2;
-        left.push([p[0] + nx, p[1] + ny]); right.push([p[0] - nx, p[1] - ny]);
-      }
-      return 'M' + left.concat(right.reverse()).map(function(p){ return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join('L') + 'Z';
-    }
-    var colA = pInfo(A).colour, colB = any ? ANY_COLOUR : pInfo(B).colour;
-    // Coloured by who runs the council, as on the map: the party's full colour
-    // for a majority (or a directly elected mayor); for a minority or a
-    // coalition the map's paler wash of the lead party's colour, striped with
-    // its full colour; black where there is no administration.
-    var shade = function(x){
-      var c = x.u.c, runs = runsKey(c);
-      if(!runs || runs === 'NOC') return NOC_COLOUR;
-      var col = pInfo(runs).colour;
-      if(solidFill(c)) return col;
-      var id = 'sks-' + col.replace(/[^a-z0-9]/gi, '');
-      if(defs.select('#' + id).empty()){
-        var pat = defs.append('pattern').attr('id', id).attr('width', 7).attr('height', 7)
-          .attr('patternUnits', 'userSpaceOnUse').attr('patternTransform', 'rotate(45)');
-        pat.append('rect').attr('width', 7).attr('height', 7).attr('fill', lighten(col, 0.5));
-        pat.append('rect').attr('width', 3).attr('height', 7).attr('fill', col);
-      }
-      return 'url(#' + id + ')';
-    };
-    var total = items.reduce(function(a, x){ return a + x.u.n; }, 0) || 1, s = 0, level = null;
-    var svg = d3.select(svgEl).attr('viewBox', '0 0 ' + W + ' ' + H).attr('width', W).attr('height', H)
-      .attr('aria-label', 'Councils voting, from the biggest ' + abbrev(A) + ' lead to the biggest ' + (any ? 'lead over it' : abbrev(B) + ' lead'));
-    svg.selectAll('*').remove();
-    var defs = svg.append('defs');
-    items.forEach(function(x){
-      var len = x.u.n / total * Ltot;
-      x.s0 = s; x.s1 = s + len; s += len;
-      if(level === null && x.lead <= 0) level = x.s0;
-    });
-    svg.selectAll('path.sg').data(items).enter().append('path').attr('class', 'sg')
-      .attr('d', function(x){ return band(x.s0, x.s1); })
-      .attr('fill', shade)
-      .on('mousemove', function(e, x){
-        var c = x.u.c;
-        tip.innerHTML = '<div class="hd"><div class="nm">' + esc(c.name) + '</div>' +
-          '<div class="ty">' + esc(controlText(c)) + ' · ' + (x.u.all ? 'all ' + x.u.n : x.u.n + ' of ' + c.total) +
-          ' seats up</div></div><div class="bd" style="padding:10px 12px; font-size:.8rem; line-height:1.6">' +
-          'Seats up: <b style="color:' + colA + '">' + abbrev(A) + '</b> ' + x.ua + ' &nbsp;·&nbsp; ' +
-          (x.rival ? '<b style="color:' + pInfo(x.rival).colour + '">' + abbrev(x.rival) + '</b> ' + x.ub : 'no rival') +
-          ' of ' + x.u.n + (any && x.rival ? ' (biggest rival)' : '') + '<br>' +
-          '<span style="color:var(--muted)">Whole council: ' + abbrev(A) + ' ' + x.sa +
-          (x.rival ? ' · ' + abbrev(x.rival) + ' ' + x.sb : '') + ' of ' + c.total + '</span><br>' +
-          (x.lead ? abbrev(x.lead > 0 ? A : x.rival) + ' ahead by ' + Math.abs(x.ua - x.ub) + ' in the seats up' : 'Level in the seats up') +
-          '</div>';
-        place(e);
-      })
-      .on('mouseleave', function(){ tip.style.display = 'none'; })
-      .on('click', function(e, x){
-        tip.style.display = 'none';
+  function drawMeters(){
+    var list = $('mmList');
+    if(!list) return;
+    var rows = meterRows().filter(function(x){
+      if(MM.party && x.R !== MM.party) return false;
+      if(MM.show === 'change') return x.st === 'risk' || x.st === 'reach';
+      if(MM.show !== 'all') return x.st === MM.show;
+      return true;
+    }).sort(function(a, b){ return a.rank - b.rank || a.c.name.localeCompare(b.c.name); });
+    var shown = MM.open ? rows : rows.slice(0, MM_ROWS);
+    list.innerHTML = shown.length ? shown.map(function(x){
+      var col = x.R ? pInfo(x.R).colour : NOC_COLOUR, pale = lighten(col, 0.55);
+      var w = function(n){ return (100 * n / x.total).toFixed(3) + '%'; };
+      var seg = function(n, style, title){
+        return n > 0 ? '<i style="width:' + w(n) + '; ' + style + '" title="' + title + '"></i>' : '';
+      };
+      var hatch = function(a, b){ return 'background:repeating-linear-gradient(45deg,' + a + ' 0 3px,' + b + ' 3px 6px)'; };
+      var a = x.R ? abbrev(x.R) : 'Largest';
+      var bar = seg(x.keep, 'background:' + col, a + ': ' + x.keep + ' seats not up') +
+        seg(x.rUp, hatch(col, pale), a + ': ' + x.rUp + ' seats up') +
+        seg(x.othUp, hatch('#b9b9b4', '#e4e4e0'), 'Others: ' + x.othUp + ' seats up') +
+        seg(x.othKeep, 'background:#dcdcd8', 'Others: ' + x.othKeep + ' seats not up') +
+        seg(x.vac, 'background:#f1f1ee', x.vac + ' vacant');
+      var line = (100 * (x.half + 0.5) / x.total).toFixed(3);
+      var ctrl = controlSwatch(x.c);
+      return '<div class="mm-row st-' + x.st + '" data-g="' + x.c.gss + '">' +
+        '<span class="mm-name">' + esc(x.c.name) +
+          '<b class="mm-ctrl" style="background:' + ctrl + '; color:' + txtOn(ctrl) + '">' + esc(shortControl(x.c)) + '</b></span>' +
+        '<span class="mm-bar">' + bar + '<em style="left:' + line + '%"></em></span>' +
+        '<span class="mm-txt">' + (x.R ? '<b>' + esc(abbrev(x.R)) + '</b> ' : '') + meterText(x) +
+          '<small>' + (x.u.all ? 'all ' + x.u.n : x.u.n + ' of ' + x.total) + ' up</small></span>' +
+      '</div>';
+    }).join('') : '<div class="none" style="padding:14px 4px; font-size:.78rem; color:var(--muted)">No councils match.</div>';
+    $('mmCount').textContent = 'Showing ' + shown.length + ' of ' + rows.length + ' councils';
+    var more = $('mmMore');
+    more.style.display = rows.length > MM_ROWS ? '' : 'none';
+    more.textContent = MM.open ? 'Show fewer' : 'Show all ' + rows.length;
+    list.querySelectorAll('.mm-row').forEach(function(r){
+      var g = r.getAttribute('data-g');
+      r.addEventListener('mouseenter', function(){
+        eachShown(function(m){
+          m.g.selectAll('.cp').filter(function(d){ return d.properties.code === g; }).classed('lhl', true).raise();
+        });
+      });
+      r.addEventListener('mouseleave', function(){
+        eachMap(function(m){ m.g.selectAll('.cp.lhl').classed('lhl', false); });
+      });
+      r.addEventListener('click', function(){
+        eachMap(function(m){ m.g.selectAll('.cp.lhl').classed('lhl', false); });
         var mg = document.querySelector('.mapgrid');
         if(mg && mg.scrollIntoView) mg.scrollIntoView({behavior: 'smooth', block: 'start'});
-        gotoCouncil(x.u.c.gss);
+        gotoCouncil(g);
       });
-    // a black border round councils whose majority can't be lost this time
-    svg.selectAll('path.snk-safe').data(items.filter(function(x){ return safeHold(x.u.c); }))
-      .enter().append('path').attr('class', 'snk-safe')
-      .attr('d', function(x){ return band(x.s0, x.s1); });
-    // where the lead changes hands
-    if(level !== null && level > 0 && level < Ltot){
-      var p = at(level), q = at(Math.min(Ltot, level + 0.5)), q0 = at(Math.max(0, level - 0.5));
-      var dx = q[0] - q0[0], dy = q[1] - q0[1], len = Math.sqrt(dx * dx + dy * dy) || 1;
-      var nx = -dy / len * (th / 2 + 5), ny = dx / len * (th / 2 + 5);
-      svg.append('line').attr('class', 'snk-mid')
-        .attr('x1', p[0] - nx).attr('y1', p[1] - ny).attr('x2', p[0] + nx).attr('y2', p[1] + ny);
-    }
-    var sum = function(f){ return items.filter(f).reduce(function(a, x){ return a + x.u.n; }, 0); };
-    var nA = items.filter(function(x){ return x.lead > 0; }).length, nB = items.filter(function(x){ return x.lead < 0; }).length;
-    var nL = items.length - nA - nB;
-    var yr = (E.date || '').slice(0, 4);
-    $('snknote').textContent = any
-      ? 'Every council voting in ' + yr + ' outside Northern Ireland, as long as its seats up, ordered by ' +
-        abbrev(A) + '\u2019s margin over its biggest rival among the seats being fought (by who holds them now), coloured by who runs each council. ' +
-        'Majorities that can\u2019t be lost this time sit at the ends. Hover for the numbers; click to open the council.'
-      : 'Every council voting in ' + yr + ' that one of the two runs now, as long as its seats up, ordered by the ' +
-        'two parties\u2019 margin among the seats being fought (by who holds them now), coloured by who runs each council. ' +
-        'Majorities that can\u2019t be lost this time sit at the ends. Hover for the numbers; click to open the council.';
-    $('snkEndA').innerHTML = '<i style="background:' + colA + '"></i>Biggest ' + abbrev(A) + ' lead';
-    $('snkEndB').innerHTML = (any ? 'Furthest behind its biggest rival' : 'Biggest ' + abbrev(B) + ' lead') +
-      '<i style="background:' + colB + '"></i>';
-    $('snkfoot').innerHTML =
-      '<span><i style="background:' + colA + '"></i><b>' + abbrev(A) + '</b> ahead among the seats up in ' + nA + ' councils (' +
-        fmt(sum(function(x){ return x.lead > 0; })) + ' seats up)</span>' +
-      '<span><i style="background:' + colB + '"></i><b>' + (any ? 'A rival' : abbrev(B)) + '</b> ahead in ' + nB + ' (' +
-        fmt(sum(function(x){ return x.lead < 0; })) + ')</span>' +
-      (nL ? '<span>level in ' + nL + '</span>' : '') +
-      (items.some(function(x){ return safeHold(x.u.c); })
-        ? '<span><i style="background:var(--panel); border:2px solid #15171a; width:8px; height:8px"></i>black border: majority can\u2019t be lost this time</span>' : '') +
-      '<span><i style="background:#8d8d88"></i>solid: majority</span>' +
-      '<span><i style="background:repeating-linear-gradient(45deg,#8d8d88 0 2px,#c6c6c3 2px 5px)"></i>striped on pale: minority or coalition (its lead party)</span>' +
-      (items.some(function(x){ return runsKey(x.u.c) === 'NOC'; }) ? '<span><i style="background:' + NOC_COLOUR + '"></i>no overall control</span>' : '') +
-      (nats.length === 1 ? '<span>' + nats[0] + ' only</span>' : '') +
-      '<span>' + ((E.up || []).length - items.length) + ' councils voting left out</span>';
+    });
   }
 
   function panelDefault(){
