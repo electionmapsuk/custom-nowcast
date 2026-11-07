@@ -1052,6 +1052,13 @@
     return 'url(#' + id + ')';
   }
   function isDivisions(geo){ return !!geo && /^CED/i.test(geo.source || ''); }
+  // Northern Ireland elects by District Electoral Area, several councillors each
+  function isDEA(geo){ return !!geo && /^DEA/i.test(geo.source || ''); }
+  // what to call a council's units: ward / division / electoral area
+  function unitWord(geo, plural){
+    var w = isDEA(geo) ? 'electoral area' : isDivisions(geo) ? 'division' : 'ward';
+    return plural ? w + 's' : w;
+  }
   function wardName(n){ return String(n || '').replace(/\s+ED$/, ''); }
   // The name to show for a ward: the one its councillors were elected under
   // when the build matched it by shared place names (a renamed or redrawn
@@ -1072,7 +1079,7 @@
     if(geo){
       var un = mem ? Object.keys(mem.unmatched || {}) : [];
       var nUn = un.reduce(function(a, k){ return a + mem.unmatched[k].length; }, 0);
-      what = geo.wards.length + (isDivisions(geo) ? ' divisions' : ' wards') +
+      what = geo.wards.length + ' ' + unitWord(geo, true) +
              (nUn ? ' \u00b7 ' + nUn + ' councillor' + (nUn > 1 ? 's' : '') + ' not mapped' : '');
       bar.append('div').attr('class', 'wt')
         .attr('title', nUn ? 'Not placed on the map: ' + un.join(', ') : null)
@@ -1219,13 +1226,13 @@
         '; color:' + txtOn(col) + '">' + abbrev(p.p) + '</div><div class="who">' +
         esc(p.p === 'VAC' ? 'Vacant seat' : p.n) + own + '</div><div class="yr" title="End of term">' +
         (p.y || '') + '</div></div>';
-    }).join('') : '<div class="none">No councillor is listed for this ' + (div ? 'division' : 'ward') +
+    }).join('') : '<div class="none">No councillor is listed for this ' + unitWord(geo) +
       ' in the source data.</div>';
     var years = ppl.map(function(p){ return p.y; }).filter(Boolean).sort();
     var n = ppl.filter(function(p){ return p.p !== 'VAC'; }).length;
     return '<div class="hd">' +
         '<div class="nm">' + esc(wardLabel(props.id, props.name)) + '</div>' +
-        '<div class="ty">' + esc(c.name) + ' \u00b7 ' + (div ? 'Electoral division' : 'Ward') +
+        '<div class="ty">' + esc(c.name) + ' \u00b7 ' + (isDEA(geo) ? 'District electoral area' : div ? 'Electoral division' : 'Ward') +
           (props.alt ? ' \u00b7 ' + esc(props.alt) : '') + '</div>' +
         '<div class="meta" style="margin-top:7px"><b>' + n + '</b> councillor' + (n === 1 ? '' : 's') +
           (ppl.length > n ? ' \u00b7 <b>' + (ppl.length - n) + '</b> vacant' : '') + '</div>' +
@@ -1270,7 +1277,7 @@
       return wardLabel(a.id, a.name).localeCompare(wardLabel(b.id, b.name));
     });
     var div = isDivisions(WARD.geo);
-    return '<div class="wlh">' + ws.length + (div ? ' divisions' : ' wards') + '</div>' +
+    return '<div class="wlh">' + ws.length + ' ' + unitWord(WARD.geo, true) + '</div>' +
       ws.map(function(w){
         var codes = wardCodes(WARD.mem.wards[w.id]);
         var chips = codes.length ? codes.map(function(p){
@@ -1787,7 +1794,7 @@
           ix[code].forEach(function(w){
             out.push({id: w[0], name: wardName(w[1]), low: wardName(w[1]).toLowerCase(),
                       alt: (w[2] || '').toLowerCase(), code: code, council: c.name,
-                      div: /^E58/.test(w[0])});
+                      div: /^E58/.test(w[0]), dea: /^N09/.test(code)});
           });
         });
         WLIST = out;
@@ -1823,7 +1830,7 @@
                (c.typeName||'')+'</span></div>';
       }).join('') + whits.map(function(w){
         return '<div data-g="'+w.code+'" data-w="'+esc(w.id)+'">'+esc(w.name)+
-               ' <span style="color:var(--faint)">'+(w.div ? 'Division' : 'Ward')+' \u00b7 '+esc(w.council)+'</span></div>';
+               ' <span style="color:var(--faint)">'+(w.dea ? 'Electoral area' : w.div ? 'Division' : 'Ward')+' \u00b7 '+esc(w.council)+'</span></div>';
       }).join('');
       sg.style.display = 'block';
       selIdx = 0; markSel();
