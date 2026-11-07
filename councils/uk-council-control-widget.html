@@ -1918,15 +1918,30 @@
       return 'M' + left.concat(right.reverse()).map(function(p){ return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join('L') + 'Z';
     }
     var colA = pInfo(A).colour, colB = any ? ANY_COLOUR : pInfo(B).colour;
+    // The party ahead on seats colours the council. If someone else runs it
+    // (a minority or coalition led by the party behind, say), the council is
+    // striped in the colours of both: the one ahead, and the one in charge.
     var shade = function(x){
-      if(!x.lead) return '#c9c9c4';
-      var pale = 0.6 * (1 - Math.min(Math.abs(x.lead) / 0.4, 1));
-      return lighten(x.lead > 0 ? colA : (any && x.rival ? pInfo(x.rival).colour : colB), pale);
+      var runs = runsKey(x.u.c), ahead = !x.lead ? null : x.lead > 0 ? A : (any ? x.rival : B);
+      var pale = x.lead ? 0.6 * (1 - Math.min(Math.abs(x.lead) / 0.4, 1)) : 0;
+      var base = ahead ? lighten(x.lead > 0 ? colA : (any && x.rival ? pInfo(x.rival).colour : colB), pale) : '#c9c9c4';
+      if(!runs || runs === 'NOC' || runs === ahead) return base;
+      x.runBy = runs;
+      var other = lighten(pInfo(runs).colour, pale);
+      var id = 'sks-' + (base + other).replace(/[^a-z0-9]/gi, '');
+      if(defs.select('#' + id).empty()){
+        var pat = defs.append('pattern').attr('id', id).attr('width', 8).attr('height', 8)
+          .attr('patternUnits', 'userSpaceOnUse').attr('patternTransform', 'rotate(45)');
+        pat.append('rect').attr('width', 8).attr('height', 8).attr('fill', base);
+        pat.append('rect').attr('width', 3.2).attr('height', 8).attr('fill', other);
+      }
+      return 'url(#' + id + ')';
     };
     var total = items.reduce(function(a, x){ return a + x.u.n; }, 0) || 1, s = 0, level = null;
     var svg = d3.select(svgEl).attr('viewBox', '0 0 ' + W + ' ' + H).attr('width', W).attr('height', H)
       .attr('aria-label', 'Councils voting, from the biggest ' + abbrev(A) + ' lead to the biggest ' + (any ? 'lead over it' : abbrev(B) + ' lead'));
     svg.selectAll('*').remove();
+    var defs = svg.append('defs');
     items.forEach(function(x){
       var len = x.u.n / total * Ltot;
       x.s0 = s; x.s1 = s + len; s += len;
@@ -1943,7 +1958,8 @@
           '<b style="color:' + colA + '">' + abbrev(A) + '</b> ' + x.sa + ' &nbsp;·&nbsp; ' +
           (x.rival ? '<b style="color:' + pInfo(x.rival).colour + '">' + abbrev(x.rival) + '</b> ' + x.sb : 'no rival') +
           ' of ' + c.total + ' seats' + (any ? ' (biggest rival)' : '') + '<br>' +
-          (x.lead ? abbrev(x.lead > 0 ? A : x.rival) + ' ahead by ' + Math.abs(x.sa - x.sb) : 'Level') + '</div>';
+          (x.lead ? abbrev(x.lead > 0 ? A : x.rival) + ' ahead by ' + Math.abs(x.sa - x.sb) : 'Level') +
+          (x.runBy ? '<br><span style="color:var(--muted)">Run by ' + esc(controlText(c)) + ' (striped)</span>' : '') + '</div>';
         place(e);
       })
       .on('mouseleave', function(){ tip.style.display = 'none'; })
@@ -1980,6 +1996,8 @@
       '<span><i style="background:' + colB + '"></i><b>' + (any ? 'A rival' : abbrev(B)) + '</b> ahead in ' + nB + ' (' +
         fmt(sum(function(x){ return x.lead < 0; })) + ')</span>' +
       (nL ? '<span><i style="background:#c9c9c4"></i>level in ' + nL + '</span>' : '') +
+      (items.some(function(x){ return x.runBy; })
+        ? '<span><i style="background:repeating-linear-gradient(45deg,#9a9a96 0 3px,#d9d9d5 3px 7px)"></i>striped: run by a party other than the one ahead</span>' : '') +
       (nats.length === 1 ? '<span>' + nats[0] + ' only</span>' : '') +
       '<span>' + ((E.up || []).length - items.length) + ' councils voting left out</span>';
   }
