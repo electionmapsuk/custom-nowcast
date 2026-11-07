@@ -1772,22 +1772,51 @@
     return Object.keys(E.seats || {}).filter(function(p){ return !BG_BUCKETS[p]; })
       .sort(function(x, y){ return E.seats[y] - E.seats[x]; });
   }
+  // Which nations a party has councillors in, among the councils voting. Two
+  // parties can only be compared where they both stand - so not SNP with Plaid,
+  // or Sinn Féin with the Conservatives - and the snake keeps to those nations.
+  function partyNations(p){
+    SNAKE.nat = SNAKE.nat || {};
+    if(!SNAKE.nat[p]){
+      var out = {};
+      (nextRound().up || []).forEach(function(u){ if(u.c.seats[p]) out[u.c.nation] = 1; });
+      SNAKE.nat[p] = out;
+    }
+    return SNAKE.nat[p];
+  }
+  function sharedNations(a, b){
+    var na = partyNations(a), nb = partyNations(b);
+    return NATIONS.filter(function(n){ return na[n] && nb[n]; });
+  }
   function buildBattlegrounds(){
     var ps = snakeParties();
     if(ps.length < 2){ $('bgwrap').style.display = 'none'; return; }
     if(!SNAKE.a || ps.indexOf(SNAKE.a) < 0) SNAKE.a = ps[0];
-    if(!SNAKE.b || ps.indexOf(SNAKE.b) < 0 || SNAKE.b === SNAKE.a) SNAKE.b = ps[1] === SNAKE.a ? ps[0] : ps[1];
-    var opts = function(sel){
-      return ps.map(function(p){
+    // the parties standing where `a` does, biggest there first
+    var partners = function(a){
+      var here = function(p){
+        var nats = sharedNations(a, p);
+        return (nextRound().up || []).reduce(function(t, u){
+          return t + (nats.indexOf(u.c.nation) >= 0 ? (u.seats || {})[p] || 0 : 0);
+        }, 0);
+      };
+      return ps.filter(function(p){ return p !== a && sharedNations(a, p).length; })
+        .map(function(p){ return [p, here(p)]; })
+        .sort(function(x, y){ return y[1] - x[1]; })
+        .map(function(x){ return x[0]; });
+    };
+    if(!SNAKE.b || SNAKE.b === SNAKE.a || partners(SNAKE.a).indexOf(SNAKE.b) < 0) SNAKE.b = partners(SNAKE.a)[0];
+    var opts = function(list, sel){
+      return list.map(function(p){
         return '<option value="' + p + '"' + (p === sel ? ' selected' : '') + '>' + abbrev(p) +
-               ' · ' + esc(pInfo(p).name) + '</option>';
+               ' \u00b7 ' + esc(pInfo(p).name) + '</option>';
       }).join('');
     };
     var yr = nextRound().date.slice(0, 4);
     $('bg').className = 'snk';
     $('bg').innerHTML =
-      '<div class="snk-hd"><select id="snkA" aria-label="First party">' + opts(SNAKE.a) + '</select>' +
-      '<span class="snk-vs">vs</span><select id="snkB" aria-label="Second party">' + opts(SNAKE.b) + '</select>' +
+      '<div class="snk-hd"><select id="snkA" aria-label="First party">' + opts(ps, SNAKE.a) + '</select>' +
+      '<span class="snk-vs">vs</span><select id="snkB" aria-label="Second party">' + opts(partners(SNAKE.a), SNAKE.b) + '</select>' +
       '<span class="snk-note">Every council voting in ' + yr + ' that one of the two runs now, as long as its seats up, ordered by the gap ' +
       'between the two parties’ seats there now. Hover for the numbers; click to open the council.</span></div>' +
       '<div class="snk-ends"><span id="snkEndA"></span></div>' +
@@ -1795,17 +1824,15 @@
       '<div class="snk-ends snk-endb"><span id="snkEndB"></span></div>' +
       '<div class="snk-foot" id="snkfoot"></div>';
     var old = $('bgnote'); if(old) old.remove();
-    ['snkA', 'snkB'].forEach(function(id){
-      $(id).addEventListener('change', function(){
-        var a = $('snkA').value, b = $('snkB').value;
-        if(a === b){                       // picking the same party swaps them
-          if(id === 'snkA') b = SNAKE.a; else a = SNAKE.b;
-          $('snkA').value = a; $('snkB').value = b;
-        }
-        SNAKE.a = a; SNAKE.b = b;
-        drawSnake();
-      });
+    $('snkA').addEventListener('change', function(){
+      // the second list only offers parties standing where the first does
+      var a = $('snkA').value, list = partners(a), b = SNAKE.b;
+      if(b === a || list.indexOf(b) < 0) b = list.indexOf(SNAKE.a) >= 0 ? SNAKE.a : list[0];
+      $('snkB').innerHTML = opts(list, b);
+      SNAKE.a = a; SNAKE.b = b;
+      drawSnake();
     });
+    $('snkB').addEventListener('change', function(){ SNAKE.b = $('snkB').value; drawSnake(); });
     if(!SNAKE.wired){
       SNAKE.wired = true;
       var lastW = 0;
@@ -1821,12 +1848,20 @@
   function drawSnake(){
     var svgEl = $('snksvg');
     if(!svgEl) return;
-    var A = SNAKE.a, B = SNAKE.b, E = nextRound();
+    var A = SNAKE.a, B = SNAKE.b, E = nextRound(), nats = sharedNations(A, B);
     var items = (E.up || []).map(function(u){
       var c = u.c, sa = c.seats[A] || 0, sb = c.seats[B] || 0;
       return {u: u, sa: sa, sb: sb, lead: c.total ? (sa - sb) / c.total : 0};
-    // only councils one of the two parties runs now (leads the administration)
-    }).filter(function(x){ var k = runsKey(x.u.c); return k === A || k === B; })
+    // only councils one of the two parties runs now (leads the administration),
+    // in the nations where both stand. Northern Ireland's councils are all
+    // power-shared with no single administration, so there every council
+    // where either party has a seat counts.
+    }).filter(function(x){
+      var c = x.u.c, k = runsKey(c);
+      if(nats.indexOf(c.nation) < 0) return false;
+      if(c.nation === 'Northern Ireland') return x.sa || x.sb;
+      return k === A || k === B;
+    })
       .sort(function(x, y){ return y.lead - x.lead || (y.sa - x.sa) || x.u.c.name.localeCompare(y.u.c.name); });
 
     var W = Math.max(280, $('bg').getBoundingClientRect().width);
@@ -1916,7 +1951,8 @@
       '<span><i style="background:' + colB + '"></i><b>' + abbrev(B) + '</b> ahead in ' + nB + ' (' +
         fmt(sum(function(x){ return x.lead < 0; })) + ')</span>' +
       (nL ? '<span><i style="background:#c9c9c4"></i>level in ' + nL + '</span>' : '') +
-      '<span>' + ((E.up || []).length - items.length) + ' councils voting are run by neither</span>';
+      (nats.length === 1 ? '<span>' + nats[0] + ' only</span>' : '') +
+      '<span>' + ((E.up || []).length - items.length) + ' councils voting left out</span>';
   }
 
   function panelDefault(){
