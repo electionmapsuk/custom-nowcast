@@ -241,7 +241,14 @@ def _nice(name):
 
 def load_deas(sources, data_dir):
     """The DEAs as divisions: [{id, name, alt, x, y, g}], or [] if unavailable."""
-    path = _latest(os.path.join(sources, "DEA_*.geojson"))
+    # councils/Sources first; then councils/ and the repo root, in case the
+    # file was uploaded one folder up
+    path = None
+    for d in (sources, os.path.dirname(os.path.normpath(sources)),
+              os.path.dirname(os.path.dirname(os.path.normpath(sources)))):
+        path = _latest(os.path.join(d or ".", "DEA_*.geojson"))
+        if path:
+            break
     cache = os.path.join(data_dir, "wards", DEA_CACHE)
     src = None
     if path:
