@@ -1750,6 +1750,14 @@
       fmt(E.up.length) + ' councils \u00b7 ' + when;
     $('bgwrap').style.display = '';
     $('q').placeholder = 'Find a council or ward voting\u2026';
+    // The upper tier only adds county councils. When none is voting (2027: the
+    // counties voted in 2025) every council up is on the lower-tier map, so the
+    // tier switch has nothing to offer and is hidden.
+    if(!E.up.some(function(u){ return u.c.tier === 'upper'; })){
+      var tg = document.querySelector('.tiergroup');
+      if(tg) tg.style.display = 'none';
+      mapMode = 'lower';
+    }
     tableOpen = true;
     $('tabletog').textContent = 'Hide tables';
     $('tabletog').classList.add('active');
@@ -1901,7 +1909,9 @@
         }
       }
       var sb = rival ? c.seats[rival] || 0 : 0;
-      return {u: u, sa: sa, sb: sb, rival: rival, lead: c.total ? (sa - sb) / c.total : 0};
+      // The lead measured against the seats being fought: a 20-seat lead with
+      // 20 seats up (thirds) is far safer than the same lead with 60 up.
+      return {u: u, sa: sa, sb: sb, rival: rival, lead: u.n ? (sa - sb) / u.n : 0};
     // only councils one of the two parties runs now (leads the administration),
     // in the nations where both stand (never Northern Ireland)
     }).filter(function(x){
@@ -1959,7 +1969,7 @@
     // striped in the colours of both: the one ahead, and the one in charge.
     var shade = function(x){
       var runs = runsKey(x.u.c), ahead = !x.lead ? null : x.lead > 0 ? A : (any ? x.rival : B);
-      var pale = x.lead ? 0.6 * (1 - Math.min(Math.abs(x.lead) / 0.4, 1)) : 0;
+      var pale = x.lead ? 0.6 * (1 - Math.min(Math.abs(x.lead) / 0.6, 1)) : 0;
       var base = ahead ? lighten(x.lead > 0 ? colA : (any && x.rival ? pInfo(x.rival).colour : colB), pale) : '#c9c9c4';
       if(!runs || runs === 'NOC' || runs === ahead) return base;
       x.runBy = runs;
@@ -1994,7 +2004,8 @@
           '<b style="color:' + colA + '">' + abbrev(A) + '</b> ' + x.sa + ' &nbsp;·&nbsp; ' +
           (x.rival ? '<b style="color:' + pInfo(x.rival).colour + '">' + abbrev(x.rival) + '</b> ' + x.sb : 'no rival') +
           ' of ' + c.total + ' seats' + (any ? ' (biggest rival)' : '') + '<br>' +
-          (x.lead ? abbrev(x.lead > 0 ? A : x.rival) + ' ahead by ' + Math.abs(x.sa - x.sb) : 'Level') +
+          (x.lead ? abbrev(x.lead > 0 ? A : x.rival) + ' ahead by ' + Math.abs(x.sa - x.sb) +
+            ' with ' + x.u.n + ' seats up' : 'Level') +
           (x.runBy ? '<br><span style="color:var(--muted)">Run by ' + esc(controlText(c)) + ' (striped)</span>' : '') + '</div>';
         place(e);
       })
@@ -2033,10 +2044,11 @@
     var yr = (E.date || '').slice(0, 4);
     $('snknote').textContent = any
       ? 'Every council voting in ' + yr + ' outside Northern Ireland, as long as its seats up, ordered by ' +
-        abbrev(A) + '\u2019s seats there now minus its biggest rival\u2019s - the rival\u2019s colour where it is behind. ' +
-        'Hover for the numbers; click to open the council.'
+        abbrev(A) + '\u2019s lead over its biggest rival as a share of the seats up - the rival\u2019s colour where it is behind. ' +
+        'Majorities that can\u2019t be lost this time sit at the ends. Hover for the numbers; click to open the council.'
       : 'Every council voting in ' + yr + ' that one of the two runs now, as long as its seats up, ordered by the gap ' +
-        'between the two parties\u2019 seats there now. Hover for the numbers; click to open the council.';
+        'between the two parties\u2019 seats as a share of the seats up - a lead counts for more where fewer seats are fought. ' +
+        'Majorities that can\u2019t be lost this time sit at the ends. Hover for the numbers; click to open the council.';
     $('snkEndA').innerHTML = '<i style="background:' + colA + '"></i>Biggest ' + abbrev(A) + ' lead';
     $('snkEndB').innerHTML = (any ? 'Furthest behind its biggest rival' : 'Biggest ' + abbrev(B) + ' lead') +
       '<i style="background:' + colB + '"></i>';
