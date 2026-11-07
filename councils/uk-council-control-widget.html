@@ -1092,21 +1092,60 @@
       return darken(pInfo(code).colour, (nth - 1) * SEAT_SHADE);
     });
   }
-  function bandFill(m, codes){
-    var id = 'wb-' + m.key + '-' + codes.join('-');
+  // The bands run at one fixed angle everywhere (the same "/" as the stripes
+  // elsewhere), measured across the ward itself, not its bounding box - a
+  // box-relative gradient tilts with each ward's shape. Each band's edge is
+  // placed so every councillor gets an equal share of the ward's area.
+  function wardRings(m, f){
+    var proj = m.path.projection(), g = f.geometry, out = [];
+    var polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
+    polys.forEach(function(p){ p.forEach(function(r){ out.push(r.map(function(pt){ return proj(pt); })); }); });
+    return out;
+  }
+  // area of the part of the ward with x + y <= t (holes wind the other way)
+  function areaBelow(rings, t){
+    var a = 0;
+    rings.forEach(function(r){
+      var o = [];
+      for(var i = 0; i < r.length; i++){
+        var p = r[i], q = r[(i + 1) % r.length];
+        var pin = p[0] + p[1] <= t, qin = q[0] + q[1] <= t;
+        if(pin) o.push(p);
+        if(pin !== qin){
+          var k = (t - p[0] - p[1]) / ((q[0] + q[1]) - (p[0] + p[1]));
+          o.push([p[0] + k * (q[0] - p[0]), p[1] + k * (q[1] - p[1])]);
+        }
+      }
+      for(var j = 0; j < o.length; j++){
+        var u = o[j], v = o[(j + 1) % o.length];
+        a += (u[0] * v[1] - v[0] * u[1]) / 2;
+      }
+    });
+    return Math.abs(a);
+  }
+  function bandFill(m, codes, f){
+    var id = 'wb-' + m.key + '-' + String(f.properties.id).replace(/[^\w-]/g, '_');
     if(m.defs && m.defs.select('#' + id).empty()){
-      // a hard-stop gradient across the ward's own bounding box, corner to
-      // corner, so the bands always span the whole ward whatever its size
+      var rings = wardRings(m, f), lo = Infinity, hi = -Infinity;
+      rings.forEach(function(r){ r.forEach(function(p){
+        var t = p[0] + p[1]; if(t < lo) lo = t; if(t > hi) hi = t;
+      }); });
+      var n = codes.length, total = areaBelow(rings, hi + 1), cuts = [0];
+      for(var k = 1; k < n; k++){
+        var a = lo, b = hi, want = total * k / n;
+        for(var it = 0; it < 32; it++){
+          var mid = (a + b) / 2;
+          if(areaBelow(rings, mid) < want) a = mid; else b = mid;
+        }
+        cuts.push(hi > lo ? ((a + b) / 2 - lo) / (hi - lo) : k / n);
+      }
+      cuts.push(1);
       var gr = m.defs.append('linearGradient').attr('id', id)
-        .attr('x1', 0).attr('y1', 0).attr('x2', 1).attr('y2', 1);
-      // Bands across a box corner to corner are short triangles at the ends
-      // and long in the middle; spacing the stops by area rather than evenly
-      // gives every councillor the same share of the box.
-      var at = function(a){ return a <= 0.5 ? Math.sqrt(a / 2) : 1 - Math.sqrt((1 - a) / 2); };
-      var cols = seatShades(codes), n = codes.length;
-      cols.forEach(function(col, i){
-        gr.append('stop').attr('offset', at(i / n)).attr('stop-color', col);
-        gr.append('stop').attr('offset', at((i + 1) / n)).attr('stop-color', col);
+        .attr('gradientUnits', 'userSpaceOnUse')
+        .attr('x1', lo / 2).attr('y1', lo / 2).attr('x2', hi / 2).attr('y2', hi / 2);
+      seatShades(codes).forEach(function(col, i){
+        gr.append('stop').attr('offset', cuts[i]).attr('stop-color', col);
+        gr.append('stop').attr('offset', cuts[i + 1]).attr('stop-color', col);
       });
     }
     return 'url(#' + id + ')';
@@ -1115,11 +1154,11 @@
     var c = byGss[code];
     return !!c && (c.nation === 'Scotland' || c.nation === 'Northern Ireland');
   }
-  function wardFill(m, people, stv){
+  function wardFill(m, people, stv, f){
     var codes = wardCodes(people);
     if(!codes.length) return '#e6e6e2';
     if(codes.length === 1) return pInfo(codes[0]).colour;
-    if(stv) return bandFill(m, codes);
+    if(stv && f) return bandFill(m, codes, f);
     var id = 'ws-' + m.key + '-' + codes.join('-');
     if(m.defs && m.defs.select('#' + id).empty()){
       var pat = m.defs.append('pattern').attr('id', id)
@@ -1216,7 +1255,7 @@
     });
     m.wg.selectAll('path.wd').data(feats).enter().append('path')
       .attr('class', 'wd').attr('d', m.path)
-      .attr('fill', function(d){ return wardFill(m, mem.wards[d.properties.id], isSTV(c.gss)); })
+      .attr('fill', function(d){ return wardFill(m, mem.wards[d.properties.id], isSTV(c.gss), d); })
       .on('mousemove', function(e, d){ markWardRow(d.properties.id); if(!WARD.pin) showWardCard(e, d); })
       .on('mouseleave', function(){ markWardRow(null); if(!WARD || !WARD.pin) clearCard(); })
       // click or tap pins a ward's card, as a click pins a council's; on a
