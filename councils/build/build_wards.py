@@ -16,8 +16,10 @@ Which geography a council gets:
   * county councils (E10) and councils made by reorganisation (LGR-*) -
     county electoral divisions. ONS publishes these without a county code, so
     each division is placed in the county that contains it.
-  * Northern Ireland is left out: its councils elect by District Electoral
-    Area, not by ward.
+  * Northern Ireland - District Electoral Areas (DEAs), which is what its
+    councils elect by (several councillors each, by STV), not its wards. The
+    DEA boundaries are OSNI Open Data (OGL); see load_deas below for where
+    they come from.
 
 The source files are the ONS "BSC" (super generalised) cut, which is plenty for
 a single council filling a map panel. Coordinates are rounded to 4 dp (~11 m).
@@ -198,6 +200,94 @@ def load_features(path, code_rx, name_rx, alt_rx=None, parent_rx=None):
     return out
 
 
+# --------------------------------------------------- Northern Ireland DEAs --
+# OSNI publishes the 80 District Electoral Areas (2012, in use since 2014) as
+# a map service. The first run that can reach it saves a simplified copy to
+# data/wards/dea-source.geojson, so later runs need no network; a file named
+# DEA_*.geojson in councils/Sources takes precedence over both.
+DEA_SERVICE = ("https://services.spatialni.gov.uk/opendata/rest/services/OSNIVector/"
+               "OSNIOpenData_LargescaleBoundaries/MapServer")
+DEA_CACHE = "dea-source.geojson"
+
+
+def _fetch_deas():
+    from fetch import get_text  # stdlib helper with retries
+    layer = 4
+    try:   # find the layer by name rather than trusting its number
+        meta = json.loads(get_text(DEA_SERVICE + "?f=json", tries=2, timeout=60))
+        for lyr in meta.get("layers", []):
+            if re.search(r"district electoral area", lyr.get("name", ""), re.I):
+                layer = lyr["id"]
+                break
+    except Exception as exc:  # noqa: BLE001
+        print(f"  DEA service listing unavailable ({exc}); trying layer {layer}", file=sys.stderr)
+    url = (f"{DEA_SERVICE}/{layer}/query?where=1%3D1&outFields=*&returnGeometry=true"
+           "&outSR=4326&geometryPrecision=5&maxAllowableOffset=0.0002&f=geojson")
+    data = json.loads(get_text(url, tries=3, timeout=120))
+    if not data.get("features"):
+        raise RuntimeError("no features in the DEA response")
+    return data
+
+
+def _nice(name):
+    """OSNI writes some names in capitals: BALMORAL -> Balmoral."""
+    if not name.isupper():
+        return name
+    t = name.title()
+    for a, b in ((" And ", " and "), (" Of ", " of "), (" The ", " the "), ("'S ", "'s ")):
+        t = t.replace(a, b)
+    return t
+
+
+def load_deas(sources, data_dir):
+    """The DEAs as divisions: [{id, name, alt, x, y, g}], or [] if unavailable."""
+    path = _latest(os.path.join(sources, "DEA_*.geojson"))
+    cache = os.path.join(data_dir, "wards", DEA_CACHE)
+    src = None
+    if path:
+        data, src = json.load(open(path, encoding="utf-8")), os.path.basename(path)
+    elif os.path.exists(cache):
+        data, src = json.load(open(cache, encoding="utf-8")), "DEA_2012 (OSNI, cached)"
+    else:
+        try:
+            data = _fetch_deas()
+        except Exception as exc:  # noqa: BLE001 - NI just goes without a ward view
+            print(f"  DEAs: OSNI service unavailable ({exc}) - NI skipped", file=sys.stderr)
+            return [], None
+        os.makedirs(os.path.dirname(cache), exist_ok=True)
+        _write(cache, data)
+        src = "DEA_2012 (OSNI)"
+    feats = data.get("features") or []
+    if not feats:
+        return [], None
+    p0 = feats[0].get("properties") or {}
+
+    def looks(field, rx):
+        vals = [str((f.get("properties") or {}).get(field) or "") for f in feats[:20]]
+        return all(re.fullmatch(rx, v) for v in vals if v) and any(vals)
+
+    # name: a DEA-ish field holding names; code: one holding N10... codes
+    name_f = next((k for k in p0 if re.search(r"dea|name|nm", k, re.I)
+                   and looks(k, r"(?=.*[A-Za-z])[A-Za-z' .,&()-]+")), None)
+    code_f = next((k for k in p0 if looks(k, r"N10\d{6}")), None)
+    if not name_f:
+        print(f"  DEAs: no name field among {list(p0)} - NI skipped", file=sys.stderr)
+        return [], None
+    out = []
+    for f in feats:
+        props = f.get("properties") or {}
+        g = _clean_geom(f.get("geometry"))
+        name = _nice(str(props.get(name_f) or "").strip())
+        if not g or not name:
+            continue
+        ring = max(_outer_rings(g), key=lambda r: abs(_area(r)))
+        x = sum(pt[0] for pt in ring[:-1]) / max(1, len(ring) - 1)
+        y = sum(pt[1] for pt in ring[:-1]) / max(1, len(ring) - 1)
+        did = str(props.get(code_f)) if code_f else "NIDEA-" + re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")
+        out.append({"id": did, "name": name, "alt": "", "parent": None, "x": x, "y": y, "g": g})
+    return out, src
+
+
 def _write(path, obj):
     """Write JSON only if it changed, so git sees no churn on quiet days."""
     text = json.dumps(obj, separators=(",", ":"), ensure_ascii=False)
@@ -254,6 +344,22 @@ def main():
     placed, unplaced = assign_divisions(divisions, targets) if divisions else ({}, [])
     for code, ds in placed.items():
         by_council[code] = {"source": os.path.basename(ced_path), "wards": ds}
+
+    # Northern Ireland: District Electoral Areas, each placed in the council
+    # that contains it (the files carry no council code we can rely on).
+    deas, dea_src = load_deas(a.sources, a.data)
+    if deas:
+        seen_ni, ni = set(), []
+        for f in lower + upper:
+            code = f["properties"].get("code") or ""
+            if code.startswith("N09") and code not in seen_ni:
+                seen_ni.add(code)
+                ni.append({"code": code, "g": f["geometry"]})
+        ni_placed, ni_unplaced = assign_divisions(deas, ni)
+        for code, ds in ni_placed.items():
+            by_council[code] = {"source": "DEA " + dea_src, "wards": ds}
+        print(f"  DEAs: {len(deas)} placed in {len(ni_placed)} NI councils"
+              + (f"; not placed: {ni_unplaced}" if ni_unplaced else ""), file=sys.stderr)
 
     # Outlines for counties (and reorganised councils) are built from the
     # wards of their districts, not from their divisions: the division and
