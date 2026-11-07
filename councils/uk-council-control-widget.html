@@ -210,6 +210,9 @@
   .elist .ec{font-size:9px; font-weight:800; padding:3px 5px; border-radius:4px; white-space:nowrap;}
   .cp.lhl{stroke:#15171a; stroke-width:2px;}
   .cp.out{pointer-events:none; cursor:default;}
+  /* elections view: the area of a new mayoralty being elected */
+  .mayor{fill:none; stroke:#15171a; stroke-width:2.2px; stroke-dasharray:0.1 4.5; stroke-linecap:round;
+    stroke-linejoin:round; vector-effect:non-scaling-stroke; pointer-events:none;}
   /* elections view: battlegrounds and the table filters */
   .bgrid{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px;}
   @media(max-width:760px){ .bgrid{grid-template-columns:minmax(0,1fr);} }
@@ -724,7 +727,7 @@
     $('stamp').textContent = 'Updated ' + d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
     if(EV) setupElections();
     buildTiles(); buildNatBar(); buildFoot(); panelDefault(); wire(); drawMaps(); buildLegend(); buildTable();
-    if(EV) buildBattlegrounds();
+    if(EV && SHOW_METERS) buildBattlegrounds();
   }
 
   // ----------------------------------------------------------------- tiles --
@@ -1015,6 +1018,14 @@
         markPinned();
         if(pinnedGss) showFeature(e,d); else clearCard();
       });
+
+    // elections view: a dotted line round each new mayoralty being elected
+    if(EV) MAYORAL_RACES.forEach(function(race){
+      var feats = g.features.filter(function(f){ return race.codes.indexOf(f.properties.code) >= 0; });
+      if(!feats.length) return;
+      m.g.append('path').attr('class', 'mayor').datum(regionOutline(feats)).attr('d', m.path)
+        .append('title').text(race.name + ' mayor - first election');
+    });
 
     // deep enough for a London borough to fill the panel in the ward view
     m.zoom = d3.zoom().scaleExtent([1,220]).on('end', function(){
@@ -1759,6 +1770,48 @@
   // whether a council counts on the current page: always, except in the
   // elections view, where only the councils voting do
   function inPlay(c){ return !EV || !!upOf(c); }
+
+  // New mayoralties electing their first mayor at this round, outlined (dotted)
+  // on the elections map round the councils each covers.
+  var MAYORAL_RACES = [
+    {name: 'Cheshire and Warrington', codes: ['E06000049', 'E06000050', 'E06000007']},
+    {name: 'Cumbria', codes: ['E06000063', 'E06000064']}
+  ];
+  // The outside edge of a group of councils: their boundaries share edges
+  // exactly, so an edge used twice is internal and dropped; what is left is
+  // chained into lines.
+  function regionOutline(feats){
+    var key = function(p){ return p[0].toFixed(6) + ',' + p[1].toFixed(6); };
+    var segs = {}, list = [];
+    feats.forEach(function(f){
+      var gm = f.geometry, polys = gm.type === 'Polygon' ? [gm.coordinates] : gm.type === 'MultiPolygon' ? gm.coordinates : [];
+      polys.forEach(function(poly){ poly.forEach(function(r){
+        for(var i = 0; i < r.length - 1; i++){
+          var a = r[i], b = r[i + 1], ka = key(a), kb = key(b);
+          if(ka === kb) continue;
+          var k = ka < kb ? ka + '|' + kb : kb + '|' + ka;
+          if(segs[k]) segs[k].n++;
+          else { segs[k] = {a: a, b: b, ka: ka, kb: kb, n: 1}; list.push(segs[k]); }
+        }
+      }); });
+    });
+    var outer = list.filter(function(x){ return x.n === 1; }), adj = {};
+    outer.forEach(function(x){ (adj[x.ka] = adj[x.ka] || []).push(x); (adj[x.kb] = adj[x.kb] || []).push(x); });
+    var lines = [];
+    outer.forEach(function(x){
+      if(x.used) return;
+      x.used = true;
+      var line = [x.a, x.b], end = x.kb;
+      for(;;){
+        var nx = (adj[end] || []).filter(function(t){ return !t.used; })[0];
+        if(!nx) break;
+        nx.used = true;
+        if(nx.ka === end){ line.push(nx.b); end = nx.kb; } else { line.push(nx.a); end = nx.ka; }
+      }
+      lines.push(line);
+    });
+    return {type: 'MultiLineString', coordinates: lines};
+  }
   // A party that can't lose its majority at the next election: even losing
   // every one of its seats that is up, the seats it keeps are still more than
   // half the council (a council that elects by thirds, mostly). Returns
@@ -1792,7 +1845,7 @@
     $('h-tiles').textContent = 'Councils voting, by who runs them now';
     $('h-nat').textContent = 'Seats being defended \u00b7 ' + fmt(E.total) + ' seats in ' +
       fmt(E.up.length) + ' councils \u00b7 ' + when;
-    $('bgwrap').style.display = '';
+    if(SHOW_METERS) $('bgwrap').style.display = '';
     $('q').placeholder = 'Find a council or ward voting\u2026';
     // The upper tier only adds county councils. When none is voting (2027: the
     // counties voted in 2025) every council up is on the lower-tier map, so the
@@ -1852,6 +1905,8 @@
   // shows how much of what is up it has to hold, or win. Sorted from the
   // councils closest to changing hands. Northern Ireland, with its power-shared
   // councils, is left out.
+  // switched off for now: the section stays hidden and isn't built
+  var SHOW_METERS = false;
   var MM = {party: '', show: 'all', open: false};
   var MM_ROWS = 25;
   function meterRows(){
@@ -2113,7 +2168,10 @@
              ' <b>'+counts[k]+'</b></span>';
     }).join('') + (EV ? '<span class="lgd lgdx" title="Not voting in ' + nextRound().date.slice(0, 4) +
       '"><i style="background:' + OUT_FILL + '"></i>Not voting <b>' +
-      fmt(DATA.councils.length - nextRound().up.length) + '</b></span>' : '');
+      fmt(DATA.councils.length - nextRound().up.length) + '</b></span>' +
+      '<span class="lgd lgdx" title="New mayors elected for the first time: ' +
+        MAYORAL_RACES.map(function(r){ return r.name; }).join(', ') + '">' +
+        '<i style="background:none; border:2px dotted #15171a"></i>New mayor</span>' : '');
     $('legend').querySelectorAll('.lgd').forEach(function(el){
       el.addEventListener('click', function(){
         var k = el.getAttribute('data-k');
