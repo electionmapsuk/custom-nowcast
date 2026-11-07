@@ -243,7 +243,7 @@
   #snksvg .sg{stroke:var(--panel); stroke-width:.8px; cursor:pointer;}
   #snksvg .sg:hover{stroke:#15171a; stroke-width:1.6px;}
   #snksvg .snk-mid{stroke:#15171a; stroke-width:2px;}
-  #snksvg .snk-lock{pointer-events:none;}
+  #snksvg .snk-safe{fill:none; stroke:#15171a; stroke-width:2px; stroke-linejoin:round; pointer-events:none;}
   .snk-foot{display:flex; flex-wrap:wrap; gap:6px 16px; margin-top:10px; font-size:.74rem; color:var(--muted);}
   .snk-foot b{color:var(--ink);}
   .efilt{display:inline-flex; gap:6px; flex-wrap:wrap; align-items:center;}
@@ -1964,22 +1964,22 @@
       return 'M' + left.concat(right.reverse()).map(function(p){ return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join('L') + 'Z';
     }
     var colA = pInfo(A).colour, colB = any ? ANY_COLOUR : pInfo(B).colour;
-    // The party ahead on seats colours the council. If someone else runs it
-    // (a minority or coalition led by the party behind, say), the council is
-    // striped in the colours of both: the one ahead, and the one in charge.
+    // Coloured by who runs the council, as on the map: solid for a majority
+    // (or a directly elected mayor), the lead party's stripes on the no-
+    // overall-control black for a minority or coalition, plain black where
+    // there is no administration. Paler where the lead is narrower.
     var shade = function(x){
-      var runs = runsKey(x.u.c), ahead = !x.lead ? null : x.lead > 0 ? A : (any ? x.rival : B);
-      var pale = x.lead ? 0.6 * (1 - Math.min(Math.abs(x.lead) / 0.6, 1)) : 0;
-      var base = ahead ? lighten(x.lead > 0 ? colA : (any && x.rival ? pInfo(x.rival).colour : colB), pale) : '#c9c9c4';
-      if(!runs || runs === 'NOC' || runs === ahead) return base;
-      x.runBy = runs;
-      var other = lighten(pInfo(runs).colour, pale);
-      var id = 'sks-' + (base + other).replace(/[^a-z0-9]/gi, '');
+      var c = x.u.c, runs = runsKey(c);
+      if(!runs || runs === 'NOC') return NOC_COLOUR;
+      var pale = x.lead ? 0.5 * (1 - Math.min(Math.abs(x.lead) / 0.6, 1)) : 0.5;
+      var col = lighten(pInfo(runs).colour, pale);
+      if(solidFill(c)) return col;
+      var id = 'sks-' + col.replace(/[^a-z0-9]/gi, '');
       if(defs.select('#' + id).empty()){
-        var pat = defs.append('pattern').attr('id', id).attr('width', 8).attr('height', 8)
+        var pat = defs.append('pattern').attr('id', id).attr('width', 7).attr('height', 7)
           .attr('patternUnits', 'userSpaceOnUse').attr('patternTransform', 'rotate(45)');
-        pat.append('rect').attr('width', 8).attr('height', 8).attr('fill', base);
-        pat.append('rect').attr('width', 3.2).attr('height', 8).attr('fill', other);
+        pat.append('rect').attr('width', 7).attr('height', 7).attr('fill', NOC_COLOUR);
+        pat.append('rect').attr('width', 4.2).attr('height', 7).attr('fill', col);
       }
       return 'url(#' + id + ')';
     };
@@ -2006,7 +2006,7 @@
           ' of ' + c.total + ' seats' + (any ? ' (biggest rival)' : '') + '<br>' +
           (x.lead ? abbrev(x.lead > 0 ? A : x.rival) + ' ahead by ' + Math.abs(x.sa - x.sb) +
             ' with ' + x.u.n + ' seats up' : 'Level') +
-          (x.runBy ? '<br><span style="color:var(--muted)">Run by ' + esc(controlText(c)) + ' (striped)</span>' : '') + '</div>';
+          '</div>';
         place(e);
       })
       .on('mouseleave', function(){ tip.style.display = 'none'; })
@@ -2016,20 +2016,10 @@
         if(mg && mg.scrollIntoView) mg.scrollIntoView({behavior: 'smooth', block: 'start'});
         gotoCouncil(x.u.c.gss);
       });
-    // a padlock on councils whose majority can't be lost this time
-    items.forEach(function(x){
-      if(!safeHold(x.u.c)) return;
-      var p = at((x.s0 + x.s1) / 2), g = svg.append('g').attr('class', 'snk-lock')
-        .attr('transform', 'translate(' + p[0].toFixed(1) + ',' + p[1].toFixed(1) + ')');
-      // drawn the same size however thin the council, with a dark edge so it
-      // reads on any colour; it may overlap its neighbours a little
-      g.append('path').attr('d', 'M-2.6,-1 V-3 A2.6,2.6 0 0 1 2.6,-3 V-1').attr('fill', 'none')
-        .attr('stroke', '#15171a').attr('stroke-width', 3.2);
-      g.append('path').attr('d', 'M-2.6,-1 V-3 A2.6,2.6 0 0 1 2.6,-3 V-1').attr('fill', 'none')
-        .attr('stroke', '#fff').attr('stroke-width', 1.6);
-      g.append('rect').attr('x', -4.2).attr('y', -1.4).attr('width', 8.4).attr('height', 6.6).attr('rx', 1.3)
-        .attr('fill', '#fff').attr('stroke', '#15171a').attr('stroke-width', 0.9);
-    });
+    // a black border round councils whose majority can't be lost this time
+    svg.selectAll('path.snk-safe').data(items.filter(function(x){ return safeHold(x.u.c); }))
+      .enter().append('path').attr('class', 'snk-safe')
+      .attr('d', function(x){ return band(x.s0, x.s1); });
     // where the lead changes hands
     if(level !== null && level > 0 && level < Ltot){
       var p = at(level), q = at(Math.min(Ltot, level + 0.5)), q0 = at(Math.max(0, level - 0.5));
@@ -2044,10 +2034,10 @@
     var yr = (E.date || '').slice(0, 4);
     $('snknote').textContent = any
       ? 'Every council voting in ' + yr + ' outside Northern Ireland, as long as its seats up, ordered by ' +
-        abbrev(A) + '\u2019s lead over its biggest rival as a share of the seats up - the rival\u2019s colour where it is behind. ' +
+        abbrev(A) + '\u2019s lead over its biggest rival as a share of the seats up, coloured by who runs each council. ' +
         'Majorities that can\u2019t be lost this time sit at the ends. Hover for the numbers; click to open the council.'
       : 'Every council voting in ' + yr + ' that one of the two runs now, as long as its seats up, ordered by the gap ' +
-        'between the two parties\u2019 seats as a share of the seats up - a lead counts for more where fewer seats are fought. ' +
+        'between the two parties\u2019 seats as a share of the seats up (a lead counts for more where fewer seats are fought), coloured by who runs each council. ' +
         'Majorities that can\u2019t be lost this time sit at the ends. Hover for the numbers; click to open the council.';
     $('snkEndA').innerHTML = '<i style="background:' + colA + '"></i>Biggest ' + abbrev(A) + ' lead';
     $('snkEndB').innerHTML = (any ? 'Furthest behind its biggest rival' : 'Biggest ' + abbrev(B) + ' lead') +
@@ -2057,11 +2047,12 @@
         fmt(sum(function(x){ return x.lead > 0; })) + ' seats up)</span>' +
       '<span><i style="background:' + colB + '"></i><b>' + (any ? 'A rival' : abbrev(B)) + '</b> ahead in ' + nB + ' (' +
         fmt(sum(function(x){ return x.lead < 0; })) + ')</span>' +
-      (nL ? '<span><i style="background:#c9c9c4"></i>level in ' + nL + '</span>' : '') +
+      (nL ? '<span>level in ' + nL + '</span>' : '') +
       (items.some(function(x){ return safeHold(x.u.c); })
-        ? '<span style="color:var(--ink)">' + LOCK_SVG + ' majority can\u2019t be lost this time</span>' : '') +
-      (items.some(function(x){ return x.runBy; })
-        ? '<span><i style="background:repeating-linear-gradient(45deg,#9a9a96 0 3px,#d9d9d5 3px 7px)"></i>striped: run by a party other than the one ahead</span>' : '') +
+        ? '<span><i style="background:var(--panel); border:2px solid #15171a; width:8px; height:8px"></i>black border: majority can\u2019t be lost this time</span>' : '') +
+      '<span><i style="background:#8d8d88"></i>solid: majority</span>' +
+      '<span><i style="background:repeating-linear-gradient(45deg,' + NOC_COLOUR + ' 0 2px,#8d8d88 2px 5px)"></i>striped on black: minority or coalition</span>' +
+      (items.some(function(x){ return runsKey(x.u.c) === 'NOC'; }) ? '<span><i style="background:' + NOC_COLOUR + '"></i>no overall control</span>' : '') +
       (nats.length === 1 ? '<span>' + nats[0] + ' only</span>' : '') +
       '<span>' + ((E.up || []).length - items.length) + ' councils voting left out</span>';
   }
