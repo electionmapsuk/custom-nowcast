@@ -722,7 +722,8 @@
     var n = nationalCounts(), runs = n.runs, maj = n.maj;
     var entries = Object.keys(runs).filter(function(k){ return k !== 'NOC'; })
       .map(function(k){ return [k, runs[k]]; })
-      .sort(function(a,b){ return b[1]-a[1]; }).slice(0,6);
+      // by majorities, the headline figure; then by all the councils run
+      .sort(function(a,b){ return ((maj[b[0]] || 0) - (maj[a[0]] || 0)) || b[1]-a[1]; }).slice(0,6);
     entries.push(['NOC', runs.NOC || 0]);
 
     var html = entries.map(function(e){
@@ -730,14 +731,20 @@
       var col  = code === 'NOC' ? NOC_COLOUR : pInfo(code).colour;
       var name = code === 'NOC' ? 'NOC' : abbrev(code);
       var full = code === 'NOC' ? 'No overall control, no administration' : pInfo(code).name;
-      var sub  = EV ? (code === 'NOC' ? 'of ' + fmt(nextRound().up.length) + ' councils up'
-                                       : fmt(nextRound().seats[code] || 0) + ' seats up')
-           : code === 'NOC' ? 'of '+fmt(DATA.meta.councils)+' councils'
-                                : fmt(maj[code] || 0)+' with a majority';
+      // headline: councils run with a majority; then those including the ones
+      // it leads as a minority or coalition; then its seats
+      var head = code === 'NOC' ? e[1] : (maj[code] || 0);
+      var sub1 = code === 'NOC'
+        ? 'of ' + fmt(EV ? nextRound().up.length : DATA.meta.councils) + ' councils' + (EV ? ' up' : '')
+        : fmt(e[1]) + ' incl. minority-led';
+      var sub2 = code === 'NOC' ? 'no overall control'
+        : EV ? fmt(nextRound().seats[code] || 0) + ' seats up'
+             : fmt((DATA.meta.partyTotals || {})[code] || 0) + ' councillors';
       return '<div class="tot" data-p="'+code+'" title="'+full+'" style="background:'+col+'; color:'+txtOn(col)+'">' +
-        '<div class="nm">'+name+'</div>' +
-        '<div class="n">'+fmt(e[1])+'</div>' +
-        '<div class="sub">'+sub+'</div>' +
+        '<div class="nm">'+name+(code === 'NOC' ? '' : ' <span style="font-weight:700; opacity:.8; text-transform:none">majority</span>')+'</div>' +
+        '<div class="n">'+fmt(head)+'</div>' +
+        '<div class="sub">'+sub1+'</div>' +
+        '<div class="sub" style="margin-top:1px; opacity:.75">'+sub2+'</div>' +
         '</div>';
     }).join('');
     $('tiles').innerHTML = html;
@@ -787,11 +794,34 @@
   // The bar still draws them as their own coloured segments.
   var KEY_ROLLUP = {RES:1, SF:1, DUP:1, SDLP:1, ALL:1, UUP:1, TUV:1, NIP:1, CIP:1};
   var KEY_MIN = 0.01;   // below this share a party folds into Oth as well
+  // The national bar: left to right in this order, and any party with fewer
+  // than BAR_MIN seats counted in Oth. Parties not listed sit next to Oth.
+  var BAR_ORDER = ['SF', 'YRP', 'GRN', 'PLC', 'SNP', 'SDLP', 'LAB', 'LDM', 'ALL', 'OTH', 'IND',
+                   'LOC', 'UUP', 'CON', 'RFM', 'RES', 'DUP', 'TUV'];
+  var BAR_MIN = 10;
+  // local parties with their own colour on the map, counted with the other
+  // localists in the bar and its key
+  var BAR_AS_LOC = {ASP: 1, NIP: 1, CIP: 1};
 
   function buildNatBar(){
-    // the elections view shows the seats up, every party on its own
-    var tot = EV ? nextRound().seats : (DATA.meta.partyTotals || {});
-    var order = DATA.spectrum.filter(function(p){ return tot[p]; });
+    // the elections view shows the seats up
+    var raw = EV ? nextRound().seats : (DATA.meta.partyTotals || {});
+    // Parties with fewer than BAR_MIN seats go into Oth, in the bar and its key
+    var tot = {}, small = [];
+    Object.keys(raw).forEach(function(p){
+      if(!raw[p]) return;
+      var k = BAR_AS_LOC[p] ? 'LOC'
+            : (p !== 'VAC' && p !== 'OTH' && raw[p] < BAR_MIN) ? 'OTH' : p;
+      if(k === 'OTH' && k !== p) small.push(p);
+      tot[k] = (tot[k] || 0) + raw[p];
+    });
+    // left to right in BAR_ORDER; anything not in it sits just after Oth
+    var known = BAR_ORDER.filter(function(p){ return tot[p]; });
+    var extra = Object.keys(tot).filter(function(p){ return p !== 'VAC' && BAR_ORDER.indexOf(p) < 0; })
+      .sort(function(x, y){ return tot[y] - tot[x]; });
+    var at = known.indexOf('OTH');
+    var order = at < 0 ? known.concat(extra) : known.slice(0, at + 1).concat(extra, known.slice(at + 1));
+    if(tot.VAC) order.push('VAC');
     var sum = order.reduce(function(a,p){ return a + tot[p]; }, 0);
     $('natbar').innerHTML = order.map(function(p){
       return '<div class="seg" title="'+pInfo(p).name+' '+fmt(tot[p])+'" style="width:'+
@@ -814,7 +844,7 @@
     if(oth){
       var rolled = order.filter(function(p){
         return p !== 'VAC' && named.indexOf(p) < 0 && p !== 'OTH';
-      }).map(function(p){ return pInfo(p).name; });
+      }).concat(small).map(function(p){ return pInfo(p).name; });
       html.push('<span title="All other parties'+(rolled.length ? ', including '+rolled.join(', ') : '')+
         '"><i style="background:'+pInfo('OTH').colour+'"></i>Oth <b style="color:var(--ink)">'+
         fmt(oth)+'</b></span>');
