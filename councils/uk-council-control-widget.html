@@ -1900,18 +1900,22 @@
     var A = SNAKE.a, B = SNAKE.b, E = nextRound(), nats = sharedNations(A, B);
     var any = B === ANY;
     var items = (E.up || []).map(function(u){
-      var c = u.c, sa = c.seats[A] || 0, rival = B;
-      if(any){                     // the council's biggest group other than A
+      // The margin in the contest itself, as 538's snake used: the two
+      // parties' share of the seats being fought this time, by who holds them
+      // now. Seats not up don't enter into it (a majority they make unlosable
+      // gets its black border instead), and a party's real strength in those
+      // seats does.
+      var c = u.c, up = u.seats || {}, ua = up[A] || 0, rival = B;
+      if(any){                     // the biggest other group among the seats up
         rival = null;
-        for(var p in c.seats){
-          if(p === A || p === 'VAC' || !c.seats[p]) continue;
-          if(!rival || c.seats[p] > c.seats[rival]) rival = p;
+        for(var p in up){
+          if(p === A || p === 'VAC' || !up[p]) continue;
+          if(!rival || up[p] > up[rival]) rival = p;
         }
       }
-      var sb = rival ? c.seats[rival] || 0 : 0;
-      // The lead measured against the seats being fought: a 20-seat lead with
-      // 20 seats up (thirds) is far safer than the same lead with 60 up.
-      return {u: u, sa: sa, sb: sb, rival: rival, lead: u.n ? (sa - sb) / u.n : 0};
+      var ub = rival ? up[rival] || 0 : 0;
+      return {u: u, ua: ua, ub: ub, sa: c.seats[A] || 0, sb: rival ? c.seats[rival] || 0 : 0,
+              rival: rival, lead: u.n ? (ua - ub) / u.n : 0};
     // only councils one of the two parties runs now (leads the administration),
     // in the nations where both stand (never Northern Ireland)
     }).filter(function(x){
@@ -2000,11 +2004,12 @@
         tip.innerHTML = '<div class="hd"><div class="nm">' + esc(c.name) + '</div>' +
           '<div class="ty">' + esc(controlText(c)) + ' · ' + (x.u.all ? 'all ' + x.u.n : x.u.n + ' of ' + c.total) +
           ' seats up</div></div><div class="bd" style="padding:10px 12px; font-size:.8rem; line-height:1.6">' +
-          '<b style="color:' + colA + '">' + abbrev(A) + '</b> ' + x.sa + ' &nbsp;·&nbsp; ' +
-          (x.rival ? '<b style="color:' + pInfo(x.rival).colour + '">' + abbrev(x.rival) + '</b> ' + x.sb : 'no rival') +
-          ' of ' + c.total + ' seats' + (any ? ' (biggest rival)' : '') + '<br>' +
-          (x.lead ? abbrev(x.lead > 0 ? A : x.rival) + ' ahead by ' + Math.abs(x.sa - x.sb) +
-            ' with ' + x.u.n + ' seats up' : 'Level') +
+          'Seats up: <b style="color:' + colA + '">' + abbrev(A) + '</b> ' + x.ua + ' &nbsp;·&nbsp; ' +
+          (x.rival ? '<b style="color:' + pInfo(x.rival).colour + '">' + abbrev(x.rival) + '</b> ' + x.ub : 'no rival') +
+          ' of ' + x.u.n + (any && x.rival ? ' (biggest rival)' : '') + '<br>' +
+          '<span style="color:var(--muted)">Whole council: ' + abbrev(A) + ' ' + x.sa +
+          (x.rival ? ' · ' + abbrev(x.rival) + ' ' + x.sb : '') + ' of ' + c.total + '</span><br>' +
+          (x.lead ? abbrev(x.lead > 0 ? A : x.rival) + ' ahead by ' + Math.abs(x.ua - x.ub) + ' in the seats up' : 'Level in the seats up') +
           '</div>';
         place(e);
       })
@@ -2033,16 +2038,16 @@
     var yr = (E.date || '').slice(0, 4);
     $('snknote').textContent = any
       ? 'Every council voting in ' + yr + ' outside Northern Ireland, as long as its seats up, ordered by ' +
-        abbrev(A) + '\u2019s lead over its biggest rival as a share of the seats up, coloured by who runs each council. ' +
+        abbrev(A) + '\u2019s margin over its biggest rival among the seats being fought (by who holds them now), coloured by who runs each council. ' +
         'Majorities that can\u2019t be lost this time sit at the ends. Hover for the numbers; click to open the council.'
-      : 'Every council voting in ' + yr + ' that one of the two runs now, as long as its seats up, ordered by the gap ' +
-        'between the two parties\u2019 seats as a share of the seats up (a lead counts for more where fewer seats are fought), coloured by who runs each council. ' +
+      : 'Every council voting in ' + yr + ' that one of the two runs now, as long as its seats up, ordered by the ' +
+        'two parties\u2019 margin among the seats being fought (by who holds them now), coloured by who runs each council. ' +
         'Majorities that can\u2019t be lost this time sit at the ends. Hover for the numbers; click to open the council.';
     $('snkEndA').innerHTML = '<i style="background:' + colA + '"></i>Biggest ' + abbrev(A) + ' lead';
     $('snkEndB').innerHTML = (any ? 'Furthest behind its biggest rival' : 'Biggest ' + abbrev(B) + ' lead') +
       '<i style="background:' + colB + '"></i>';
     $('snkfoot').innerHTML =
-      '<span><i style="background:' + colA + '"></i><b>' + abbrev(A) + '</b> ahead in ' + nA + ' councils (' +
+      '<span><i style="background:' + colA + '"></i><b>' + abbrev(A) + '</b> ahead among the seats up in ' + nA + ' councils (' +
         fmt(sum(function(x){ return x.lead > 0; })) + ' seats up)</span>' +
       '<span><i style="background:' + colB + '"></i><b>' + (any ? 'A rival' : abbrev(B)) + '</b> ahead in ' + nB + ' (' +
         fmt(sum(function(x){ return x.lead < 0; })) + ')</span>' +
