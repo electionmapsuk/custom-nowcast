@@ -1410,6 +1410,11 @@
     clearCard();
   }
 
+  // lower case without accents, so "carlabhagh" finds "Càrlabhagh"
+  function fold(s){
+    s = String(s || '');
+    return (s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : s).toLowerCase();
+  }
   function bare(s){ return String(s || '').toLowerCase().replace(/\b(the|party)\b|[^a-z]/g, ''); }
   function wardCardHtml(c, props, people, geo){
     var ppl = people || [], div = isDivisions(geo);
@@ -1783,7 +1788,7 @@
     $('bg').innerHTML =
       '<div class="snk-hd"><select id="snkA" aria-label="First party">' + opts(SNAKE.a) + '</select>' +
       '<span class="snk-vs">vs</span><select id="snkB" aria-label="Second party">' + opts(SNAKE.b) + '</select>' +
-      '<span class="snk-note">Every council voting in ' + yr + ', as long as its seats up, ordered by the gap ' +
+      '<span class="snk-note">Every council voting in ' + yr + ' that one of the two runs now, as long as its seats up, ordered by the gap ' +
       'between the two parties’ seats there now. Hover for the numbers; click to open the council.</span></div>' +
       '<div class="snk-ends"><span id="snkEndA"></span></div>' +
       '<svg id="snksvg" role="img"></svg>' +
@@ -1820,7 +1825,8 @@
     var items = (E.up || []).map(function(u){
       var c = u.c, sa = c.seats[A] || 0, sb = c.seats[B] || 0;
       return {u: u, sa: sa, sb: sb, lead: c.total ? (sa - sb) / c.total : 0};
-    }).filter(function(x){ return x.sa || x.sb; })
+    // only councils one of the two parties runs now (leads the administration)
+    }).filter(function(x){ var k = runsKey(x.u.c); return k === A || k === B; })
       .sort(function(x, y){ return y.lead - x.lead || (y.sa - x.sa) || x.u.c.name.localeCompare(y.u.c.name); });
 
     var W = Math.max(280, $('bg').getBoundingClientRect().width);
@@ -1910,7 +1916,7 @@
       '<span><i style="background:' + colB + '"></i><b>' + abbrev(B) + '</b> ahead in ' + nB + ' (' +
         fmt(sum(function(x){ return x.lead < 0; })) + ')</span>' +
       (nL ? '<span><i style="background:#c9c9c4"></i>level in ' + nL + '</span>' : '') +
-      '<span>' + ((E.up || []).length - items.length) + ' councils voting have neither</span>';
+      '<span>' + ((E.up || []).length - items.length) + ' councils voting are run by neither</span>';
   }
 
   function panelDefault(){
@@ -2234,8 +2240,8 @@
           var c = byGss[code];
           if(!c || !c.wards) return;
           ix[code].forEach(function(w){
-            out.push({id: w[0], name: wardName(w[1]), low: wardName(w[1]).toLowerCase(),
-                      alt: (w[2] || '').toLowerCase(), code: code, council: c.name,
+            out.push({id: w[0], name: wardName(w[1]), low: fold(wardName(w[1])),
+                      alt: fold(w[2] || ''), code: code, council: c.name,
                       div: /^E58/.test(w[0]), dea: /^N09/.test(code)});
           });
         });
@@ -2246,15 +2252,15 @@
     q.addEventListener('focus', wardIndex);
 
     q.addEventListener('input', function(){
-      var v = q.value.trim().toLowerCase();
+      var v = fold(q.value.trim());
       if(v.length < 2) return closeSugg();
       wardIndex();
       var pos = function(s){ return s.indexOf(v); };
       // councils first, then wards, both by where the match falls
       var hits = DATA.councils.filter(function(c){
-        return c.name.toLowerCase().indexOf(v) >= 0;
+        return fold(c.name).indexOf(v) >= 0;
       }).sort(function(a,b){
-        var ai = pos(a.name.toLowerCase()), bi = pos(b.name.toLowerCase());
+        var ai = pos(fold(a.name)), bi = pos(fold(b.name));
         return ai !== bi ? ai - bi : a.name.localeCompare(b.name);
       });
       var whits = (WLIST && v.length >= 3) ? WLIST.filter(function(w){
