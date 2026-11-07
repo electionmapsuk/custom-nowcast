@@ -1964,22 +1964,21 @@
       return 'M' + left.concat(right.reverse()).map(function(p){ return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join('L') + 'Z';
     }
     var colA = pInfo(A).colour, colB = any ? ANY_COLOUR : pInfo(B).colour;
-    // Coloured by who runs the council, as on the map: solid for a majority
-    // (or a directly elected mayor), the lead party's stripes on the no-
-    // overall-control black for a minority or coalition, plain black where
-    // there is no administration. Paler where the lead is narrower.
+    // Coloured by who runs the council, as on the map: the party's full colour
+    // for a majority (or a directly elected mayor); for a minority or a
+    // coalition the map's paler wash of the lead party's colour, striped with
+    // its full colour; black where there is no administration.
     var shade = function(x){
       var c = x.u.c, runs = runsKey(c);
       if(!runs || runs === 'NOC') return NOC_COLOUR;
-      var pale = x.lead ? 0.5 * (1 - Math.min(Math.abs(x.lead) / 0.6, 1)) : 0.5;
-      var col = lighten(pInfo(runs).colour, pale);
+      var col = pInfo(runs).colour;
       if(solidFill(c)) return col;
       var id = 'sks-' + col.replace(/[^a-z0-9]/gi, '');
       if(defs.select('#' + id).empty()){
         var pat = defs.append('pattern').attr('id', id).attr('width', 7).attr('height', 7)
           .attr('patternUnits', 'userSpaceOnUse').attr('patternTransform', 'rotate(45)');
-        pat.append('rect').attr('width', 7).attr('height', 7).attr('fill', NOC_COLOUR);
-        pat.append('rect').attr('width', 4.2).attr('height', 7).attr('fill', col);
+        pat.append('rect').attr('width', 7).attr('height', 7).attr('fill', lighten(col, 0.5));
+        pat.append('rect').attr('width', 3).attr('height', 7).attr('fill', col);
       }
       return 'url(#' + id + ')';
     };
@@ -2051,7 +2050,7 @@
       (items.some(function(x){ return safeHold(x.u.c); })
         ? '<span><i style="background:var(--panel); border:2px solid #15171a; width:8px; height:8px"></i>black border: majority can\u2019t be lost this time</span>' : '') +
       '<span><i style="background:#8d8d88"></i>solid: majority</span>' +
-      '<span><i style="background:repeating-linear-gradient(45deg,' + NOC_COLOUR + ' 0 2px,#8d8d88 2px 5px)"></i>striped on black: minority or coalition</span>' +
+      '<span><i style="background:repeating-linear-gradient(45deg,#8d8d88 0 2px,#c6c6c3 2px 5px)"></i>striped on pale: minority or coalition (its lead party)</span>' +
       (items.some(function(x){ return runsKey(x.u.c) === 'NOC'; }) ? '<span><i style="background:' + NOC_COLOUR + '"></i>no overall control</span>' : '') +
       (nats.length === 1 ? '<span>' + nats[0] + ' only</span>' : '') +
       '<span>' + ((E.up || []).length - items.length) + ' councils voting left out</span>';
