@@ -209,6 +209,7 @@
   .elist .es{font-size:.68rem; color:var(--muted); font-variant-numeric:tabular-nums; white-space:nowrap;}
   .elist .ec{font-size:9px; font-weight:800; padding:3px 5px; border-radius:4px; white-space:nowrap;}
   .cp.lhl{stroke:#15171a; stroke-width:2px;}
+  .cp.out{pointer-events:none; cursor:default;}
   /* elections view: battlegrounds and the table filters */
   .bgrid{display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px;}
   @media(max-width:760px){ .bgrid{grid-template-columns:minmax(0,1fr);} }
@@ -955,6 +956,9 @@
 
     m.g.selectAll('path.cp').data(g.features).enter().append('path')
       .attr('class','cp').attr('d', m.path)
+      // elections view: a council not voting is greyed out and can't be
+      // hovered or clicked into
+      .classed('out', function(d){ return !inPlay(byGss[d.properties.code]); })
       .on('mousemove', function(e,d){ if(!pinnedGss && !(WARD && WARD.pin)) showFeature(e,d); })
       .on('mouseleave', function(){ if(!pinnedGss) clearCard(); })
       .on('click', function(e,d){
@@ -1718,6 +1722,7 @@
     $('h-nat').textContent = 'Seats being defended \u00b7 ' + fmt(E.total) + ' seats in ' +
       fmt(E.up.length) + ' councils \u00b7 ' + when;
     $('bgwrap').style.display = '';
+    $('q').placeholder = 'Find a council or ward voting\u2026';
     tableOpen = true;
     $('tabletog').textContent = 'Hide tables';
     $('tabletog').classList.add('active');
@@ -2298,7 +2303,7 @@
         var out = [];
         Object.keys(ix).forEach(function(code){
           var c = byGss[code];
-          if(!c || !c.wards) return;
+          if(!c || !c.wards || !inPlay(c)) return;
           ix[code].forEach(function(w){
             out.push({id: w[0], name: wardName(w[1]), low: fold(wardName(w[1])),
                       alt: fold(w[2] || ''), code: code, council: c.name,
@@ -2318,6 +2323,7 @@
       var pos = function(s){ return s.indexOf(v); };
       // councils first, then wards, both by where the match falls
       var hits = DATA.councils.filter(function(c){
+        if(!inPlay(c)) return false;          // elections view: only councils voting
         return fold(c.name).indexOf(v) >= 0;
       }).sort(function(a,b){
         var ai = pos(fold(a.name)), bi = pos(fold(b.name));
@@ -2392,7 +2398,7 @@
   // then zoom to that ward and pin its card.
   function gotoCouncil(gss, wardId){
     var c = byGss[gss];
-    if(!c) return;
+    if(!c || !inPlay(c)) return;
     var go = function(){
       var m = M[mapMode];
       if(WARD && WARD.code === gss && WARD.m === m && WARD.geo){
