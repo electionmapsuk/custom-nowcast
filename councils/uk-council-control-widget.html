@@ -1769,7 +1769,7 @@
   var SNAKE = {a: null, b: null, wired: false};
   function snakeParties(){
     var E = nextRound();
-    return Object.keys(E.seats || {}).filter(function(p){ return !BG_BUCKETS[p]; })
+    return Object.keys(E.seats || {}).filter(function(p){ return !BG_BUCKETS[p] && Object.keys(partyNations(p)).length; })
       .sort(function(x, y){ return E.seats[y] - E.seats[x]; });
   }
   // Which nations a party has councillors in, among the councils voting. Two
@@ -1779,13 +1779,20 @@
     SNAKE.nat = SNAKE.nat || {};
     if(!SNAKE.nat[p]){
       var out = {};
-      (nextRound().up || []).forEach(function(u){ if(u.c.seats[p]) out[u.c.nation] = 1; });
+      // Northern Ireland is left out of the snake: its councils are power-shared
+      // and its parties don't stand against Britain's
+      (nextRound().up || []).forEach(function(u){
+        if(u.c.seats[p] && u.c.nation !== 'Northern Ireland') out[u.c.nation] = 1;
+      });
       SNAKE.nat[p] = out;
     }
     return SNAKE.nat[p];
   }
+  // "ANY" as the second party: each council's biggest rival to the first,
+  // whoever that is (Ind and Loc groups included), wherever the first stands
+  var ANY = 'ANY', ANY_COLOUR = '#8d8d88';
   function sharedNations(a, b){
-    var na = partyNations(a), nb = partyNations(b);
+    var na = partyNations(a), nb = b === ANY ? na : partyNations(b);
     return NATIONS.filter(function(n){ return na[n] && nb[n]; });
   }
   function buildBattlegrounds(){
@@ -1805,9 +1812,11 @@
         .sort(function(x, y){ return y[1] - x[1]; })
         .map(function(x){ return x[0]; });
     };
-    if(!SNAKE.b || SNAKE.b === SNAKE.a || partners(SNAKE.a).indexOf(SNAKE.b) < 0) SNAKE.b = partners(SNAKE.a)[0];
-    var opts = function(list, sel){
-      return list.map(function(p){
+    if(!SNAKE.b || SNAKE.b === SNAKE.a || (SNAKE.b !== ANY && partners(SNAKE.a).indexOf(SNAKE.b) < 0)) SNAKE.b = partners(SNAKE.a)[0];
+    var opts = function(list, sel, any){
+      return (any ? '<option value="' + ANY + '"' + (sel === ANY ? ' selected' : '') +
+                    '>Anyone \u00b7 biggest rival in each council</option>' : '') +
+        list.map(function(p){
         return '<option value="' + p + '"' + (p === sel ? ' selected' : '') + '>' + abbrev(p) +
                ' \u00b7 ' + esc(pInfo(p).name) + '</option>';
       }).join('');
@@ -1816,9 +1825,8 @@
     $('bg').className = 'snk';
     $('bg').innerHTML =
       '<div class="snk-hd"><select id="snkA" aria-label="First party">' + opts(ps, SNAKE.a) + '</select>' +
-      '<span class="snk-vs">vs</span><select id="snkB" aria-label="Second party">' + opts(partners(SNAKE.a), SNAKE.b) + '</select>' +
-      '<span class="snk-note">Every council voting in ' + yr + ' that one of the two runs now, as long as its seats up, ordered by the gap ' +
-      'between the two parties’ seats there now. Hover for the numbers; click to open the council.</span></div>' +
+      '<span class="snk-vs">vs</span><select id="snkB" aria-label="Second party">' + opts(partners(SNAKE.a), SNAKE.b, true) + '</select>' +
+      '<span class="snk-note" id="snknote"></span></div>' +
       '<div class="snk-ends"><span id="snkEndA"></span></div>' +
       '<svg id="snksvg" role="img"></svg>' +
       '<div class="snk-ends snk-endb"><span id="snkEndB"></span></div>' +
@@ -1827,8 +1835,8 @@
     $('snkA').addEventListener('change', function(){
       // the second list only offers parties standing where the first does
       var a = $('snkA').value, list = partners(a), b = SNAKE.b;
-      if(b === a || list.indexOf(b) < 0) b = list.indexOf(SNAKE.a) >= 0 ? SNAKE.a : list[0];
-      $('snkB').innerHTML = opts(list, b);
+      if(b !== ANY && (b === a || list.indexOf(b) < 0)) b = list.indexOf(SNAKE.a) >= 0 ? SNAKE.a : list[0];
+      $('snkB').innerHTML = opts(list, b, true);
       SNAKE.a = a; SNAKE.b = b;
       drawSnake();
     });
@@ -1849,17 +1857,24 @@
     var svgEl = $('snksvg');
     if(!svgEl) return;
     var A = SNAKE.a, B = SNAKE.b, E = nextRound(), nats = sharedNations(A, B);
+    var any = B === ANY;
     var items = (E.up || []).map(function(u){
-      var c = u.c, sa = c.seats[A] || 0, sb = c.seats[B] || 0;
-      return {u: u, sa: sa, sb: sb, lead: c.total ? (sa - sb) / c.total : 0};
+      var c = u.c, sa = c.seats[A] || 0, rival = B;
+      if(any){                     // the council's biggest group other than A
+        rival = null;
+        for(var p in c.seats){
+          if(p === A || p === 'VAC' || !c.seats[p]) continue;
+          if(!rival || c.seats[p] > c.seats[rival]) rival = p;
+        }
+      }
+      var sb = rival ? c.seats[rival] || 0 : 0;
+      return {u: u, sa: sa, sb: sb, rival: rival, lead: c.total ? (sa - sb) / c.total : 0};
     // only councils one of the two parties runs now (leads the administration),
-    // in the nations where both stand. Northern Ireland's councils are all
-    // power-shared with no single administration, so there every council
-    // where either party has a seat counts.
+    // in the nations where both stand (never Northern Ireland)
     }).filter(function(x){
       var c = x.u.c, k = runsKey(c);
       if(nats.indexOf(c.nation) < 0) return false;
-      if(c.nation === 'Northern Ireland') return x.sa || x.sb;
+      if(any) return true;                         // A against the field: every council
       return k === A || k === B;
     })
       .sort(function(x, y){ return y.lead - x.lead || (y.sa - x.sa) || x.u.c.name.localeCompare(y.u.c.name); });
@@ -1897,15 +1912,15 @@
       }
       return 'M' + left.concat(right.reverse()).map(function(p){ return p[0].toFixed(1) + ',' + p[1].toFixed(1); }).join('L') + 'Z';
     }
-    var colA = pInfo(A).colour, colB = pInfo(B).colour;
+    var colA = pInfo(A).colour, colB = any ? ANY_COLOUR : pInfo(B).colour;
     var shade = function(x){
       if(!x.lead) return '#c9c9c4';
       var pale = 0.6 * (1 - Math.min(Math.abs(x.lead) / 0.4, 1));
-      return lighten(x.lead > 0 ? colA : colB, pale);
+      return lighten(x.lead > 0 ? colA : (any && x.rival ? pInfo(x.rival).colour : colB), pale);
     };
     var total = items.reduce(function(a, x){ return a + x.u.n; }, 0) || 1, s = 0, level = null;
     var svg = d3.select(svgEl).attr('viewBox', '0 0 ' + W + ' ' + H).attr('width', W).attr('height', H)
-      .attr('aria-label', 'Councils voting, from the biggest ' + abbrev(A) + ' lead to the biggest ' + abbrev(B) + ' lead');
+      .attr('aria-label', 'Councils voting, from the biggest ' + abbrev(A) + ' lead to the biggest ' + (any ? 'lead over it' : abbrev(B) + ' lead'));
     svg.selectAll('*').remove();
     items.forEach(function(x){
       var len = x.u.n / total * Ltot;
@@ -1921,8 +1936,9 @@
           '<div class="ty">' + esc(controlText(c)) + ' · ' + (x.u.all ? 'all ' + x.u.n : x.u.n + ' of ' + c.total) +
           ' seats up</div></div><div class="bd" style="padding:10px 12px; font-size:.8rem; line-height:1.6">' +
           '<b style="color:' + colA + '">' + abbrev(A) + '</b> ' + x.sa + ' &nbsp;·&nbsp; ' +
-          '<b style="color:' + colB + '">' + abbrev(B) + '</b> ' + x.sb + ' of ' + c.total + ' seats<br>' +
-          (x.lead ? abbrev(x.lead > 0 ? A : B) + ' ahead by ' + Math.abs(x.sa - x.sb) : 'Level') + '</div>';
+          (x.rival ? '<b style="color:' + pInfo(x.rival).colour + '">' + abbrev(x.rival) + '</b> ' + x.sb : 'no rival') +
+          ' of ' + c.total + ' seats' + (any ? ' (biggest rival)' : '') + '<br>' +
+          (x.lead ? abbrev(x.lead > 0 ? A : x.rival) + ' ahead by ' + Math.abs(x.sa - x.sb) : 'Level') + '</div>';
         place(e);
       })
       .on('mouseleave', function(){ tip.style.display = 'none'; })
@@ -1943,12 +1959,20 @@
     var sum = function(f){ return items.filter(f).reduce(function(a, x){ return a + x.u.n; }, 0); };
     var nA = items.filter(function(x){ return x.lead > 0; }).length, nB = items.filter(function(x){ return x.lead < 0; }).length;
     var nL = items.length - nA - nB;
+    var yr = (E.date || '').slice(0, 4);
+    $('snknote').textContent = any
+      ? 'Every council voting in ' + yr + ' outside Northern Ireland, as long as its seats up, ordered by ' +
+        abbrev(A) + '\u2019s seats there now minus its biggest rival\u2019s - the rival\u2019s colour where it is behind. ' +
+        'Hover for the numbers; click to open the council.'
+      : 'Every council voting in ' + yr + ' that one of the two runs now, as long as its seats up, ordered by the gap ' +
+        'between the two parties\u2019 seats there now. Hover for the numbers; click to open the council.';
     $('snkEndA').innerHTML = '<i style="background:' + colA + '"></i>Biggest ' + abbrev(A) + ' lead';
-    $('snkEndB').innerHTML = 'Biggest ' + abbrev(B) + ' lead<i style="background:' + colB + '"></i>';
+    $('snkEndB').innerHTML = (any ? 'Furthest behind its biggest rival' : 'Biggest ' + abbrev(B) + ' lead') +
+      '<i style="background:' + colB + '"></i>';
     $('snkfoot').innerHTML =
       '<span><i style="background:' + colA + '"></i><b>' + abbrev(A) + '</b> ahead in ' + nA + ' councils (' +
         fmt(sum(function(x){ return x.lead > 0; })) + ' seats up)</span>' +
-      '<span><i style="background:' + colB + '"></i><b>' + abbrev(B) + '</b> ahead in ' + nB + ' (' +
+      '<span><i style="background:' + colB + '"></i><b>' + (any ? 'A rival' : abbrev(B)) + '</b> ahead in ' + nB + ' (' +
         fmt(sum(function(x){ return x.lead < 0; })) + ')</span>' +
       (nL ? '<span><i style="background:#c9c9c4"></i>level in ' + nL + '</span>' : '') +
       (nats.length === 1 ? '<span>' + nats[0] + ' only</span>' : '') +
