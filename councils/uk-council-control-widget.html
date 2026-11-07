@@ -269,6 +269,13 @@
     border-radius:7px; padding:6px 10px; font-size:.74rem; font-weight:800; color:var(--ink);
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .wardbar .wt span{color:var(--muted); font-weight:600;}
+  /* councils that elect by thirds or halves: show only the seats up next */
+  .wardbar .wup{pointer-events:auto; margin-left:auto; padding:6px 10px; border-radius:7px;
+    border:1px solid var(--line); background:rgba(255,255,255,.93); font-family:inherit;
+    font-size:.74rem; font-weight:700; color:var(--muted); cursor:pointer; white-space:nowrap; line-height:1.2;}
+  .wardbar .wup:hover{color:var(--accent); border-color:var(--accent);}
+  .wardbar .wup.on{background:var(--accent); border-color:var(--accent); color:#fff;}
+  .cr.notup{opacity:.35;}
   .map-hint{position:absolute; left:14px; bottom:12px; font-size:.72rem; color:var(--faint);
     background:rgba(255,255,255,.85); padding:4px 9px; border-radius:8px; pointer-events:none;}
   .map-reset{position:absolute; right:12px; top:12px; padding:5px 11px; border-radius:7px;
@@ -450,6 +457,9 @@
   // totals, tables and battlegrounds are about the seats being contested.
   var EV = /[?&]view=(elections|2027)(&|$)/i.test(location.search);
   var OUT_FILL = '#e6e5e1';      // a council not voting, in the elections view
+  // In a council that elects by thirds or halves, the ward view can show just
+  // the councillors whose seats are up next. On by default in the elections view.
+  var UPONLY = EV;
   var byGss = {}, focusParty = null, pinnedGss = null;
   var sortKey = 'name', sortDir = 1;
 
@@ -741,11 +751,11 @@
     if(WARD && WARD.m.wg && WARD.mem){
       WARD.m.wg.selectAll('.wd').classed('dim', function(d){
         if(!code) return false;
-        return !(WARD.mem.wards[d.properties.id] || []).some(function(p){ return p.p === code; });
+        return !shownPeople(d.properties.id).some(function(p){ return p.p === code; });
       });
       var wl = $('wlist');
       if(wl) wl.querySelectorAll('.wl').forEach(function(r){
-        r.classList.toggle('dim', !!code && !(WARD.mem.wards[r.getAttribute('data-id')] || [])
+        r.classList.toggle('dim', !!code && !shownPeople(r.getAttribute('data-id'))
           .some(function(p){ return p.p === code; }));
       });
     }
@@ -1085,6 +1095,17 @@
   // each councillor gets one band running the full width of the ward, instead
   // of the fine repeating stripes, so a 3-member ward reads as three thick
   // bands and a 6-member one as six thinner ones.
+  // the year a council's next seats are up, if it elects in parts
+  function partYear(c){
+    if(!c || (c.cycle || []).length < 2) return null;
+    return ((c.nextElection || (c.cycle[0] || {}).date) || '').slice(0, 4) || null;
+  }
+  // the councillors to draw for a ward: all, or only those up next
+  function shownPeople(id){
+    var ppl = (WARD && WARD.mem && WARD.mem.wards[id]) || [];
+    if(!UPONLY || !WARD.upYear) return ppl;
+    return ppl.filter(function(p){ return String(p.y) === WARD.upYear; });
+  }
   function seatShades(codes){
     var seen = {};
     return codes.map(function(code){
@@ -1094,8 +1115,8 @@
   }
   // The bands run at one fixed angle everywhere (the same "/" as the stripes
   // elsewhere), measured across the ward itself, not its bounding box - a
-  // box-relative gradient tilts with each ward's shape. Each band's edge is
-  // placed so every councillor gets an equal share of the ward's area.
+  // box-relative gradient tilts with each ward's shape. Every band is the same
+  // width, edge to edge of the ward.
   function wardRings(m, f){
     var proj = m.path.projection(), g = f.geometry, out = [];
     var polys = g.type === 'Polygon' ? [g.coordinates] : g.type === 'MultiPolygon' ? g.coordinates : [];
@@ -1124,21 +1145,15 @@
     return Math.abs(a);
   }
   function bandFill(m, codes, f){
-    var id = 'wb-' + m.key + '-' + String(f.properties.id).replace(/[^\w-]/g, '_');
+    var id = 'wb-' + m.key + '-' + String(f.properties.id).replace(/[^\w-]/g, '_') + '-' + codes.join('-');
     if(m.defs && m.defs.select('#' + id).empty()){
       var rings = wardRings(m, f), lo = Infinity, hi = -Infinity;
       rings.forEach(function(r){ r.forEach(function(p){
         var t = p[0] + p[1]; if(t < lo) lo = t; if(t > hi) hi = t;
       }); });
-      var n = codes.length, total = areaBelow(rings, hi + 1), cuts = [0];
-      for(var k = 1; k < n; k++){
-        var a = lo, b = hi, want = total * k / n;
-        for(var it = 0; it < 32; it++){
-          var mid = (a + b) / 2;
-          if(areaBelow(rings, mid) < want) a = mid; else b = mid;
-        }
-        cuts.push(hi > lo ? ((a + b) / 2 - lo) / (hi - lo) : k / n);
-      }
+      // equal widths across the ward's full extent at that angle
+      var n = codes.length, cuts = [];
+      for(var k = 0; k < n; k++) cuts.push(k / n);
       cuts.push(1);
       var gr = m.defs.append('linearGradient').attr('id', id)
         .attr('gradientUnits', 'userSpaceOnUse')
@@ -1210,6 +1225,28 @@
     } else {
       bar.append('div').attr('class', 'wt').html(esc(c.name) + ' <span>loading wards\u2026</span>');
     }
+    if(geo && WARD && WARD.upYear){
+      bar.append('button').attr('type', 'button').attr('class', 'wup' + (UPONLY ? ' on' : ''))
+        .attr('aria-pressed', UPONLY ? 'true' : 'false')
+        .attr('title', c.name + ' elects by ' + cycleWord((c.cycle || []).length).toLowerCase() +
+              ': show only the councillors whose seats are up in May ' + WARD.upYear)
+        .text('Only seats up in ' + WARD.upYear)
+        .on('click', function(e){ e.stopPropagation(); UPONLY = !UPONLY; refreshWards(); });
+    }
+  }
+
+  // Redraw the wards after the seats-up toggle: fills, list, bar, card.
+  function refreshWards(){
+    if(!WARD || !WARD.m.wg) return;
+    var m = WARD.m, stv = isSTV(WARD.code);
+    m.wg.selectAll('.wd').attr('fill', function(d){ return wardFill(m, shownPeople(d.properties.id), stv, d); });
+    d3.select('#' + m.box).select('.wup').classed('on', UPONLY).attr('aria-pressed', UPONLY ? 'true' : 'false');
+    var wl = $('wlist'), top = wl ? wl.scrollTop : 0;
+    buildWardPanel();
+    if($('wlist')) $('wlist').scrollTop = top;
+    markWardPin();
+    highlight(focusParty);
+    if(WARD.pin) showWardCard(wardPoint(WARD.pin), WARD.pin);
   }
 
   function tierOf(key){ return TIERS.filter(function(t){ return t.key === key; })[0]; }
@@ -1246,6 +1283,7 @@
 
   function drawWards(m, c, geo, mem){
     WARD.geo = geo; WARD.mem = mem;
+    WARD.upYear = partYear(c);
     m.g.selectAll('.cp').classed('bg', true)
       .classed('inward', function(d){ return d.properties.code === c.gss; });
     if(m.wg) m.wg.remove();
@@ -1255,7 +1293,7 @@
     });
     m.wg.selectAll('path.wd').data(feats).enter().append('path')
       .attr('class', 'wd').attr('d', m.path)
-      .attr('fill', function(d){ return wardFill(m, mem.wards[d.properties.id], isSTV(c.gss), d); })
+      .attr('fill', function(d){ return wardFill(m, shownPeople(d.properties.id), isSTV(c.gss), d); })
       .on('mousemove', function(e, d){ markWardRow(d.properties.id); if(!WARD.pin) showWardCard(e, d); })
       .on('mouseleave', function(){ markWardRow(null); if(!WARD || !WARD.pin) clearCard(); })
       // click or tap pins a ward's card, as a click pins a council's; on a
@@ -1345,7 +1383,8 @@
       var own = p.pn && !/^independent( \/ other)?$/i.test(p.pn) &&
                 ['OTH', 'IND', 'RES', 'LOC', 'NIP', 'CIP'].indexOf(p.p) >= 0 &&
                 bare(p.pn) !== bare(pInfo(p.p).name) ? '<small>' + esc(p.pn) + '</small>' : '';
-      return '<div class="cr"><div class="ab" title="' + esc(pInfo(p.p).name) + '" style="background:' + col +
+      var faded = UPONLY && WARD && WARD.upYear && String(p.y) !== WARD.upYear;
+      return '<div class="cr' + (faded ? ' notup' : '') + '"><div class="ab" title="' + esc(pInfo(p.p).name) + '" style="background:' + col +
         '; color:' + txtOn(col) + '">' + abbrev(p.p) + '</div><div class="who">' +
         esc(p.p === 'VAC' ? 'Vacant seat' : p.n) + own + '</div><div class="yr" title="End of term">' +
         (p.y || '') + '</div></div>';
@@ -1358,7 +1397,9 @@
         '<div class="ty">' + esc(c.name) + ' \u00b7 ' + (isDEA(geo) ? 'District electoral area' : div ? 'Electoral division' : 'Ward') +
           (props.alt ? ' \u00b7 ' + esc(props.alt) : '') + '</div>' +
         '<div class="meta" style="margin-top:7px"><b>' + n + '</b> councillor' + (n === 1 ? '' : 's') +
-          (ppl.length > n ? ' \u00b7 <b>' + (ppl.length - n) + '</b> vacant' : '') + '</div>' +
+          (ppl.length > n ? ' \u00b7 <b>' + (ppl.length - n) + '</b> vacant' : '') +
+          (UPONLY && WARD && WARD.upYear ? ' \u00b7 <b>' + ppl.filter(function(p){ return String(p.y) === WARD.upYear; }).length +
+             '</b> up in ' + WARD.upYear : '') + '</div>' +
       '</div>' +
       (stack ? '<div class="stack">' + stack + '</div>' : '') +
       '<div class="bd">' + rows + '</div>' +
@@ -1402,12 +1443,12 @@
     var div = isDivisions(WARD.geo);
     return '<div class="wlh">' + ws.length + ' ' + unitWord(WARD.geo, true) + '</div>' +
       ws.map(function(w){
-        var codes = wardCodes(WARD.mem.wards[w.id]);
+        var codes = wardCodes(shownPeople(w.id));
         var chips = codes.length ? codes.map(function(p){
           var col = pInfo(p).colour;
           return '<i style="background:' + col + '; color:' + txtOn(col) + '" title="' +
             esc(pInfo(p).name) + '">' + abbrev(p) + '</i>';
-        }).join('') : '<i class="none">no data</i>';
+        }).join('') : '<i class="none">' + ((WARD.mem.wards[w.id] || []).length ? 'not up' : 'no data') + '</i>';
         return '<div class="wl" data-id="' + esc(w.id) + '"><span class="wn">' + esc(wardLabel(w.id, w.name)) +
           '</span><span class="wc">' + chips + '</span></div>';
       }).join('');
