@@ -270,8 +270,8 @@
   .lgd.lgdx{cursor:default;}
   .lgd.lgdx i{border:1px solid var(--line);}
   /* a neighbouring council hovered in the ward view: just its header */
-  .nbr > :not(.hd){display:none;}
-  .nbr .hint{display:block; padding:8px 12px; font-size:.72rem; color:var(--muted);}
+  .nbr > :not(.hd):not(.stack):not(.hint){display:none !important;}
+  .nbr .hint{display:block; padding:9px 12px; font-size:.72rem; color:var(--muted); text-align:center;}
   .wlist{flex:1 1 0; min-height:150px; overflow-y:auto; background:var(--panel);}
   /* the box rule above clips (overflow:hidden) and outranks .wlist, which
      left the list unscrollable by wheel or touch - scroll it explicitly, with
