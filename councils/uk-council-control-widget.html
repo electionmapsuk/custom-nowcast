@@ -378,10 +378,11 @@
   .ccard .pj .pjm{font-size:.71rem; color:var(--muted); line-height:1.45; margin-top:5px;}
   .ccard .pj .pjm b{color:var(--ink); font-weight:800;}
   /* projection-mode card: likely range on each bar, chance of each outcome */
-  .ccard .r .bar .rg{position:absolute; bottom:-3px; height:2px; background:#6b7280;
+  .ccard .r .bar .rg{position:absolute; top:50%; margin-top:-1px; height:2px; background:#15171a; opacity:.6;
     z-index:3; pointer-events:none; box-sizing:border-box;}
-  .ccard .r .bar .rg::before,.ccard .r .bar .rg::after{content:''; position:absolute; top:-4px; width:2px; height:6px; background:#6b7280;}
+  .ccard .r .bar .rg::before,.ccard .r .bar .rg::after{content:''; position:absolute; top:-4px; width:2px; height:10px; background:#15171a;}
   .ccard .r .bar .rg::before{left:0;} .ccard .r .bar .rg::after{right:0;}
+  .ccard .r .bar .fill i .sn{position:relative; z-index:5; padding:2px 3px; line-height:1;}
   .ccard .pch{padding:9px 12px 10px; border-top:1px solid var(--line2);}
   .ccard .pch .pjl{font-size:.62rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin-bottom:6px;}
   .ccard .pch .cb{display:flex; height:20px; border-radius:4px; overflow:hidden;}
@@ -996,8 +997,9 @@
       '<div class="pill" style="background:' + nx + '; color:' + txtOn(nx) + '">' + (pj.next === 'NOC' ? 'NOC' : abbrev(pj.next) + ' maj') + '</div></div>' +
       '<div class="meta">Now → 2027 projection</div></div>' +
       '<div style="padding:4px 12px 11px">' +
-        hd('Swing to ' + ab + ' for a majority') + swingLine +
-        '<div style="font-size:.68rem; color:var(--muted); line-height:1.4; margin-top:2px">' + sw + '</div>' +
+        (lock ? '<div style="font-size:.68rem; color:var(--muted); line-height:1.4; margin-top:9px">' + sw + '</div>'
+              : hd('Swing to ' + ab + ' for a majority') + swingLine +
+                '<div style="font-size:.68rem; color:var(--muted); line-height:1.4; margin-top:2px">' + sw + '</div>') +
         hd('Seats after May') + seatBar +
         hd('Projected vote') + voteBars +
         hd('Chance of each outcome') + chanceBar +
@@ -2195,7 +2197,7 @@
       [[held, partial ? cycleShade(pc.colour, 0, 2) : pc.colour, 'not up in May'], [w, partial ? cycleShade(pc.colour, 1, 2) : pc.colour, 'won in May']].forEach(function(x){
         if(!x[0]) return;
         var sw = 100 * x[0] / comp[p], showN = partial && pct * sw / 100 >= 7;
-        segs.push('<i title="' + x[0] + ' ' + x[2] + '" style="width:' + sw + '%; background:' + x[1] + '; color:' + txtOn(x[1]) + '">' + (showN ? x[0] : '') + '</i>');
+        segs.push('<i title="' + x[0] + ' ' + x[2] + '" style="width:' + sw + '%; background:' + x[1] + '; color:' + txtOn(x[1]) + '">' + (showN ? '<span class="sn" style="background:' + x[1] + '">' + x[0] + '</span>' : '') + '</i>');
       });
       var rgEl = (r && r[1] > r[0]) ? '<s class="rg" title="likely ' + r[0] + '\u2013' + r[1] + '" style="left:' + (100 * r[0] / axis) + '%; width:' + (100 * (r[1] - r[0]) / axis) + '%"></s>' : '';
       return '<div class="r" title="' + abbrev(p) + ' ' + comp[p] + (r ? ' (likely ' + r[0] + '\u2013' + r[1] + ')' : '') + '">' +
