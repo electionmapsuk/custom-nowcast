@@ -530,7 +530,7 @@ document.addEventListener('DOMContentLoaded', function(){
     var out=window.NowcastEngine.runNowcast(inputObj, ENGINE);
     results=out.individualSeatResults; byName={}; byCode={};
     results.forEach(function(s){ byName[norm(s.seatName)]=s; if(s.code) byCode[s.code]=s; });
-    NIFIXED.forEach(function(s){ byName[norm(s.name)]={seatName:s.name,winner:s.winner,winner2024:s.w24,winner2019:s.w19,mp:s.mp,shares:s.shares,fixed:true}; });
+    NIFIXED.forEach(function(s){ byName[norm(s.name)]={seatName:s.name,code:s.code,winner:s.winner,winner2024:s.w24,winner2019:s.w19,mp:s.mp,shares:s.shares||{},a24:s.a24||null,minType:s.minType||'MIN',fixed:true}; });
     if(mode==='custom'){ mcRanges=null; mcSeatWin=null; }   // drop stale sim outputs once inputs change
     var t=tallies(); renderTotals(t); paintSliderSeats(t); renderVoteShare(); maybeDrawMap(); updateGbTotal(); buildCoalition(t);
     if(tableBuilt) buildTable();
@@ -1025,17 +1025,17 @@ document.addEventListener('DOMContentLoaded', function(){
     var o=seatOf(d); if(!o.s){ tip.style.display='none'; return; }
     var s=o.s, sh=s.shares;
     var sorted=Object.keys(sh).filter(function(p){return sh[p]>0.003;}).sort(function(a,b){return sh[b]-sh[a];});
-    var CANONP=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','MIN','WPB','OTH'];
+    var CANONP=['LAB','CON','RFM','LDM','GRN','RES','SNP','PLC','SF','DUP','ALL','UUP','SDLP','TUV','MIN','WPB','OTH'];
     var rowsP=CANONP.filter(function(p){return (sh[p]||0)>0.0005;}).sort(function(a,b){return (sh[b]||0)-(sh[a]||0);});  // show every party present (incl. low Restore/MIN)
     var maj=(sorted.length>1)?(sh[sorted[0]]-sh[sorted[1]]):sh[sorted[0]]||0;
-    var base=SEATBASE[s.code]?SEATBASE[s.code].a24:null;
+    var base=s.fixed?(s.a24||null):(SEATBASE[s.code]?SEATBASE[s.code].a24:null);
     var w19=s.winner2019, w24=s.winner2024, wn=dispWin(s);
     var c19=(PI[w19]||PI.OTH).c, c24=(PI[w24]||PI.OTH).c, cwn=(PI[wn]||PI.OTH).c;
     var pillBg=(!s.fixed&&MARGINCOL[wn])?MARGINCOL[wn][classOf(s,maj)]:cwn;
     var html='<div class="hd"><div class="nm">'+s.seatName+'</div>'+((mode==='custom')?'<div style="display:inline-block;margin-top:5px;font-size:.6rem;font-weight:800;letter-spacing:.06em;text-transform:uppercase;background:#7c3aed;color:#fff;padding:2px 7px;border-radius:5px">User Input</div>':'')
       +'<div class="res"><div class="sq" style="background:'+c19+';color:'+textOn(c19)+'">19</div><div class="sq" style="background:'+c24+';color:'+textOn(c24)+'">24</div>'
       +'<div class="pill" style="background:'+pillBg+';color:'+textOn(pillBg)+'">'+(s.fixed?(PI[wn]?PI[wn].n:wn):classOf(s,maj)+' '+wn)+'</div></div>'
-      +'<div class="meta">'+(s.fixed?'':'<b>Projected Majority:</b> '+(maj*100).toFixed(1)+'%<br>')
+      +'<div class="meta">'+'<b>Projected Majority:</b> '+(maj*100).toFixed(1)+'%<br>'
       +(s.mp?('<b>2024 MP:</b> '+s.mp):'')+'</div>'
       +(function(){ var sw=mcSeatWin&&mcSeatWin[s.code]; if(!sw||!mcSeatN) return '';
          var ent=Object.keys(sw).sort(function(a,b){return sw[b]-sw[a];}).slice(0,3).filter(function(p){return sw[p]/mcSeatN>=0.005;});
@@ -1133,9 +1133,9 @@ document.addEventListener('DOMContentLoaded', function(){
       var hay=(r.cells[0].textContent+' '+r.cells[2].textContent+' '+(r.cells[2].getAttribute('data-region')||'')+' '+(r.getAttribute('data-code')||'')).toLowerCase();
       r.style.display=(!q||hay.indexOf(q)>=0)?'':'none'; }); }
   $('toggle-table').addEventListener('click',function(){ var w=$('table-wrap'); if(w.style.display==='block'){ w.style.display='none'; this.textContent='Show table'; } else { if(!tableBuilt) buildTable(); w.style.display='block'; this.textContent='Hide table'; } });
-  function downloadTableCSV(){ if(!results) return; var tp=['LAB','CON','RFM','LDM','GRN','RES','MIN','OTH','SNP','PLC'];
+  function downloadTableCSV(){ if(!results) return; var tp=['LAB','CON','RFM','LDM','GRN','RES','MIN','OTH','SNP','PLC','SF','DUP','ALL','UUP','SDLP','TUV'];
     var rows=[['Constituency','Code','Winner','2024'].concat(tp)];
-    var all=results.concat(NIFIXED.map(function(s){return {seatName:s.name,code:s.code,winner:s.winner,winner2024:s.w24,minType:'MIN',shares:s.shares||{}};}));
+    var all=results.concat(NIFIXED.map(function(s){return {seatName:s.name,code:s.code,winner:s.winner,winner2024:s.w24,minType:s.minType||'MIN',shares:s.shares||{}};}));
     all.forEach(function(s){ var r=[s.seatName,s.code||'',dispWin(s),s.winner2024||'']; tp.forEach(function(p){ r.push((((s.shares||{})[p]||0)*100).toFixed(1)); }); rows.push(r); });
     var csv=rows.map(function(r){ return r.map(function(c){ c=(c==null?'':String(c)); return /[",\n]/.test(c)?('"'+c.replace(/"/g,'""')+'"'):c; }).join(','); }).join('\n');
     var blob=new Blob([csv],{type:'text/csv;charset=utf-8'}); var a=document.createElement('a'); a.href=URL.createObjectURL(blob);
