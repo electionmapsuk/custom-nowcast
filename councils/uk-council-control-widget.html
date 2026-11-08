@@ -2170,16 +2170,19 @@
   // chance of each outcome, as on the snake popup: one stacked bar, labelled where there's room, with a key
   function chanceBarHtml(pj){
     var pc = function(k){ return k === 'NOC' ? NOC_COLOUR : pInfo(k).colour; };
-    var lab = function(k){ return k === 'NOC' ? 'NOC' : abbrev(k) + ' maj'; };
+    var lab = function(k){ return k === 'NOC' ? 'NOC' : abbrev(k); };
     var outs = Object.keys(pj.pc || {}).filter(function(k){ return pj.pc[k] >= 0.01; }).sort(function(a, b){ return pj.pc[b] - pj.pc[a]; });
     var tot = outs.reduce(function(a, k){ return a + pj.pc[k]; }, 0) || 1;
     return '<div class="cb">' + outs.map(function(k){
         var w = 100 * pj.pc[k] / tot, bg = pc(k);
-        return '<i style="width:' + w + '%; background:' + bg + '; color:' + txtOn(bg) + '">' + (w >= 18 ? lab(k) + ' ' + Math.round(100 * pj.pc[k]) + '%' : '') + '</i>';
+        return '<i style="width:' + w + '%; background:' + bg + '; color:' + txtOn(bg) + '">' + (w >= 15 ? lab(k) + ' ' + Math.round(100 * pj.pc[k]) + '%' : '') + '</i>';
       }).join('') + '</div>' +
-      '<div class="ck">' + outs.map(function(k){
-        return '<span><i style="background:' + pc(k) + '"></i><b>' + lab(k) + '</b> ' + Math.round(100 * pj.pc[k]) + '%</span>';
-      }).join('') + '</div>';
+      (function(){   // a key only for the slices too narrow to carry their own label
+        var small = outs.filter(function(k){ return 100 * pj.pc[k] / tot < 15; });
+        return small.length ? '<div class="ck">' + small.map(function(k){
+          return '<span><i style="background:' + pc(k) + '"></i><b>' + lab(k) + '</b> ' + Math.round(100 * pj.pc[k]) + '%</span>';
+        }).join('') + '</div>' : '';
+      })();
   }
   // the council card in 2027-projection mode: the council after May in the same bars as now
   function projCardHtml(c, pj){
