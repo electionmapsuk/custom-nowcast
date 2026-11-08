@@ -384,6 +384,19 @@
   .ccard .r .bar .rg::before{left:0;} .ccard .r .bar .rg::after{right:0;}
   .ccard .r .bar .fill i .sn{position:relative; z-index:5; padding:2px 3px; line-height:1;}
   .ccard .pch{padding:9px 12px 10px; border-top:1px solid var(--line2);}
+  .ccard .pj .ss{position:relative; margin-top:2px;}
+  .ccard .pj .ss .sb{display:flex; height:18px; border-radius:4px; overflow:hidden; background:#eee;}
+  .ccard .pj .ss .sb i{display:flex; align-items:center; justify-content:center; font-size:.64rem; font-weight:800; font-style:normal;
+    border-right:1px solid #fff; overflow:hidden; flex:none;}
+  .ccard .pj .ss .sm{position:absolute; top:-3px; bottom:-3px; width:2px; margin-left:-1px; background:#15171a;}
+  .ccard .pj .ck,.ccard .pch0 .ck{display:flex; flex-wrap:wrap; gap:3px 10px; margin-top:6px; font-size:.68rem; color:var(--muted);}
+  .ccard .pj .ck span{display:flex; align-items:center; gap:4px;}
+  .ccard .pj .ck i{width:9px; height:9px; border-radius:2px; flex:none;}
+  .ccard .pj .ck b{color:var(--ink); font-weight:800;}
+  .ccard .pch0 .cb{display:flex; height:20px; border-radius:4px; overflow:hidden;}
+  .ccard .pch0 .cb i{display:flex; align-items:center; justify-content:center; font-size:.64rem; font-weight:800; font-style:normal;
+    border-right:1px solid #fff; white-space:nowrap; overflow:hidden; flex:none;}
+  .ccard .pch0 .cb i:last-child{border-right:0;}
   .ccard .pch .pjl{font-size:.62rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin-bottom:6px;}
   .ccard .pch .cb{display:flex; height:20px; border-radius:4px; overflow:hidden;}
   .ccard .pch .cb i{display:flex; align-items:center; justify-content:center; font-size:.64rem; font-weight:800; font-style:normal;
@@ -2184,6 +2197,20 @@
         }).join('') + '</div>' : '';
       })();
   }
+  // seats after May as one stacked bar, with the majority line and a key
+  function seatStripHtml(pj, order){
+    var T = pj.total || 0, need = Math.floor(T / 2) + 1;
+    if(!T) return '';
+    return '<div class="pjl" style="margin:10px 0 6px">Seats after May</div>' +
+      '<div class="ss"><div class="sb">' + order.map(function(p){
+        var c = pInfo(p).colour, w = 100 * pj.comp[p] / T;
+        return '<i style="width:' + w + '%; background:' + c + '; color:' + txtOn(c) + '">' + (w >= 8 ? pj.comp[p] : '') + '</i>';
+      }).join('') + '</div><b class="sm" style="left:' + (100 * need / T) + '%"></b></div>' +
+      // key only for parties too small to carry their number in the bar
+      '<div class="ck">' + order.filter(function(p){ return 100 * pj.comp[p] / T < 8; }).map(function(p){
+        return '<span><i style="background:' + pInfo(p).colour + '"></i><b>' + abbrev(p) + '</b> ' + pj.comp[p] + '</span>';
+      }).join('') + '<span style="margin-left:auto">' + need + ' for a majority</span></div>';
+  }
   // the council card in 2027-projection mode: the council after May in the same bars as now
   function projCardHtml(c, pj){
     var T = pj.total || c.total, maj = Math.floor(T / 2) + 1, comp = pj.comp || {}, won = pj.won || {}, rg = pj.rg || {};
@@ -2305,8 +2332,8 @@
         .sort(function(a, b){ return pj.comp[b] - pj.comp[a]; });
       pjHtml = '<div class="pj"><div class="pjl">2027 projection' + (newbOf(c.gss) ? ' \u00b7 on new wards, ' + (pj.total || '') + ' seats' : '') + '</div>' +
         '<span class="pjp" style="background:' + pjc + '; color:' + txtOn(pjc) + '">' + projText(pj) + '</span>' +
-        '<div class="pjm">After May: ' + pcomp.map(function(p){ return '<b>' + abbrev(p) + '</b> ' + pj.comp[p]; }).join(' \u00b7 ') + '</div>' +
-        '<div class="pjm">Chance: ' + chanceHtml(pj, 3) + '</div></div>';
+        seatStripHtml(pj, pcomp) +
+        '<div class="pjl" style="margin:10px 0 6px">Chance of each outcome</div><div class="pch0">' + chanceBarHtml(pj) + '</div></div>';
     }
     var foot = '';
     var sh = EV ? safeHold(c) : null;
