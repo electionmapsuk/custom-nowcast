@@ -365,6 +365,16 @@
   .ccard .cyckey i{width:9px; height:9px; border-radius:2px; flex:none;}
   .ccard .r .n{height:var(--barh); display:flex; align-items:center; justify-content:center;
     font-size:12px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums;}
+  /* 2027 projection block on the council card (elections page) */
+  .ccard .pj{padding:9px 12px 8px; border-top:1px solid var(--line2);}
+  .ccard .pj .pjl{font-size:.62rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--faint); margin-bottom:6px;}
+  .ccard .pj .pjp{display:inline-block; border-radius:6px; padding:5px 9px; font-weight:800; font-size:.78rem;}
+  .ccard .pj .pjm{font-size:.71rem; color:var(--muted); line-height:1.45; margin-top:5px;}
+  .ccard .pj .pjm b{color:var(--ink); font-weight:800;}
+  .pvbar{display:flex; flex-wrap:wrap; align-items:center; gap:8px; margin:0 0 12px;}
+  .pvbar .pvl{font-size:.68rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--faint);}
+  .pvbar .pvn{font-size:.72rem; color:var(--faint); font-weight:600;}
   .ccard .ft{text-align:center; padding:6px; color:var(--accent); font-weight:800; font-size:.7rem;
     border-top:1px solid var(--line2); line-height:1.2;}
   /* ward card - one row per councillor */
@@ -413,6 +423,12 @@
   <div id="loading" class="loading">Loading council data…</div>
 
   <div id="app" style="display:none;">
+    <div class="pvbar" id="pvbar" style="display:none;">
+      <span class="pvl">Show</span>
+      <button type="button" class="mmb active" data-pv="0">Now</button>
+      <button type="button" class="mmb" data-pv="1">2027 projection</button>
+      <span class="pvn" id="pvnote"></span>
+    </div>
     <div class="panel">
       <div class="section-h" style="margin:0 0 12px;" id="h-tiles">Councils run</div>
       <div class="totstrip" id="tiles"></div>
@@ -492,6 +508,33 @@
   // In a council that elects by thirds or halves, the ward view can show just
   // the councillors whose seats are up next. On by default in the elections view.
   var UPONLY = EV;
+  // 2027 projection (data/projection-2027.json, from the ElectionMapsUK local
+  // elections model). Loaded on the elections page only. The Now / 2027
+  // projection switch recolours the map, tiles, seat bar, legend and councils
+  // list by the projected result; the council card and the table show both.
+  // ?view=elections&proj=1 opens on the projection.
+  var PROJ = null;
+  var PV = /[?&]proj(=1)?(&|$)/i.test(location.search);
+  var PROJ_SURE = 0.6;   // projected control at least this likely: solid fill; less likely: paler
+  var NOPROJ_FILL = '#cfcdc6';   // voting, but outside the projection (Scotland, Wales)
+  function noProj(){ return DATA.councils.filter(function(c){ return inPlay(c) && !projOf(c); }).length; }
+  function projOf(c){ return (PROJ && c && c.gss && PROJ.councils[c.gss]) || null; }
+  function pvOn(){ return EV && PV && !!PROJ; }
+  function projKey(c){ var p = projOf(c); return p ? p.next : 'NOC'; }
+  function projSure(p){ return ((p.pc || {})[p.next] || 0) >= PROJ_SURE; }
+  function projColour(p){
+    if(p.next === 'NOC') return NOC_COLOUR;
+    var col = pInfo(p.next).colour;
+    return projSure(p) ? col : lighten(col, 0.5);
+  }
+  function projText(p){ return p.next === 'NOC' ? 'No overall control' : pInfo(p.next).name + ' majority'; }
+  function projShort(p){ return (p.next === 'NOC' ? 'NOC' : abbrev(p.next)) + ' ' + Math.round(((p.pc || {})[p.next] || 0) * 100) + '%'; }
+  function chanceHtml(p, n){
+    return Object.keys(p.pc || {}).sort(function(a, b){ return p.pc[b] - p.pc[a]; })
+      .filter(function(k){ return p.pc[k] >= 0.03; }).slice(0, n || 3)
+      .map(function(k){ return '<b>' + (k === 'NOC' ? 'NOC' : abbrev(k) + ' maj') + '</b> ' + Math.round(p.pc[k] * 100) + '%'; })
+      .join(' \u00b7 ');
+  }
   var byGss = {}, focusParty = null, pinnedGss = null;
   var sortKey = 'name', sortDir = 1;
 
@@ -547,9 +590,10 @@
 
   function topParties(c){
     var best = -1, top = [];
-    for(var k in c.seats){
+    var S = (pvOn() && projOf(c)) ? projOf(c).comp : c.seats;
+    for(var k in S){
       if(k === 'VAC') continue;
-      var v = c.seats[k];
+      var v = S[k];
       if(v > best){ best = v; top = [k]; }
       else if(v === best){ top.push(k); }
     }
@@ -624,6 +668,7 @@
       if(!top.length) return NOC_COLOUR;
       return top.length === 1 ? pInfo(top[0]).colour : tieSvgFill(m, top);
     }
+    if(pvOn()){ var pj = projOf(c); return pj ? projColour(pj) : NOPROJ_FILL; }
     var ct = c.control;
     if(!ct || ct.type === 'noc' || !ct.parties.length) return NOC_COLOUR;
     var col = pInfo(ct.parties[0]).colour;
@@ -667,12 +712,19 @@
       var tp = topParties(c);
       return tp.length === 1 ? tp[0] : (tp.length ? 'TIED' : 'NOC');
     }
-    return runsKey(c);
+    return pvOn() ? (projOf(c) ? projKey(c) : 'NOPROJ') : runsKey(c);
   }
   function nationalCounts(){
     var runs = {}, maj = {};
     DATA.councils.forEach(function(c){
       if(!inPlay(c)) return;
+      if(pvOn()){
+        if(!projOf(c)) return;
+        var pk = projKey(c);
+        runs[pk] = (runs[pk]||0) + 1;
+        if(pk !== 'NOC') maj[pk] = (maj[pk]||0) + 1;
+        return;
+      }
       var k = runsKey(c);
       runs[k] = (runs[k]||0) + 1;
       if(hasSeatMajority(c)) maj[k] = (maj[k]||0) + 1;
@@ -712,8 +764,9 @@
       });
   }
 
-  Promise.all([loadJson('councils.json'), loadJson('boundaries-lower.json')]).then(function(a){
-    DATA = a[0]; GEO.lower = a[1];
+  Promise.all([loadJson('councils.json'), loadJson('boundaries-lower.json'),
+               EV ? loadJson('projection-2027.json', true).catch(function(){ return null; }) : null]).then(function(a){
+    DATA = a[0]; GEO.lower = a[1]; PROJ = (a[2] && a[2].councils) ? a[2] : null;
     DATA.councils.forEach(function(c){ if(c.gss) byGss[c.gss] = c; });
     start();
   }).catch(function(e){
@@ -726,8 +779,36 @@
     var d = new Date(DATA.meta.generated);
     $('stamp').textContent = 'Updated ' + d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
     if(EV) setupElections();
+    if(EV && PROJ){ $('pvbar').style.display = ''; setPvButtons(); }
+    pvHeads();
     buildTiles(); buildNatBar(); buildFoot(); panelDefault(); wire(); drawMaps(); buildLegend(); buildTable();
     if(EV && SHOW_METERS) buildBattlegrounds();
+  }
+
+  function setPvButtons(){
+    document.querySelectorAll('[data-pv]').forEach(function(x){
+      x.classList.toggle('active', (x.getAttribute('data-pv') === '1') === PV);
+    });
+    if(PROJ) $('pvnote').textContent = PV ? 'Projected result in the ' + Object.keys(PROJ.councils).length +
+      ' English councils on today\u2019s Nowcast \u00b7 ' + (PROJ.meta.version || '') +
+      ', ' + (PROJ.meta.date || '') : 'Who runs each council now';
+  }
+  // section headings for the current view
+  function pvHeads(){
+    if(!EV || nextRound().none) return;
+    var E = nextRound();
+    if(pvOn()){
+      $('h-tiles').textContent = 'Councils voting, projected control after May';
+      var pw = Object.keys(PROJ.national).reduce(function(a, p){ return a + PROJ.national[p].won; }, 0);
+      $('h-nat').textContent = 'Projected seats won in England \u00b7 ' + fmt(pw) + ' seats in ' +
+        fmt(Object.keys(PROJ.councils).length) + ' councils \u00b7 grey figures: likely range';
+    } else {
+      var when = new Date(E.date + 'T12:00:00').toLocaleDateString('en-GB',
+        {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
+      $('h-tiles').textContent = 'Councils voting, by who runs them now';
+      $('h-nat').textContent = 'Seats being defended \u00b7 ' + fmt(E.total) + ' seats in ' +
+        fmt(E.up.length) + ' councils \u00b7 ' + when;
+    }
   }
 
   // ----------------------------------------------------------------- tiles --
@@ -757,6 +838,13 @@
       var sub2 = code === 'NOC' ? fmt(e[1]) + ' with no administration'
         : EV ? fmt(nextRound().seats[code] || 0) + ' seats up'
              : fmt((DATA.meta.partyTotals || {})[code] || 0) + ' councillors';
+      if(pvOn()){
+        var cr = PROJ.control[code] || {lo: 0, hi: 0}, nr = PROJ.national[code];
+        sub1 = code === 'NOC' ? 'of ' + fmt(Object.keys(PROJ.councils).length) + ' councils projected'
+             : 'likely ' + cr.lo + '\u2013' + cr.hi;
+        sub2 = code === 'NOC' ? 'likely ' + cr.lo + '\u2013' + cr.hi
+             : (nr ? fmt(nr.won) + ' seats won' : '');
+      }
       return '<div class="tot" data-p="'+code+'" title="'+full+'" style="background:'+col+'; color:'+txtOn(col)+'">' +
         '<div class="nm">'+name+(code === 'NOC' ? '' : ' <span style="font-weight:700; opacity:.8; text-transform:none">majority</span>')+'</div>' +
         '<div class="n">'+fmt(head)+'</div>' +
@@ -823,6 +911,7 @@
   function buildNatBar(){
     // the elections view shows the seats up
     var raw = EV ? nextRound().seats : (DATA.meta.partyTotals || {});
+    if(pvOn()){ raw = {}; Object.keys(PROJ.national).forEach(function(p){ raw[p] = PROJ.national[p].won; }); }
     // Parties with fewer than BAR_MIN seats go into Oth, in the bar and its key
     var tot = {}, small = [];
     Object.keys(raw).forEach(function(p){
@@ -856,7 +945,9 @@
 
     var html = named.map(function(p){
       return '<span title="'+pInfo(p).name+'"><i style="background:'+pInfo(p).colour+'"></i>'+
-             abbrev(p)+' <b style="color:var(--ink)">'+fmt(tot[p])+'</b></span>';
+             abbrev(p)+' <b style="color:var(--ink)">'+fmt(tot[p])+'</b>'+
+             (pvOn() && PROJ.national[p] ? ' <span style="color:var(--faint)">'+fmt(PROJ.national[p].lo)+'\u2013'+
+               fmt(PROJ.national[p].hi)+'</span>' : '')+'</span>';
     });
     if(oth){
       var rolled = order.filter(function(p){
@@ -878,6 +969,16 @@
       'elected mayoralty; paler shade = a minority or coalition administration; black = no overall ' +
       'control. Refreshed automatically every day.'
     ].concat(notShownNote());
+    if(EV && PROJ){
+      var vi = PROJ.meta.vi || {};
+      paras.push('The 2027 projection is the ElectionMapsUK local elections model (' + esc(PROJ.meta.version || '') +
+        ', ' + esc(PROJ.meta.date || '') + ') on the current Nowcast (' + Object.keys(vi).map(function(p){ return abbrev(p) + ' ' + vi[p]; }).join(', ') +
+        '): each ward\u2019s last result is swung to the Nowcast, adjusted for recent council by-elections, with ' +
+        'Restore Britain placed from the census. It covers the ' + fmt(Object.keys(PROJ.councils).length) +
+        ' English councils; Scottish and Welsh councils are not projected. Chances come from ' + fmt(PROJ.meta.nsim) + ' simulations with national, ' +
+        'council and ward errors; ranges are the middle 80%. On the projection map, solid fill = projected control at least ' +
+        Math.round(PROJ_SURE * 100) + '% likely, paler = less likely, black = no overall control. Ind includes local parties.');
+    }
     $('foot').innerHTML = '<p>' + paras.join('</p><p>') + '</p>';
     if(EV && !nextRound().none){
       $('counts').textContent = fmt(nextRound().up.length) + ' councils voting · ' +
@@ -1702,6 +1803,16 @@
       }).join('') + '</div>';
     }
 
+    var pj = EV ? projOf(c) : null, pjHtml = '';
+    if(pj){
+      var pjc = projColour(pj);
+      var pcomp = Object.keys(pj.comp).filter(function(p){ return pj.comp[p]; })
+        .sort(function(a, b){ return pj.comp[b] - pj.comp[a]; });
+      pjHtml = '<div class="pj"><div class="pjl">2027 projection</div>' +
+        '<span class="pjp" style="background:' + pjc + '; color:' + txtOn(pjc) + '">' + projText(pj) + '</span>' +
+        '<div class="pjm">After May: ' + pcomp.map(function(p){ return '<b>' + abbrev(p) + '</b> ' + pj.comp[p]; }).join(' \u00b7 ') + '</div>' +
+        '<div class="pjm">Chance: ' + chanceHtml(pj, 3) + '</div></div>';
+    }
     var foot = '';
     var sh = EV ? safeHold(c) : null;
     if(sh){
@@ -1724,7 +1835,7 @@
           (c.vacant ? ' · <b>'+c.vacant+'</b> vacant' : '')+'</div>' +
       '</div>' +
       '<div class="stack">'+stack+'</div>' +
-      '<div class="bd">'+rows+'</div>' + key + foot;
+      '<div class="bd">'+rows+'</div>' + key + pjHtml + foot;
   }
 
   function panelOn(){ return window.innerWidth > 900; }
@@ -2059,13 +2170,14 @@
         .sort(function(a, b){ return a.c.name.localeCompare(b.c.name); });
       if(!g.length) return '';
       return '<div class="elh">' + nat + ' \u00b7 ' + g.length + '</div>' + g.map(function(u){
-        var col = controlSwatch(u.c);
-        return '<div class="el" data-g="' + u.c.gss + '" title="' + esc(controlText(u.c)) + '">' +
+        var pj = pvOn() ? projOf(u.c) : null;
+        var col = pj ? projColour(pj) : controlSwatch(u.c);
+        return '<div class="el" data-g="' + u.c.gss + '" title="' + esc(pj ? '2027 projection: ' + projText(pj) : controlText(u.c)) + '">' +
           '<span class="en">' + esc(u.c.name) + '</span>' +
           '<span class="es">' + (safeHold(u.c) ? '<span title="Can\u2019t lose its majority this time" style="color:var(--ink)">' + LOCK_SVG + '</span> ' : '') +
             (u.all ? 'all ' + u.n : u.n + ' of ' + u.c.total) + '</span>' +
           '<span class="ec" style="background:' + col + '; color:' + txtOn(col) + '">' +
-          esc(shortControl(u.c)) + '</span></div>';
+          esc(pj ? projShort(pj) : shortControl(u.c)) + '</span></div>';
       }).join('');
     }).join('');
     setPanel(
@@ -2171,7 +2283,12 @@
       fmt(DATA.councils.length - nextRound().up.length) + '</b></span>' +
       '<span class="lgd lgdx" title="New mayors elected for the first time: ' +
         MAYORAL_RACES.map(function(r){ return r.name; }).join(', ') + '">' +
-        '<i style="background:none; border:2px dashed #15171a"></i>New mayor</span>' : '');
+        '<i style="background:none; border:2px dashed #15171a"></i>New mayor</span>' : '') +
+      (pvOn() && noProj() ? '<span class="lgd lgdx" title="Voting in ' + nextRound().date.slice(0, 4) +
+        ' but not in the projection, which covers the English councils"><i style="background:' + NOPROJ_FILL +
+        '"></i>Not projected <b>' + fmt(noProj()) + '</b></span>' : '') +
+      (pvOn() ? '<span class="lgd lgdx" title="Projected control less than ' + Math.round(PROJ_SURE * 100) +
+        '% likely"><i style="background:' + lighten('#6b7280', 0.5) + '"></i>Paler: under ' + Math.round(PROJ_SURE * 100) + '% likely</span>' : '');
     $('legend').querySelectorAll('.lgd').forEach(function(el){
       el.addEventListener('click', function(){
         var k = el.getAttribute('data-k');
@@ -2201,6 +2318,9 @@
       if(sortKey === 'control'){ x=controlText(a); y=controlText(b); return dir * (x<y?-1:x>y?1:0); }
       if(sortKey === 'total'){ return dir * (a.total-b.total); }
       if(sortKey === 'up'){ return dir * ((a._up || 0) - (b._up || 0)); }
+      if(sortKey === 'proj'){ x = projOf(a) ? projText(projOf(a)) : ''; y = projOf(b) ? projText(projOf(b)) : ''; return dir * (x<y?-1:x>y?1:0); }
+      if(sortKey === 'chance'){ var ca = projOf(a), cb = projOf(b);
+        return dir * (((ca && ca.pc[ca.next]) || 0) - ((cb && cb.pc[cb.next]) || 0)); }
       return dir * ((a.seats[sortKey]||0) - (b.seats[sortKey]||0));
     });
     return list;
@@ -2242,6 +2362,8 @@
       '<th data-k="name">Council</th><th data-k="type">Type</th>' +
       '<th data-k="control">Control</th>' +
       (EV ? '<th data-k="up" title="Seats being contested">Seats up</th>' : '') +
+      (EV && PROJ ? '<th data-k="proj" title="Projected control after May 2027">Projected</th>' +
+                    '<th data-k="chance" title="Chance of the projected control outcome">Chance</th>' : '') +
       cols.map(function(p){ return '<th data-k="'+p+'" title="'+pInfo(p).name+'">'+abbrev(p)+'</th>'; }).join('') +
       '<th data-k="total">Total</th></tr></thead>';
     var body = '<tbody>' + list.map(function(c){
@@ -2252,6 +2374,11 @@
         (EV ? '<td class="num" style="color:var(--ink); font-weight:700">' +
               (c._all ? 'All ' + c._up : c._up + ' of ' + c.total) +
               (c._safe ? ' <span title="' + abbrev(c._safe) + ' can\u2019t lose its majority this time">' + LOCK_SVG + '</span>' : '') + '</td>' : '') +
+        (EV && PROJ ? (function(){ var pj = projOf(c); if(!pj) return '<td></td><td></td>';
+            var pc = projColour(pj);
+            return '<td class="ctrl" style="background:' + pc + '; color:' + txtOn(pc) + '" title="' + esc(projText(pj)) + '">' +
+              (pj.next === 'NOC' ? 'NOC' : abbrev(pj.next)) + '</td><td class="num" title="' + esc(chanceHtml(pj, 3).replace(/<[^>]+>/g, '')) + '">' +
+              Math.round((pj.pc[pj.next] || 0) * 100) + '%</td>'; })() : '') +
         cols.map(function(p){ return '<td class="num">'+(c.seats[p]||'')+'</td>'; }).join('') +
         '<td class="num" style="color:var(--ink); font-weight:700">'+c.total+'</td></tr>';
     }).join('') + '</tbody>';
@@ -2260,7 +2387,7 @@
       th.addEventListener('click', function(){
         var k = th.getAttribute('data-k');
         if(sortKey === k) sortDir = -sortDir;
-        else { sortKey = k; sortDir = (k==='name'||k==='type'||k==='control') ? 1 : -1; }
+        else { sortKey = k; sortDir = (k==='name'||k==='type'||k==='control'||k==='proj') ? 1 : -1; }
         buildTable();
       });
     });
@@ -2290,12 +2417,14 @@
     var cols = EV ? partyCols(rows) : tableOrder().filter(function(p){ return DATA.meta.partyTotals[p]; });
     var head = ['Council','Type','Nation','Region','GSS','Control','ControlType']
       .concat(EV ? ['Seats up'] : [])
+      .concat(EV && PROJ ? ['Projected control 2027', 'Chance of projected control'] : [])
       .concat(cols.map(function(p){ return pInfo(p).name + (EV ? ' seats up' : ''); })).concat(['Total']);
     var lines = [head.join(',')];
     rows.forEach(function(c){
       var row = ['"'+c.name.replace(/"/g,'""')+'"', '"'+(c.typeName||'')+'"', c.nation, '"'+(c.region||'')+'"',
                  c.gss, '"'+c.control.label+'"', c.control.type]
         .concat(EV ? [c._up] : [])
+        .concat(EV && PROJ ? (projOf(c) ? ['"' + projText(projOf(c)) + '"', (projOf(c).pc[projOf(c).next] || 0).toFixed(2)] : ['', '']) : [])
         .concat(cols.map(function(p){ return c.seats[p]||0; })).concat([c.total]);
       lines.push(row.join(','));
     });
@@ -2323,6 +2452,16 @@
         colourMode = b.getAttribute('data-colour');
         recolour(); buildTable();
         if(!pinnedGss) clearCard();
+      });
+    });
+    document.querySelectorAll('[data-pv]').forEach(function(b){
+      b.addEventListener('click', function(){
+        var on = b.getAttribute('data-pv') === '1';
+        if(on === PV) return;
+        PV = on; focusParty = null;
+        setPvButtons(); pvHeads();
+        buildTiles(); buildNatBar(); recolour(); buildTable();
+        if(!pinnedGss) panelDefault();
       });
     });
     $('reset').addEventListener('click', resetView);
