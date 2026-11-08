@@ -377,6 +377,21 @@
   .ccard .pj .pjp{display:inline-block; border-radius:6px; padding:5px 9px; font-weight:800; font-size:.78rem;}
   .ccard .pj .pjm{font-size:.71rem; color:var(--muted); line-height:1.45; margin-top:5px;}
   .ccard .pj .pjm b{color:var(--ink); font-weight:800;}
+  /* projection-mode card: likely range on each bar, chance of each outcome */
+  .ccard .r .bar .rg{position:absolute; bottom:-3px; height:2px; background:#6b7280;
+    z-index:3; pointer-events:none; box-sizing:border-box;}
+  .ccard .r .bar .rg::before,.ccard .r .bar .rg::after{content:''; position:absolute; top:-4px; width:2px; height:6px; background:#6b7280;}
+  .ccard .r .bar .rg::before{left:0;} .ccard .r .bar .rg::after{right:0;}
+  .ccard .pch{padding:9px 12px 10px; border-top:1px solid var(--line2);}
+  .ccard .pch .pjl{font-size:.62rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin-bottom:6px;}
+  .ccard .pch .cb{display:flex; height:20px; border-radius:4px; overflow:hidden;}
+  .ccard .pch .cb i{display:flex; align-items:center; justify-content:center; font-size:.64rem; font-weight:800; font-style:normal;
+    border-right:1px solid #fff; white-space:nowrap; overflow:hidden; flex:none;}
+  .ccard .pch .cb i:last-child{border-right:0;}
+  .ccard .pch .ck{display:flex; flex-wrap:wrap; gap:3px 10px; margin-top:6px; font-size:.68rem; color:var(--muted);}
+  .ccard .pch .ck span{display:flex; align-items:center; gap:4px;}
+  .ccard .pch .ck i{width:9px; height:9px; border-radius:2px; flex:none;}
+  .ccard .pch .ck b{color:var(--ink); font-weight:800;}
   /* battleground snake (elections page, needs the projection file) */
   .snbar{display:flex; flex-wrap:wrap; gap:6px; margin-bottom:10px;}
   .snsum{font-size:.78rem; color:var(--muted); margin:0 0 12px; line-height:1.5;}
@@ -576,6 +591,9 @@
     return out;
   }
   function drawPVL(){
+    // the national ward layer is off: the map shows councils, wards only inside an opened council
+    eachMap(function(m){ if(m.g) m.g.selectAll('g.pvl,g.pvb').remove(); m.pvlOn = false; });
+    if(!window.SHOW_NATIONAL_WARDS) return;
     eachMap(function(m){
       var on = pvOn() && !!PVL && !!PROJW && m.key === 'lower' && m.g;
       if(!on){ if(m.g){ m.g.selectAll('.pvl,.pvb').remove(); } m.pvlOn = false; return; }
@@ -874,7 +892,7 @@
     var d = new Date(DATA.meta.generated);
     $('stamp').textContent = 'Updated ' + d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
     if(EV) setupElections();
-    if(EV && PROJ){ $('pvbar').style.display = ''; $('pvmap').style.display = 'inline-flex'; setPvButtons(); if(PV){ loadProjW(); loadPVL(); } }
+    if(EV && PROJ){ $('pvbar').style.display = ''; $('pvmap').style.display = 'inline-flex'; setPvButtons(); if(PV){ loadProjW(); } }
     if(EV && PROJ && snParties().length){ $('snwrap').style.display = ''; buildSnake(); }
     pvHeads();
     buildTiles(); buildNatBar(); buildFoot(); panelDefault(); wire(); drawMaps(); buildLegend(); buildTable();
@@ -1026,13 +1044,23 @@
       if(k % 2 === 0){ th = -PI / 2 + t; return {x: x0 + L + R * Math.cos(th), y: yk + R + R * Math.sin(th), tx: -Math.sin(th), ty: Math.cos(th), k: k, arc: 1}; }
       th = -PI / 2 - t; return {x: x0 + R * Math.cos(th), y: yk + R + R * Math.sin(th), tx: Math.sin(th), ty: -Math.cos(th), k: k, arc: -1};
     }
-    function band(s0, s1){
-      var pts = [], n = Math.max(1, Math.ceil((s1 - s0) / 2)), outer = [], inner = [], h = bh / 2, f = function(v){ return v.toFixed(1); };
+    // capS / capE: round off the start / end with a half circle (the head and tail of the snake)
+    function band(s0, s1, capS, capE){
+      var n = Math.max(1, Math.ceil((s1 - s0) / 2)), outer = [], inner = [], h = bh / 2, f = function(v){ return v.toFixed(1); };
+      var semi = function(q, dir, from){   // half circle round q: dir 1 forward from outer to inner, -1 backward from inner to outer
+        var nx = -q.ty, ny = q.tx, out = [];
+        for(var j = 1; j < 16; j++){
+          var a = Math.PI * j / 16, c = Math.cos(a) * from, sn = Math.sin(a) * dir;
+          out.push(f(q.x + h * (nx * c + q.tx * sn)) + ',' + f(q.y + h * (ny * c + q.ty * sn)));
+        }
+        return out;
+      };
       for(var i = 0; i <= n; i++){
         var q = at(s0 + (s1 - s0) * i / n), nx = -q.ty, ny = q.tx;
         outer.push(f(q.x + nx * h) + ',' + f(q.y + ny * h)); inner.push(f(q.x - nx * h) + ',' + f(q.y - ny * h));
       }
-      return 'M' + outer.join(' L') + ' L' + inner.reverse().join(' L') + ' Z';
+      var pts = outer.concat(capE ? semi(at(s1), 1, 1) : [], inner.reverse(), capS ? semi(at(s0), -1, -1) : []);
+      return 'M' + pts.join(' L') + ' Z';
     }
     var pid = 'snh-' + party, BODY = '#e7e5df', dk = darken(col, 0.45);
     var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(pInfo(party).name) +
@@ -1041,7 +1069,7 @@
       lighten(col, 0.86) + '"/><rect width="2.2" height="6" fill="' + lighten(col, 0.3) + '"/></pattern>' +
       '<pattern id="' + pid + '-x" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="' +
       col + '"/><rect width="2.6" height="6" fill="' + dk + '"/></pattern></defs>';
-    svg += '<path d="' + band(0, total) + '" fill="' + BODY + '"/>';
+    svg += '<path d="' + band(0, total, true, true) + '" fill="' + BODY + '"/>';
     var TIPS = {};
     rows.forEach(function(r){
       var fill, maj = r.m <= 0, big = !maj && r.l !== null && r.l <= 0, sh = safeHold(r.c), lock = (sh && sh.p === party) ? sh : null;
@@ -1056,12 +1084,12 @@
         : 'needs a swing of ' + r.m.toFixed(1) + ' points for an ' + ab + ' majority' + (big ? ' (largest party on the projection)' : '')) +
         ' · chance of an ' + ab + ' majority ' + ch + '%';
       // round off the head and the tail of the snake in the end councils' colours
-      var cap = function(sv){ var q = at(sv); return '<circle cx="' + q.x.toFixed(1) + '" cy="' + q.y.toFixed(1) + '" r="' + (bh / 2 - 0.5) + '" fill="' + fill + '"/>'; };
-      var caps = (r.s0 === 0 ? cap(0) : '') + (r.s1 === total ? cap(total) : '');
+      var shape = band(r.s0, r.s1, r.s0 === 0, r.s1 === total), cid = 'snc-' + party + '-' + r.g;
       TIPS[r.g] = snTip(r, party, maj, big, lock, gain);
       svg += '<g class="sb" data-g="' + r.g + '">' +
-        '<path class="bk" d="' + band(r.s0, r.s1) + '" fill="' + fill + '" stroke="#fff" stroke-width="1" stroke-linejoin="round"/>' + caps +
-        (lock ? '<path d="' + band(r.s0 + 1.2, r.s1 - 1.2) + '" fill="none" stroke="#15171a" stroke-width="2.2" stroke-linejoin="round"/>' : '') +
+        '<path class="bk" d="' + shape + '" fill="' + fill + '" stroke="#fff" stroke-width="1" stroke-linejoin="round"/>' +
+        // can't lose: a black stroke kept inside the council's own shape (clipped to it), round the end too
+        (lock ? '<clipPath id="' + cid + '"><path d="' + shape + '"/></clipPath><path d="' + shape + '" fill="none" stroke="#15171a" stroke-width="5" stroke-linejoin="round" clip-path="url(#' + cid + ')"/>' : '') +
         (len >= (W < 600 ? 22 : 25) ? '<text x="' + mid.x.toFixed(1) + '" y="' + (mid.y + 3.5).toFixed(1) + '" text-anchor="middle" font-size="' +
           (W < 600 ? 9 : 10) + '" font-weight="800" fill="' + tc + '">' + esc(r.pj.code || r.c.name.slice(0, 3).toUpperCase()) + '</text>' : '') + '</g>';
     });
@@ -2137,7 +2165,68 @@
 
   // The same card is used by the floating tooltip (narrow screens) and by the
   // side panel (wide screens).
+  // chance of each outcome, as on the snake popup: one stacked bar, labelled where there's room, with a key
+  function chanceBarHtml(pj){
+    var pc = function(k){ return k === 'NOC' ? NOC_COLOUR : pInfo(k).colour; };
+    var lab = function(k){ return k === 'NOC' ? 'NOC' : abbrev(k) + ' maj'; };
+    var outs = Object.keys(pj.pc || {}).filter(function(k){ return pj.pc[k] >= 0.01; }).sort(function(a, b){ return pj.pc[b] - pj.pc[a]; });
+    var tot = outs.reduce(function(a, k){ return a + pj.pc[k]; }, 0) || 1;
+    return '<div class="cb">' + outs.map(function(k){
+        var w = 100 * pj.pc[k] / tot, bg = pc(k);
+        return '<i style="width:' + w + '%; background:' + bg + '; color:' + txtOn(bg) + '">' + (w >= 18 ? lab(k) + ' ' + Math.round(100 * pj.pc[k]) + '%' : '') + '</i>';
+      }).join('') + '</div>' +
+      '<div class="ck">' + outs.map(function(k){
+        return '<span><i style="background:' + pc(k) + '"></i><b>' + lab(k) + '</b> ' + Math.round(100 * pj.pc[k]) + '%</span>';
+      }).join('') + '</div>';
+  }
+  // the council card in 2027-projection mode: the council after May in the same bars as now
+  function projCardHtml(c, pj){
+    var T = pj.total || c.total, maj = Math.floor(T / 2) + 1, comp = pj.comp || {}, won = pj.won || {}, rg = pj.rg || {};
+    var order = Object.keys(comp).filter(function(p){ return comp[p]; })
+      .sort(function(a, b){ return (comp[b] - comp[a]) || (DATA.spectrum.indexOf(a) - DATA.spectrum.indexOf(b)); });
+    // likely range of seats after May: the seats not up plus the likely range won in May
+    var range = function(p){ var r = rg[p], held = (comp[p] || 0) - (won[p] || 0); return r ? [held + r[0], held + r[1]] : null; };
+    var hi = order.reduce(function(a, p){ var r = range(p); return Math.max(a, comp[p], r ? r[1] : 0); }, 1);
+    var axis = Math.max(hi, maj + 1), majPct = 100 * maj / axis;
+    var partial = order.some(function(p){ return comp[p] > (won[p] || 0); });
+    var stack = order.map(function(p){ return '<i style="width:' + (100 * comp[p] / T) + '%; background:' + pInfo(p).colour + '"></i>'; }).join('');
+    var rows = order.map(function(p){
+      var pc = pInfo(p), pct = 100 * comp[p] / axis, w = won[p] || 0, held = comp[p] - w, r = range(p), segs = [];
+      [[held, partial ? cycleShade(pc.colour, 0, 2) : pc.colour, 'not up in May'], [w, partial ? cycleShade(pc.colour, 1, 2) : pc.colour, 'won in May']].forEach(function(x){
+        if(!x[0]) return;
+        var sw = 100 * x[0] / comp[p], showN = partial && pct * sw / 100 >= 7;
+        segs.push('<i title="' + x[0] + ' ' + x[2] + '" style="width:' + sw + '%; background:' + x[1] + '; color:' + txtOn(x[1]) + '">' + (showN ? x[0] : '') + '</i>');
+      });
+      var rgEl = (r && r[1] > r[0]) ? '<s class="rg" title="likely ' + r[0] + '\u2013' + r[1] + '" style="left:' + (100 * r[0] / axis) + '%; width:' + (100 * (r[1] - r[0]) / axis) + '%"></s>' : '';
+      return '<div class="r" title="' + abbrev(p) + ' ' + comp[p] + (r ? ' (likely ' + r[0] + '\u2013' + r[1] + ')' : '') + '">' +
+        '<div class="ab" style="background:' + pc.colour + '; color:' + txtOn(pc.colour) + '">' + abbrev(p) + '</div>' +
+        '<div class="bar"><span class="fill" style="width:' + pct + '%">' + segs.join('') + '</span>' + rgEl +
+        '<b class="maj" style="left:' + majPct + '%"></b></div>' +
+        '<div class="n">' + comp[p] + '</div></div>';
+    }).join('');
+    var key = '<div class="cyckey">' + (partial ? '<span><i style="background:' + cycleShade('#6b7280', 0, 2) + '"></i>Not up in May</span>' +
+        '<span><i style="background:' + cycleShade('#6b7280', 1, 2) + '"></i>Won May 2027</span>' : '') +
+      '<span><i style="background:linear-gradient(#6b7280,#6b7280) center/100% 2px no-repeat; width:14px; height:6px; border-radius:0; border-left:2px solid #6b7280; border-right:2px solid #6b7280; box-sizing:border-box"></i>Likely range</span></div>';
+    var now = controlSwatch(c), nx = projColour(pj);
+    var foot = '', sh = safeHold(c);
+    if(sh) foot += '<div class="ft" style="color:var(--ink)">' + LOCK_SVG + ' <b>' + abbrev(sh.p) + '</b> can\u2019t lose its majority in ' +
+      nextRound().date.slice(0, 4) + ': ' + sh.keep + ' of its ' + sh.held + ' seats aren\u2019t up (' + sh.need + ' needed)</div>';
+    foot += '<div class="ft">' + (partial ? (won && Object.keys(won).reduce(function(a, p){ return a + won[p]; }, 0)) + ' of ' + T + ' seats up' : 'All ' + T + ' seats up') +
+      (newbOf(c.gss) ? ' \u00b7 new wards' : '') + ' \u00b7 6 May 2027</div>';
+    return '<div class="hd">' +
+        '<div class="nm">' + c.name + '</div>' +
+        '<div class="ty">' + (c.typeName || '') + ' \u00b7 2027 projection</div>' +
+        '<div class="res"><div class="pill" style="background:' + now + '; color:' + txtOn(now) + '" title="Now">' + esc(shortControl(c)) + '</div>' +
+          '<span style="align-self:center; opacity:.7; font-weight:800">\u2192</span>' +
+          '<div class="pill" style="background:' + nx + '; color:' + txtOn(nx) + '">' + (pj.next === 'NOC' ? 'NOC' : abbrev(pj.next) + ' majority') + '</div></div>' +
+        '<div class="meta"><b>' + T + '</b> seats after May \u00b7 <b>' + maj + '</b> for a majority' + (T !== c.total ? ' (now ' + c.total + ')' : '') + '</div>' +
+      '</div>' +
+      '<div class="stack">' + stack + '</div>' +
+      '<div class="bd">' + rows + '</div>' + key +
+      '<div class="pch"><div class="pjl">Chance of each outcome</div>' + chanceBarHtml(pj) + '</div>' + foot;
+  }
   function cardHtml(c, fallbackName){
+    if(c && pvOn() && projOf(c)) return projCardHtml(c, projOf(c));
     if(!c){
       return '<div class="hd"><div class="nm">'+(fallbackName||'Unknown')+'</div>' +
              '<div class="ty">No council data</div></div>';
@@ -2860,7 +2949,7 @@
         var on = b.getAttribute('data-pv') === '1';
         if(on === PV) return;
         PV = on; focusParty = null;
-        if(PV){ loadProjW(); loadPVL(); }
+        if(PV){ loadProjW(); }
         setPvButtons(); pvHeads();
         buildTiles(); buildNatBar(); recolour(); buildTable();
         if(WARD && WARD.geo){
@@ -2868,6 +2957,7 @@
           if(PV && !PROJW) loadProjW(); else if(!newbOf(WARD.code)) refreshWards();
         }
         else if(!pinnedGss) panelDefault();
+        else showCardFor(pinnedGss, '', null);
       });
     });
     $('reset').addEventListener('click', resetView);
