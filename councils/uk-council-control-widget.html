@@ -456,6 +456,11 @@
           <button type="button" class="tsl" data-maps="upper" title="County councils and unitaries">Upper tier</button>
         </span>
       </span>
+      <span id="pvmap" style="display:none; gap:8px; align-items:center;">
+        <button type="button" class="mmb active" data-pv="0">Now</button>
+        <button type="button" class="mmb" data-pv="1">2027 projection</button>
+        <span style="width:1px; height:22px; background:var(--line); margin:0 2px;"></span>
+      </span>
       <button class="mmb active" data-colour="control">Control</button>
       <button class="mmb" data-colour="largest">Largest party</button>
       <button class="mmb ghost" id="reset">Reset view</button>
@@ -540,6 +545,16 @@
   var PROJ_SURE = 0.6;   // projected control at least this likely: solid fill; less likely: paler
   var NOPROJ_FILL = '#cfcdc6';   // voting, but outside the projection (Scotland, Wales)
   function noProj(){ return DATA.councils.filter(function(c){ return inPlay(c) && !projOf(c); }).length; }
+  var PROJW = null, PROJW_LOADING = null;
+  function loadProjW(){
+    if(PROJW || PROJW_LOADING) return PROJW_LOADING;
+    PROJW_LOADING = loadJson('projection-wards-2027.json', true).then(function(d){
+      PROJW = (d && d.councils) ? d : null;
+      if(WARD && WARD.geo) refreshWards();
+    }).catch(function(){ PROJW_LOADING = null; });
+    return PROJW_LOADING;
+  }
+  function projWards(code){ return (pvOn() && PROJW && PROJW.councils[code]) || null; }
   function projOf(c){ return (PROJ && c && c.gss && PROJ.councils[c.gss]) || null; }
   function pvOn(){ return EV && PV && !!PROJ; }
   function projKey(c){ var p = projOf(c); return p ? p.next : 'NOC'; }
@@ -801,7 +816,7 @@
     var d = new Date(DATA.meta.generated);
     $('stamp').textContent = 'Updated ' + d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
     if(EV) setupElections();
-    if(EV && PROJ){ $('pvbar').style.display = ''; setPvButtons(); }
+    if(EV && PROJ){ $('pvbar').style.display = ''; $('pvmap').style.display = 'inline-flex'; setPvButtons(); }
     if(EV && PROJ && snParties().length){ $('snwrap').style.display = ''; buildSnake(); }
     pvHeads();
     buildTiles(); buildNatBar(); buildFoot(); panelDefault(); wire(); drawMaps(); buildLegend(); buildTable();
@@ -1539,6 +1554,17 @@
   }
   // the councillors to draw for a ward: all, or only those up next
   function shownPeople(id){
+    // projection mode: one entry per projected seat, so the fills, stripes,
+    // ward list and party highlighting all work as they do for councillors
+    var pw = WARD && projWards(WARD.code);
+    if(pw){
+      var e = pw[id], out = [];
+      if(!e) return out;
+      Object.keys(e.w).forEach(function(p){
+        for(var i = 0; i < e.w[p]; i++) out.push({p: p, n: 'Projected ' + pInfo(p).name, y: WARD.upYear || '2027', proj: 1});
+      });
+      return out;
+    }
     var ppl = (WARD && WARD.mem && WARD.mem.wards[id]) || [];
     if(!UPONLY || !WARD.upYear) return ppl;
     return ppl.filter(function(p){ return String(p.y) === WARD.upYear; });
@@ -1744,6 +1770,7 @@
 
   function drawWards(m, c, geo, mem){
     WARD.geo = geo; WARD.mem = mem;
+    if(pvOn() && !PROJW) loadProjW();
     WARD.upYear = partYear(c);
     m.g.selectAll('.cp').classed('bg', true)
       .classed('inward', function(d){ return d.properties.code === c.gss; });
@@ -1836,7 +1863,38 @@
     return (s.normalize ? s.normalize('NFD').replace(/[\u0300-\u036f]/g, '') : s).toLowerCase();
   }
   function bare(s){ return String(s || '').toLowerCase().replace(/\b(the|party)\b|[^a-z]/g, ''); }
+  function projWardCard(c, props, e, people, geo){
+    var P7 = (PROJW.meta && PROJW.meta.parties) || ['RFM', 'LAB', 'CON', 'LDM', 'GRN', 'IND', 'RES'];
+    var head = '<div class="hd"><div class="nm">' + esc(wardLabel(props.id, props.name)) + '</div>' +
+      '<div class="ty">' + esc(c.name) + ' \u00b7 ' + (isDivisions(geo) ? 'Electoral division' : 'Ward') + ' \u00b7 2027 projection</div>';
+    if(!e) return head + '<div class="meta" style="margin-top:7px">No seat up here in 2027</div></div>';
+    var sh = P7.map(function(p, i){ return [p, e.s[i] / 10]; }).filter(function(x){ return x[1] >= 0.5; })
+      .sort(function(a, b){ return b[1] - a[1]; });
+    var nUp = Object.keys(e.w).reduce(function(a, p){ return a + e.w[p]; }, 0);
+    var win = Object.keys(e.w).sort(function(a, b){ return e.w[b] - e.w[a]; });
+    var chip = function(p, t){ var col = pInfo(p).colour; return '<span style="display:inline-block; padding:2px 6px; margin:0 3px 3px 0; border-radius:4px; font-size:.66rem; font-weight:800; background:' + col + '; color:' + txtOn(col) + '">' + (t || abbrev(p)) + '</span>'; };
+    var upNow = (people || []).filter(function(p){ return !WARD.upYear || String(p.y) === WARD.upYear; });
+    var max = sh.length ? sh[0][1] : 1;
+    var bars = sh.slice(0, 6).map(function(x){
+      var col = pInfo(x[0]).colour, won = e.w[x[0]] || 0;
+      return '<div style="display:grid; grid-template-columns:34px 1fr 38px; gap:6px; align-items:center; margin-bottom:4px; font-size:.7rem; font-weight:800">' +
+        '<span style="color:' + col + '">' + abbrev(x[0]) + '</span>' +
+        '<span style="position:relative; height:12px; background:#f0efeb; border-radius:3px; overflow:hidden"><i style="display:block; height:100%; width:' + (100 * x[1] / max) + '%; background:' + col + '"></i></span>' +
+        '<span style="text-align:right; color:' + (won ? 'var(--ink)' : 'var(--muted)') + '">' + x[1].toFixed(0) + '%' + '</span></div>';
+    }).join('');
+    var lead = sh.length > 1 ? (sh[0][1] - sh[1][1]) : 0;
+    return head +
+      '<div class="res" style="margin-top:8px">' + win.map(function(p){ var col = pInfo(p).colour;
+        return '<div class="pill" style="background:' + col + '; color:' + txtOn(col) + '">' + abbrev(p) + (e.w[p] > 1 || nUp > 1 ? ' ' + e.w[p] : '') + '</div>'; }).join('') + '</div>' +
+      '<div class="meta"><b>' + nUp + '</b> seat' + (nUp > 1 ? 's' : '') + ' up \u00b7 ' + abbrev(sh[0][0]) + ' leads by <b>' + lead.toFixed(1) + '</b> pts over ' + abbrev(sh[1] ? sh[1][0] : sh[0][0]) + '</div></div>' +
+      '<div class="stack">' + sh.map(function(x){ return '<i style="width:' + x[1] + '%; background:' + pInfo(x[0]).colour + '"></i>'; }).join('') + '</div>' +
+      '<div style="padding:9px 12px 6px"><div style="font-size:.6rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin-bottom:6px">Projected vote</div>' + bars +
+      (upNow.length ? '<div style="font-size:.6rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin:8px 0 5px">Seats up now held by</div>' +
+        upNow.map(function(p){ return chip(p.p); }).join('') : '') +
+      (e.fb ? '<div style="font-size:.66rem; color:var(--faint); margin-top:4px">No ward-level result: council-wide figures</div>' : '') + '</div>';
+  }
   function wardCardHtml(c, props, people, geo){
+    if(projWards(c.gss)) return projWardCard(c, props, projWards(c.gss)[props.id], people, geo);
     var ppl = people || [], div = isDivisions(geo);
     var codes = wardCodes(ppl);
     var stack = codes.map(function(p){
@@ -2720,7 +2778,8 @@
         PV = on; focusParty = null;
         setPvButtons(); pvHeads();
         buildTiles(); buildNatBar(); recolour(); buildTable();
-        if(!pinnedGss) panelDefault();
+        if(WARD && WARD.geo){ if(PV && !PROJW) loadProjW(); else refreshWards(); }
+        else if(!pinnedGss) panelDefault();
       });
     });
     $('reset').addEventListener('click', resetView);
