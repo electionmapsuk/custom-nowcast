@@ -831,6 +831,87 @@
     }).filter(function(r){ return r && r.c; })
       .sort(function(a, b){ return (a.m - b.m) || a.c.name.localeCompare(b.c.name); });
   }
+  // hover card for a snake segment: the council, who runs it now and the
+  // projection, the swing the picked party needs, seats after May and chances
+  function snTip(r, party, maj, big){
+    var c = r.c, pj = r.pj, ab = abbrev(party), now = controlSwatch(c), nx = projColour(pj);
+    var comp = Object.keys(pj.comp).filter(function(p){ return pj.comp[p]; }).sort(function(a, b){ return pj.comp[b] - pj.comp[a]; });
+    var vs = Object.keys(pj.v || {}).filter(function(p){ return pj.v[p] >= 1; }).sort(function(a, b){ return pj.v[b] - pj.v[a]; }).slice(0, 4);
+    var sw = maj ? (r.m <= -15 ? ab + ' majority on the projection, kept even on a 15-point swing against'
+                               : ab + ' majority on the projection, lost on a swing of <b>' + Math.abs(r.m).toFixed(1) + ' pts</b> against')
+                 : 'Needs a swing of <b>+' + r.m.toFixed(1) + ' pts</b> for an ' + ab + ' majority' + (big ? ' (largest party on the projection)' : '');
+    return '<div class="hd"><div class="nm">' + esc(c.name) + '</div>' +
+      '<div class="ty">' + esc(c.typeName || '') + ' \u00b7 ' + (r.n >= c.total ? 'all ' + c.total + ' seats up' : r.n + ' of ' + c.total + ' seats up') + '</div>' +
+      '<div class="res"><div class="pill" style="background:' + now + '; color:' + txtOn(now) + '">' + esc(shortControl(c)) + '</div>' +
+      '<span style="align-self:center; opacity:.7; font-weight:800">\u2192</span>' +
+      '<div class="pill" style="background:' + nx + '; color:' + txtOn(nx) + '">' + (pj.next === 'NOC' ? 'NOC' : abbrev(pj.next) + ' maj') + '</div></div>' +
+      '<div class="meta">Now \u2192 2027 projection</div></div>' +
+      '<div class="pj"><div class="pjm" style="margin-top:0">' + sw + '</div>' +
+      '<div class="pjm">After May: ' + comp.map(function(p){ return '<b>' + abbrev(p) + '</b> ' + pj.comp[p]; }).join(' \u00b7 ') + '</div>' +
+      '<div class="pjm">Vote: ' + vs.map(function(p){ return '<b>' + abbrev(p) + '</b> ' + Math.round(pj.v[p]) + '%'; }).join(' \u00b7 ') + '</div>' +
+      '<div class="pjm">Chance: ' + chanceHtml(pj, 3) + '</div></div>';
+  }
+  // hover card for a snake segment: the council, who runs it now and the
+  // projection, the swing the picked party needs, seats after May and chances
+  function snTip(r, party, maj, big, lock, gain){
+    var c = r.c, pj = r.pj, ab = abbrev(party), pcol = pInfo(party).colour, now = controlSwatch(c), nx = projColour(pj);
+    var need = Math.floor(c.total / 2) + 1, hd = function(t){ return '<div style="font-size:.6rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin:9px 0 4px">' + t + '</div>'; };
+    var pc = function(p){ return p === 'NOC' ? NOC_COLOUR : pInfo(p).colour; };
+    // seats after May, with the majority line
+    var comp = Object.keys(pj.comp).filter(function(p){ return pj.comp[p]; }).sort(function(a, b){ return pj.comp[b] - pj.comp[a]; });
+    var seatBar = '<div style="position:relative; height:16px; display:flex; border-radius:4px; overflow:hidden; background:#eee">' +
+      comp.map(function(p){ return '<i style="display:block; width:' + (100 * pj.comp[p] / c.total) + '%; background:' + pc(p) + '; border-right:1px solid #fff"></i>'; }).join('') +
+      '</div><div style="position:relative; height:0"><b style="position:absolute; left:' + (100 * need / c.total) + '%; top:-19px; width:2px; height:22px; background:#15171a"></b></div>' +
+      '<div style="display:flex; flex-wrap:wrap; gap:2px 9px; font-size:.68rem; margin-top:5px; color:var(--muted)">' +
+      comp.slice(0, 5).map(function(p){ return '<span><i style="display:inline-block; width:8px; height:8px; border-radius:2px; background:' + pc(p) + '; margin-right:3px"></i><b style="color:var(--ink)">' + abbrev(p) + ' ' + pj.comp[p] + '</b></span>'; }).join('') +
+      '<span style="margin-left:auto">' + need + ' to win</span></div>';
+    // projected vote
+    var vs = Object.keys(pj.v || {}).filter(function(p){ return pj.v[p] >= 1; }).sort(function(a, b){ return pj.v[b] - pj.v[a]; }).slice(0, 5);
+    var vmax = vs.length ? pj.v[vs[0]] : 1;
+    var voteBars = vs.map(function(p){
+      return '<div style="display:grid; grid-template-columns:30px 1fr 30px; gap:6px; align-items:center; margin-bottom:3px; font-size:.68rem; font-weight:800">' +
+        '<span style="color:' + pc(p) + '">' + abbrev(p) + '</span><span style="height:8px; background:#f0efeb; border-radius:3px; overflow:hidden"><i style="display:block; height:100%; width:' +
+        (100 * pj.v[p] / vmax) + '%; background:' + pc(p) + '"></i></span><span style="text-align:right; color:var(--muted)">' + Math.round(pj.v[p]) + '%</span></div>';
+    }).join('');
+    // chance of each outcome
+    var outs = Object.keys(pj.pc || {}).filter(function(k){ return pj.pc[k] >= 0.01; }).sort(function(a, b){ return pj.pc[b] - pj.pc[a]; });
+    var chanceBar = '<div style="display:flex; height:18px; border-radius:4px; overflow:hidden">' + outs.map(function(k){
+        var w = 100 * pj.pc[k], bg = pc(k);
+        return '<i style="display:flex; align-items:center; justify-content:center; width:' + w + '%; background:' + bg + '; color:' + txtOn(bg) +
+          '; font-size:.62rem; font-weight:800; font-style:normal; border-right:1px solid #fff; white-space:nowrap; overflow:hidden">' + (w >= 18 ? (k === 'NOC' ? 'NOC' : abbrev(k)) + ' ' + Math.round(w) + '%' : '') + '</i>'; }).join('') + '</div>';
+    // the swing line: where the projection sits (0) and where the majority is won or lost
+    var lo = Math.min(-5, Math.floor(r.m) - 1), hi = Math.max(5, Math.ceil(r.m) + 1);
+    if(r.m <= -15){ lo = -16; }
+    var X = function(v){ return 100 * (Math.max(lo, Math.min(hi, v)) - lo) / (hi - lo); }, z = X(0), m = X(r.m <= -15 ? -15.5 : r.m);
+    var swingLine = '<div style="position:relative; height:34px; margin:0 6px">' +
+      '<div style="position:absolute; left:0; right:0; top:12px; height:6px; border-radius:3px; background:linear-gradient(90deg,' + lighten(pcol, 0.8) + ',' + lighten(pcol, 0.8) + ')"></div>' +
+      '<div style="position:absolute; left:' + Math.min(z, m) + '%; width:' + Math.abs(m - z) + '%; top:12px; height:6px; background:' + pcol + '"></div>' +
+      '<div style="position:absolute; left:calc(' + z + '% - 1px); top:7px; width:2px; height:16px; background:#6b7280"></div>' +
+      '<div style="position:absolute; left:calc(' + m + '% - 6px); top:9px; width:12px; height:12px; border-radius:50%; background:#15171a; border:2px solid #fff"></div>' +
+      '<div style="position:absolute; left:' + z + '%; top:24px; transform:translateX(-50%); font-size:.6rem; color:var(--muted); font-weight:700; white-space:nowrap">projection</div>' +
+      '<div style="position:absolute; left:' + m + '%; top:-3px; transform:translateX(-50%); font-size:.62rem; font-weight:800; white-space:nowrap">' +
+        (r.m <= -15 ? 'beyond −15' : (r.m > 0 ? '+' : '−') + Math.abs(r.m).toFixed(1)) + '</div>' +
+      '<div style="position:absolute; left:0; top:24px; font-size:.58rem; color:var(--faint)">' + (lo < 0 ? '−' : '') + Math.abs(lo) + '</div>' +
+      '<div style="position:absolute; right:0; top:24px; font-size:.58rem; color:var(--faint)">+' + hi + '</div></div>';
+    var gl = gain ? '<b>Gain' + (runsKey(c) === 'NOC' ? ' from no overall control' : ' from ' + abbrev(runsKey(c))) + '.</b> ' : '';
+    var sw = gl + (lock ? '<b>Can’t lose its majority:</b> ' + lock.keep + ' of its ' + lock.held + ' seats aren’t up (' + lock.need + ' needed)'
+      : maj ? (r.m <= -15 ? ab + ' keeps its majority even if its share falls 15 points'
+                         : ab + ' majority on the projection; lost if ' + ab + '’s share falls <b>' + Math.abs(r.m).toFixed(1) + ' pts</b>')
+            : 'An ' + ab + ' majority needs ' + ab + '’s share up <b>' + r.m.toFixed(1) + ' pts</b>' + (big ? '; it is already the largest party' : ''));
+    return '<div class="hd"><div class="nm">' + esc(c.name) + '</div>' +
+      '<div class="ty">' + esc(c.typeName || '') + ' · ' + (r.n >= c.total ? 'all ' + c.total + ' seats up' : r.n + ' of ' + c.total + ' seats up') + '</div>' +
+      '<div class="res"><div class="pill" style="background:' + now + '; color:' + txtOn(now) + '">' + esc(shortControl(c)) + '</div>' +
+      '<span style="align-self:center; opacity:.7; font-weight:800">→</span>' +
+      '<div class="pill" style="background:' + nx + '; color:' + txtOn(nx) + '">' + (pj.next === 'NOC' ? 'NOC' : abbrev(pj.next) + ' maj') + '</div></div>' +
+      '<div class="meta">Now → 2027 projection</div></div>' +
+      '<div style="padding:4px 12px 11px">' +
+        hd('Swing to ' + ab + ' for a majority') + swingLine +
+        '<div style="font-size:.68rem; color:var(--muted); line-height:1.4; margin-top:2px">' + sw + '</div>' +
+        hd('Seats after May') + seatBar +
+        hd('Projected vote') + voteBars +
+        hd('Chance of each outcome') + chanceBar +
+      '</div>';
+  }
   function buildSnake(){
     var parties = snParties();
     if(!SN_PARTY || parties.indexOf(SN_PARTY) < 0) SN_PARTY = parties[0];
@@ -850,7 +931,7 @@
     $('snsum').innerHTML = '<b>' + ab + ' majorities on the projection: ' + now + '</b>' +
       ' · with a uniform swing to ' + ab + ' of +1 point: <b>' + within(1) + '</b>, +2: <b>' + within(2) +
       '</b>, +5: <b>' + within(5) + '</b>, +10: <b>' + within(10) + '</b>' +
-      ' · swing against of 2 points: <b>' + lose(2) + '</b>';
+      ' · if ' + ab + '\u2019s share falls 2 points: <b>' + lose(2) + '</b>';
     if(!rows.length){ $('snake').innerHTML = '<p class="snsum">No council within a 10-point swing.</p>'; return; }
     // one continuous band: left to right, round a half turn, right to left, and
     // so on. Each council's length along it is its seats up; councils run on
@@ -880,27 +961,34 @@
       }
       return 'M' + outer.join(' L') + ' L' + inner.reverse().join(' L') + ' Z';
     }
-    var pid = 'snh-' + party, BODY = '#e7e5df';
+    var pid = 'snh-' + party, BODY = '#e7e5df', dk = darken(col, 0.45);
     var svg = '<svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="' + esc(pInfo(party).name) +
       ' battlegrounds in order of the swing needed for a majority, sized by seats up"><defs><pattern id="' + pid +
       '" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="' +
-      lighten(col, 0.86) + '"/><rect width="2.2" height="6" fill="' + lighten(col, 0.3) + '"/></pattern></defs>';
+      lighten(col, 0.86) + '"/><rect width="2.2" height="6" fill="' + lighten(col, 0.3) + '"/></pattern>' +
+      '<pattern id="' + pid + '-x" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="6" height="6" fill="' +
+      col + '"/><rect width="2.6" height="6" fill="' + dk + '"/></pattern></defs>';
     svg += '<path d="' + band(0, total) + '" fill="' + BODY + '"/>';
+    var TIPS = {};
     rows.forEach(function(r){
-      var fill, maj = r.m <= 0, big = !maj && r.l !== null && r.l <= 0;
-      if(maj){ var t = r.m <= -15 ? 1 : Math.min(1, -r.m / 10); fill = lighten(col, 0.6 * (1 - t)); }
+      var fill, maj = r.m <= 0, big = !maj && r.l !== null && r.l <= 0, sh = safeHold(r.c), lock = (sh && sh.p === party) ? sh : null;
+      var gain = maj && runsKey(r.c) !== party;
+      if(gain) fill = 'url(#' + pid + '-x)';
+      else if(maj){ var t = r.m <= -15 ? 1 : Math.min(1, -r.m / 10); fill = lighten(col, 0.6 * (1 - t)); }
       else fill = big ? 'url(#' + pid + ')' : lighten(col, 0.72 + 0.2 * Math.min(1, r.m / 10));
-      var tc = maj ? txtOn(fill) : '#15171a', len = r.s1 - r.s0, mid = at((r.s0 + r.s1) / 2);
+      var tc = gain ? '#fff' : maj ? txtOn(fill) : '#15171a', len = r.s1 - r.s0, mid = at((r.s0 + r.s1) / 2);
       var ch = Math.round(((r.pj.pc || {})[party] || 0) * 100);
       var tip = r.c.name + ' (' + r.n + ' seats up): ' + (maj
         ? ab + ' majority on the projection; ' + (r.m <= -15 ? 'kept even on a swing of 15 points against' : 'lost on a swing of ' + Math.abs(r.m).toFixed(1) + ' points against')
         : 'needs a swing of ' + r.m.toFixed(1) + ' points for an ' + ab + ' majority' + (big ? ' (largest party on the projection)' : '')) +
         ' · chance of an ' + ab + ' majority ' + ch + '%';
       // round off the head and the tail of the snake in the end councils' colours
-      var cap = function(sv){ var q = at(sv); return '<circle class="bk" cx="' + q.x.toFixed(1) + '" cy="' + q.y.toFixed(1) + '" r="' + (bh / 2) + '" fill="' + fill + '" stroke="#fff" stroke-width="1"/>'; };
+      var cap = function(sv){ var q = at(sv); return '<circle cx="' + q.x.toFixed(1) + '" cy="' + q.y.toFixed(1) + '" r="' + (bh / 2 - 0.5) + '" fill="' + fill + '"/>'; };
       var caps = (r.s0 === 0 ? cap(0) : '') + (r.s1 === total ? cap(total) : '');
-      svg += '<g class="sb" data-g="' + r.g + '"><title>' + esc(tip) + '</title>' + caps +
-        '<path class="bk" d="' + band(r.s0, r.s1) + '" fill="' + fill + '" stroke="#fff" stroke-width="1" stroke-linejoin="round"/>' +
+      TIPS[r.g] = snTip(r, party, maj, big, lock, gain);
+      svg += '<g class="sb" data-g="' + r.g + '">' +
+        '<path class="bk" d="' + band(r.s0, r.s1) + '" fill="' + fill + '" stroke="#fff" stroke-width="1" stroke-linejoin="round"/>' + caps +
+        (lock ? '<path d="' + band(r.s0 + 1.2, r.s1 - 1.2) + '" fill="none" stroke="#15171a" stroke-width="2.2" stroke-linejoin="round"/>' : '') +
         (len >= (W < 600 ? 22 : 25) ? '<text x="' + mid.x.toFixed(1) + '" y="' + (mid.y + 3.5).toFixed(1) + '" text-anchor="middle" font-size="' +
           (W < 600 ? 9 : 10) + '" font-weight="800" fill="' + tc + '">' + esc(r.pj.code || r.c.name.slice(0, 3).toUpperCase()) + '</text>' : '') + '</g>';
     });
@@ -928,18 +1016,27 @@
     svg += '</svg>';
     $('snake').innerHTML = svg;
     $('snake').querySelectorAll('.sb').forEach(function(el){
-      el.addEventListener('click', function(){ gotoCouncil(el.getAttribute('data-g')); });
+      var g = el.getAttribute('data-g');
+      el.addEventListener('click', function(){ tip.style.display = 'none'; tip.style.width = ''; gotoCouncil(g); });
+      el.addEventListener('mousemove', function(e){ tip.style.width = '290px'; tip.innerHTML = TIPS[g]; place(e); });
+      el.addEventListener('mouseleave', function(){ tip.style.display = 'none'; tip.style.width = ''; });
     });
     var chip = function(bg, t, extra){ return '<span class="lgd lgdx"><i style="background:' + bg + (extra || '') + '"></i>' + t + '</span>'; };
     $('snkey').innerHTML =
+      chip('repeating-linear-gradient(45deg,' + dk + ' 0 2px,' + col + ' 2px 5px)', 'Gain: ' + ab + ' majority on the projection, not run by ' + ab + ' now') +
+      chip(lighten(col, 0.3), 'Majority can\u2019t be lost this time (seats not up)', '; outline:2px solid #15171a; outline-offset:-2px') +
       chip('linear-gradient(90deg,' + col + ',' + lighten(col, 0.6) + ')', ab + ' majority, safer to more marginal') +
       '<span class="lgd lgdx"><i style="background:#15171a; width:4px"></i>Majority line</span>' +
       '<span class="lgd lgdx"><i style="background:#6b7280; width:2px"></i>Reached on a +1, +2, +5 pt swing</span>' +
       chip('repeating-linear-gradient(45deg,' + lighten(col, 0.3) + ' 0 2px,' + lighten(col, 0.86) + ' 2px 5px)', 'Largest party, short of a majority') +
       chip(lighten(col, 0.8), 'Needs a swing to win');
-    $('snnote').textContent = 'Councils in order, each as long as its number of seats up, of the uniform national swing (points of vote share) at which ' + ab +
-      ' gains or loses a majority there, from the 2027 projection; hover a council for the swing and the chance of an ' + ab +
-      ' majority from the simulations, click to open it. Real swings vary from council to council, so the chance is the better guide to any one council. Councils needing more than 10 points are left out.';
+    var nm = pInfo(party).name;
+    $('snnote').innerHTML = '<b>What the swing means.</b> A swing of +1 to ' + ab + ' adds one point to ' + nm +
+      '\u2019s share in every ward and takes it from the other parties in proportion to their shares. A ward projected at ' +
+      ab + ' 30%, Labour 40%, Conservative 20% and others 10% becomes ' + ab + ' 31%, Labour 39.4%, Conservative 19.7% and others 9.9%. ' +
+      'A swing of \u22121 does the reverse: ' + ab + ' 29% and the others up in proportion. Seats then follow the model\u2019s rules. ' +
+      'Each council is as long as its number of seats up; hover for the details and the chance of each outcome from the simulations, click to open it. ' +
+      'Real swings vary from council to council, so the chance is the better guide to any one council. Councils needing more than 10 points are left out.';
   }
   var _snT = null;
   window.addEventListener('resize', function(){
