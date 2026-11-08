@@ -845,14 +845,18 @@
   var NOCACHE = {cache: 'no-cache'};
   function loadJson(name, keepBase){
     name = name + (name.indexOf('?') < 0 ? '?' : '&') + FRESH;
-    return fetch(DATA_BASE + name, NOCACHE)
-      .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
-      .catch(function(){
-        if(!keepBase) DATA_BASE = DATA_FALLBACK;
-        return fetch(DATA_FALLBACK + name, NOCACHE).then(function(r){
-          if(!r.ok) throw new Error('HTTP ' + r.status); return r.json();
+    var bases = [DATA_BASE, 'data/', DATA_FALLBACK].filter(function(b, i, a){ return a.indexOf(b) === i; });
+    if(!keepBase) bases = bases.filter(function(b){ return b !== 'data/' || b === DATA_BASE; });
+    function go(i){
+      return fetch(bases[i] + name, NOCACHE)
+        .then(function(r){ if(!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+        .catch(function(e){
+          if(i === 0 && !keepBase) DATA_BASE = DATA_FALLBACK;
+          if(i + 1 >= bases.length) throw e;
+          return go(i + 1);
         });
-      });
+    }
+    return go(0);
   }
 
   Promise.all([loadJson('councils.json'), loadJson('boundaries-lower.json'),
@@ -1574,8 +1578,20 @@
   function wardsFor(code){
     if(pvOn() && newbOf(code)){
       var nk = 'N:' + code;
-      if(!WCACHE[nk]) WCACHE[nk] = Promise.all([loadJson('wards-2027/' + code + '.json', true),
-          Promise.resolve({wards: {}, labels: {}, unmatched: {}})])
+      // the council's own file first; failing that, its new wards out of the national
+      // projection topology (projection-wards-2027.topo.json), named from PROJW
+      if(!WCACHE[nk]) WCACHE[nk] = loadJson('wards-2027/' + code + '.json', true)
+        .catch(function(){
+          return Promise.all([loadPVL(), loadProjW()]).then(function(){
+            var pw = (PROJW && PROJW.councils[code]) || {};
+            var ws = (PVL || []).filter(function(f){ return f.properties.c === code; });
+            if(!ws.length) throw new Error('no 2027 wards for ' + code);
+            return {code: code, wards: ws.map(function(f){
+              return {id: f.properties.id, name: pw[f.properties.id] ? pw[f.properties.id].n : '', alt: '', g: f.geometry};
+            })};
+          });
+        })
+        .then(function(geo){ return [geo, {wards: {}, labels: {}, unmatched: {}}]; })
         .catch(function(e){ delete WCACHE[nk]; throw e; });
       return WCACHE[nk];
     }
@@ -1827,7 +1843,8 @@
     wardsFor(code).then(function(a){
       if(!WARD || WARD.code !== code || WARD.m !== m) return;
       drawWards(m, c, a[0], a[1]);
-    }).catch(function(){
+    }).catch(function(e){
+      if(window.console) console.warn('ward view for ' + code + ' failed:', e);
       if(!WARD || WARD.code !== code) return;
       leaveWards(true);
       pinnedGss = code; markPinned(); showCardFor(code, '', null);
