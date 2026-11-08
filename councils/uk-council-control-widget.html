@@ -6,6 +6,7 @@
 <title>UK Council Control</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
 <script src="https://d3js.org/d3.v7.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/topojson-client@3.1.0/dist/topojson-client.min.js"></script>
 <style>
   :root{
     /* the Nowcast palette: grey page, cream panels */
@@ -210,6 +211,10 @@
   .elist .ec{font-size:9px; font-weight:800; padding:3px 5px; border-radius:4px; white-space:nowrap;}
   .cp.lhl{stroke:#15171a; stroke-width:2px;}
   .cp.out{pointer-events:none; cursor:default;}
+  /* projection mode: every projected ward on the national map */
+  .pw{stroke:#fff; stroke-width:.3px; vector-effect:non-scaling-stroke; cursor:pointer;}
+  .pw:hover{stroke:#15171a; stroke-width:1.4px;}
+  .pvb path{fill:none; stroke:#fff; stroke-width:1.1px; vector-effect:non-scaling-stroke; pointer-events:none;}
   /* elections view: the area of a new mayoralty being elected */
   .mayor{fill:none; stroke:#15171a; stroke-width:2px; stroke-dasharray:6 3; stroke-linecap:butt;
     stroke-linejoin:round; vector-effect:non-scaling-stroke; pointer-events:none;}
@@ -551,8 +556,57 @@
     PROJW_LOADING = loadJson('projection-wards-2027.json', true).then(function(d){
       PROJW = (d && d.councils) ? d : null;
       if(WARD && WARD.geo) refreshWards();
+      drawPVL();
     }).catch(function(){ PROJW_LOADING = null; });
     return PROJW_LOADING;
+  }
+  // the national ward layer for projection mode: projection-wards-2027.topo.json
+  var PVL = null, PVL_LOADING = null;
+  function loadPVL(){
+    if(PVL || PVL_LOADING || typeof topojson === 'undefined') return PVL_LOADING;
+    PVL_LOADING = loadJson('projection-wards-2027.topo.json', true).then(function(t){
+      PVL = topojson.feature(t, t.objects.wards).features; drawPVL();
+    }).catch(function(){ PVL_LOADING = null; });
+    return PVL_LOADING;
+  }
+  function pvlPeople(g, id){
+    var e = PROJW && PROJW.councils[g] && PROJW.councils[g][id], out = [];
+    if(!e) return out;
+    Object.keys(e.w).forEach(function(p){ for(var i = 0; i < e.w[p]; i++) out.push({p: p}); });
+    return out;
+  }
+  function drawPVL(){
+    eachMap(function(m){
+      var on = pvOn() && !!PVL && !!PROJW && m.key === 'lower' && m.g;
+      if(!on){ if(m.g){ m.g.selectAll('.pvl,.pvb').remove(); } m.pvlOn = false; return; }
+      m.g.selectAll('.pvl').style('display', WARD ? 'none' : null);
+      m.g.selectAll('.pvb').style('display', WARD ? 'none' : null);
+      if(m.pvlOn) return;
+      m.pvlOn = true;
+      var feats = PVL.filter(function(f){ return projOf(byGss[f.properties.c]); });
+      var layer = m.g.insert('g', '.mayor').attr('class', 'pvl').style('display', WARD ? 'none' : null);
+      layer.selectAll('path').data(feats).enter().append('path').attr('class', 'pw').attr('d', m.path)
+        .attr('fill', function(d){
+          var ppl = pvlPeople(d.properties.c, d.properties.id);
+          return ppl.length ? wardFill(m, ppl, false, d) : '#ecebe6';
+        })
+        .on('mousemove', function(e, d){
+          if(WARD || pinnedGss) return;
+          var c = byGss[d.properties.c], pw = PROJW.councils[d.properties.c] || {}, w = pw[d.properties.id];
+          tip.innerHTML = projWardCard(c, {id: d.properties.id, name: w ? w.n : ''}, w, [], null);
+          place(e);
+        })
+        .on('mouseleave', function(){ tip.style.display = 'none'; })
+        .on('click', function(e, d){
+          tip.style.display = 'none';
+          var cc = byGss[d.properties.c];
+          if(cc && cc.wards) enterWards(m, d.properties.c); else zoomTo(d.properties.c);
+        });
+      // council edges over the wards
+      var cf = GEO.lower.features.filter(function(f){ return projOf(byGss[f.properties.code]); });
+      m.g.insert('g', '.mayor').attr('class', 'pvb').style('display', WARD ? 'none' : null)
+        .selectAll('path').data(cf).enter().append('path').attr('d', m.path);
+    });
   }
   function projWards(code){ return (pvOn() && PROJW && PROJW.councils[code]) || null; }
   function projOf(c){ return (PROJ && c && c.gss && PROJ.councils[c.gss]) || null; }
@@ -816,7 +870,7 @@
     var d = new Date(DATA.meta.generated);
     $('stamp').textContent = 'Updated ' + d.toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
     if(EV) setupElections();
-    if(EV && PROJ){ $('pvbar').style.display = ''; $('pvmap').style.display = 'inline-flex'; setPvButtons(); }
+    if(EV && PROJ){ $('pvbar').style.display = ''; $('pvmap').style.display = 'inline-flex'; setPvButtons(); if(PV){ loadProjW(); loadPVL(); } }
     if(EV && PROJ && snParties().length){ $('snwrap').style.display = ''; buildSnake(); }
     pvHeads();
     buildTiles(); buildNatBar(); buildFoot(); panelDefault(); wire(); drawMaps(); buildLegend(); buildTable();
@@ -869,14 +923,14 @@
   // hover card for a snake segment: the council, who runs it now and the
   // projection, the swing the picked party needs, seats after May and chances
   function snTip(r, party, maj, big, lock, gain){
-    var c = r.c, pj = r.pj, ab = abbrev(party), pcol = pInfo(party).colour, now = controlSwatch(c), nx = projColour(pj);
-    var need = Math.floor(c.total / 2) + 1, hd = function(t){ return '<div style="font-size:.6rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin:9px 0 4px">' + t + '</div>'; };
+    var c = r.c, pj = r.pj, T = pj.total || c.total, ab = abbrev(party), pcol = pInfo(party).colour, now = controlSwatch(c), nx = projColour(pj);
+    var need = Math.floor(T / 2) + 1, hd = function(t){ return '<div style="font-size:.6rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin:9px 0 4px">' + t + '</div>'; };
     var pc = function(p){ return p === 'NOC' ? NOC_COLOUR : pInfo(p).colour; };
     // seats after May, with the majority line
     var comp = Object.keys(pj.comp).filter(function(p){ return pj.comp[p]; }).sort(function(a, b){ return pj.comp[b] - pj.comp[a]; });
     var seatBar = '<div style="position:relative; height:16px; display:flex; border-radius:4px; overflow:hidden; background:#eee">' +
-      comp.map(function(p){ return '<i style="display:block; width:' + (100 * pj.comp[p] / c.total) + '%; background:' + pc(p) + '; border-right:1px solid #fff"></i>'; }).join('') +
-      '</div><div style="position:relative; height:0"><b style="position:absolute; left:' + (100 * need / c.total) + '%; top:-19px; width:2px; height:22px; background:#15171a"></b></div>' +
+      comp.map(function(p){ return '<i style="display:block; width:' + (100 * pj.comp[p] / T) + '%; background:' + pc(p) + '; border-right:1px solid #fff"></i>'; }).join('') +
+      '</div><div style="position:relative; height:0"><b style="position:absolute; left:' + (100 * need / T) + '%; top:-19px; width:2px; height:22px; background:#15171a"></b></div>' +
       '<div style="display:flex; flex-wrap:wrap; gap:2px 9px; font-size:.68rem; margin-top:5px; color:var(--muted)">' +
       comp.slice(0, 5).map(function(p){ return '<span><i style="display:inline-block; width:8px; height:8px; border-radius:2px; background:' + pc(p) + '; margin-right:3px"></i><b style="color:var(--ink)">' + abbrev(p) + ' ' + pj.comp[p] + '</b></span>'; }).join('') +
       '<span style="margin-left:auto">' + need + ' to win</span></div>';
@@ -914,7 +968,7 @@
                          : ab + ' majority on the projection; lost if ' + ab + '’s share falls <b>' + Math.abs(r.m).toFixed(1) + ' pts</b>')
             : 'An ' + ab + ' majority needs ' + ab + '’s share up <b>' + r.m.toFixed(1) + ' pts</b>' + (big ? '; it is already the largest party' : ''));
     return '<div class="hd"><div class="nm">' + esc(c.name) + '</div>' +
-      '<div class="ty">' + esc(c.typeName || '') + ' · ' + (r.n >= c.total ? 'all ' + c.total + ' seats up' : r.n + ' of ' + c.total + ' seats up') + '</div>' +
+      '<div class="ty">' + esc(c.typeName || '') + ' · ' + (r.n >= T ? 'all ' + T + ' seats up' + (T !== c.total ? ' (new wards)' : '') : r.n + ' of ' + T + ' seats up') + '</div>' +
       '<div class="res"><div class="pill" style="background:' + now + '; color:' + txtOn(now) + '">' + esc(shortControl(c)) + '</div>' +
       '<span style="align-self:center; opacity:.7; font-weight:800">→</span>' +
       '<div class="pill" style="background:' + nx + '; color:' + txtOn(nx) + '">' + (pj.next === 'NOC' ? 'NOC' : abbrev(pj.next) + ' maj') + '</div></div>' +
@@ -1439,6 +1493,7 @@
     });
     buildLegend();
     highlight(focusParty);
+    drawPVL();
   }
 
   function resetView(){
@@ -1513,7 +1568,17 @@
     }).catch(function(){ /* keep the national boundaries */ });
   }
 
+  // a council on new wards from May 2027 (PROJ.meta.newb): in projection mode
+  // its wards are the new ones, with no councillors yet
+  function newbOf(code){ return !!(PROJ && PROJ.meta && PROJ.meta.newb && PROJ.meta.newb[code]); }
   function wardsFor(code){
+    if(pvOn() && newbOf(code)){
+      var nk = 'N:' + code;
+      if(!WCACHE[nk]) WCACHE[nk] = Promise.all([loadJson('wards-2027/' + code + '.json', true),
+          Promise.resolve({wards: {}, labels: {}, unmatched: {}})])
+        .catch(function(e){ delete WCACHE[nk]; throw e; });
+      return WCACHE[nk];
+    }
     if(!WCACHE[code]){
       WCACHE[code] = Promise.all([loadJson('wards/' + code + '.json', true),
                                   loadJson('members/' + code + '.json', true)])
@@ -1753,6 +1818,7 @@
             prev: keep ? keep.prev : (carry || d3.zoomTransform(m.svg.node()))};
     pinnedGss = null; markPinned();
     tip.style.display = 'none';
+    m.g.selectAll('.pvl,.pvb').style('display', 'none');
     mobileCard();
     sharpenNeighbours(m);
     wardBar(m, c, null, null);
@@ -1846,6 +1912,7 @@
     mobileCard();
     if(m.wg){ m.wg.remove(); m.wg = null; }
     d3.select('#' + m.box).select('.wardbar').remove();
+    m.g && m.g.selectAll('.pvl,.pvb').style('display', null);
     tip.style.display = 'none';
     if(!noRedraw && m.g && m.svg.node().isConnected){
       // back to the national shapes and full colour, then zoom back out
@@ -1866,14 +1933,14 @@
   function projWardCard(c, props, e, people, geo){
     var P7 = (PROJW.meta && PROJW.meta.parties) || ['RFM', 'LAB', 'CON', 'LDM', 'GRN', 'IND', 'RES'];
     var head = '<div class="hd"><div class="nm">' + esc(wardLabel(props.id, props.name)) + '</div>' +
-      '<div class="ty">' + esc(c.name) + ' \u00b7 ' + (isDivisions(geo) ? 'Electoral division' : 'Ward') + ' \u00b7 2027 projection</div>';
+      '<div class="ty">' + esc(c.name) + ' \u00b7 ' + (newbOf(c.gss) ? 'New ward from May 2027' : isDivisions(geo) ? 'Electoral division' : 'Ward') + ' \u00b7 2027 projection</div>';
     if(!e) return head + '<div class="meta" style="margin-top:7px">No seat up here in 2027</div></div>';
     var sh = P7.map(function(p, i){ return [p, e.s[i] / 10]; }).filter(function(x){ return x[1] >= 0.5; })
       .sort(function(a, b){ return b[1] - a[1]; });
     var nUp = Object.keys(e.w).reduce(function(a, p){ return a + e.w[p]; }, 0);
     var win = Object.keys(e.w).sort(function(a, b){ return e.w[b] - e.w[a]; });
     var chip = function(p, t){ var col = pInfo(p).colour; return '<span style="display:inline-block; padding:2px 6px; margin:0 3px 3px 0; border-radius:4px; font-size:.66rem; font-weight:800; background:' + col + '; color:' + txtOn(col) + '">' + (t || abbrev(p)) + '</span>'; };
-    var upNow = (people || []).filter(function(p){ return !WARD.upYear || String(p.y) === WARD.upYear; });
+    var upNow = (people || []).filter(function(p){ return !WARD || !WARD.upYear || String(p.y) === WARD.upYear; });
     var max = sh.length ? sh[0][1] : 1;
     var bars = sh.slice(0, 6).map(function(x){
       var col = pInfo(x[0]).colour, won = e.w[x[0]] || 0;
@@ -1886,7 +1953,7 @@
     return head +
       '<div class="res" style="margin-top:8px">' + win.map(function(p){ var col = pInfo(p).colour;
         return '<div class="pill" style="background:' + col + '; color:' + txtOn(col) + '">' + abbrev(p) + (e.w[p] > 1 || nUp > 1 ? ' ' + e.w[p] : '') + '</div>'; }).join('') + '</div>' +
-      '<div class="meta"><b>' + nUp + '</b> seat' + (nUp > 1 ? 's' : '') + ' up \u00b7 ' + abbrev(sh[0][0]) + ' leads by <b>' + lead.toFixed(1) + '</b> pts over ' + abbrev(sh[1] ? sh[1][0] : sh[0][0]) + '</div></div>' +
+      '<div class="meta"><b>' + nUp + '</b> seat' + (nUp > 1 ? 's' : '') + ' up \u00b7 ' + abbrev(sh[0][0]) + ' leads by <b>' + (lead < 0.05 ? 'under 0.1' : lead.toFixed(1)) + '</b> pts over ' + abbrev(sh[1] ? sh[1][0] : sh[0][0]) + '</div></div>' +
       '<div class="stack">' + sh.map(function(x){ return '<i style="width:' + x[1] + '%; background:' + pInfo(x[0]).colour + '"></i>'; }).join('') + '</div>' +
       '<div style="padding:9px 12px 6px"><div style="font-size:.6rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin-bottom:6px">Projected vote</div>' + bars +
       (upNow.length ? '<div style="font-size:.6rem; font-weight:800; letter-spacing:.08em; text-transform:uppercase; color:var(--faint); margin:8px 0 5px">Seats up now held by</div>' +
@@ -2125,7 +2192,7 @@
       var pjc = projColour(pj);
       var pcomp = Object.keys(pj.comp).filter(function(p){ return pj.comp[p]; })
         .sort(function(a, b){ return pj.comp[b] - pj.comp[a]; });
-      pjHtml = '<div class="pj"><div class="pjl">2027 projection</div>' +
+      pjHtml = '<div class="pj"><div class="pjl">2027 projection' + (newbOf(c.gss) ? ' \u00b7 on new wards, ' + (pj.total || '') + ' seats' : '') + '</div>' +
         '<span class="pjp" style="background:' + pjc + '; color:' + txtOn(pjc) + '">' + projText(pj) + '</span>' +
         '<div class="pjm">After May: ' + pcomp.map(function(p){ return '<b>' + abbrev(p) + '</b> ' + pj.comp[p]; }).join(' \u00b7 ') + '</div>' +
         '<div class="pjm">Chance: ' + chanceHtml(pj, 3) + '</div></div>';
@@ -2776,9 +2843,13 @@
         var on = b.getAttribute('data-pv') === '1';
         if(on === PV) return;
         PV = on; focusParty = null;
+        if(PV){ loadProjW(); loadPVL(); }
         setPvButtons(); pvHeads();
         buildTiles(); buildNatBar(); recolour(); buildTable();
-        if(WARD && WARD.geo){ if(PV && !PROJW) loadProjW(); else refreshWards(); }
+        if(WARD && WARD.geo){
+          if(newbOf(WARD.code)) enterWards(WARD.m, WARD.code, {prev: WARD.prev});   // swap to / from the new wards
+          if(PV && !PROJW) loadProjW(); else if(!newbOf(WARD.code)) refreshWards();
+        }
         else if(!pinnedGss) panelDefault();
       });
     });
