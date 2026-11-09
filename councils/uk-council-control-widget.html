@@ -67,6 +67,7 @@
     /* each pair of map buttons becomes a full-width segmented switch on its own line; search and reset share the last */
     .maptools .seg{flex:1 0 100%; gap:0 !important; padding:3px; background:#fff; border:1px solid var(--line); border-radius:10px;}
     .maptools .seg > span{display:none;}
+    .maptools #pvmap{flex:1 0 100%;} .maptools #pvmap > span:not(.tierswitch){display:none;}
     .maptools .seg .mmb{flex:1 1 0; border:0; border-radius:7px; background:transparent; padding:9px 6px; font-size:.8rem; text-align:center;}
     .maptools .seg .mmb.active{background:var(--accent); color:#fff;}
     .maptools .search{flex:1 1 0; min-width:0; order:5;}
@@ -483,8 +484,7 @@
   <div id="app" style="display:none;">
     <div class="pvbar" id="pvbar" style="display:none;">
       <span class="pvl">Show</span>
-      <button type="button" class="mmb active" data-pv="0">Now</button>
-      <button type="button" class="mmb" data-pv="1">2027 projection</button>
+      <span class="tierswitch pvsw"><button type="button" class="tsl active" data-pv="0">Now</button><button type="button" class="tst pvt" role="switch" aria-checked="false" aria-label="Show the 2027 projection"><i></i></button><button type="button" class="tsl" data-pv="1">2027 projection</button></span>
       <span class="pvn" id="pvnote"></span>
     </div>
     <div class="panel">
@@ -504,9 +504,8 @@
           <button type="button" class="tsl" data-maps="upper" title="County councils and unitaries">Upper tier</button>
         </span>
       </span>
-      <span id="pvmap" class="seg" style="display:none; gap:8px; align-items:center;">
-        <button type="button" class="mmb active" data-pv="0">Now</button>
-        <button type="button" class="mmb" data-pv="1">2027 projection</button>
+      <span id="pvmap" style="display:none; gap:8px; align-items:center;">
+        <span class="tierswitch pvsw"><button type="button" class="tsl active" data-pv="0">Now</button><button type="button" class="tst pvt" role="switch" aria-checked="false" aria-label="Show the 2027 projection"><i></i></button><button type="button" class="tsl" data-pv="1">2027 projection</button></span>
         <span style="width:1px; height:22px; background:var(--line); margin:0 2px;"></span>
       </span>
       <span class="seg" id="colsw" style="display:inline-flex; gap:8px; align-items:center;"><button class="mmb active" data-colour="control">Control</button>
@@ -1186,6 +1185,7 @@
     document.querySelectorAll('[data-pv]').forEach(function(x){
       x.classList.toggle('active', (x.getAttribute('data-pv') === '1') === PV);
     });
+    document.querySelectorAll('.pvt').forEach(function(t){ t.classList.toggle('up', !!PV); t.setAttribute('aria-checked', PV ? 'true' : 'false'); });
     if(PROJ) $('pvnote').textContent = PV ? 'Projected result in the ' + Object.keys(PROJ.councils).length +
       ' councils voting in England, Wales and Scotland, on today\u2019s Nowcasts \u00b7 ' + (PROJ.meta.version || '') +
       ', ' + (PROJ.meta.date || '') : 'Who runs each council now';
@@ -3016,6 +3016,10 @@
         recolour(); buildTable();
         if(!pinnedGss) clearCard();
       });
+    });
+    // the switch between the two labels flips to the other one
+    document.querySelectorAll('.pvt').forEach(function(t){
+      t.addEventListener('click', function(){ var o = t.parentNode.querySelector('[data-pv="' + (PV ? '0' : '1') + '"]'); if(o) o.click(); });
     });
     document.querySelectorAll('[data-pv]').forEach(function(b){
       b.addEventListener('click', function(){
