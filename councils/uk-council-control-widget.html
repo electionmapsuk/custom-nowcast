@@ -504,6 +504,7 @@
       </span>
       <button class="mmb active" data-colour="control">Control</button>
       <button class="mmb" data-colour="largest">Largest party</button>
+      <span id="nocsw" style="display:inline-flex; gap:8px; align-items:center;"><span style="width:1px; height:22px; background:var(--line); margin:0 2px;"></span><button type="button" class="mmb active" data-noc="0" title="Minority and coalition administrations in a paler shade of the lead party">Administrations</button><button type="button" class="mmb" data-noc="1" title="Every council without a majority (or an elected mayor) in black">NOC in black</button></span>
       <button class="mmb ghost" id="reset">Reset view</button>
       <span class="spacer"></span>
       <div class="search">
@@ -660,7 +661,7 @@
   function projColour(p){
     if(p.next === 'NOC') return NOC_COLOUR;
     var col = pInfo(p.next).colour;
-    return projSure(p) ? col : lighten(col, 0.5);
+    return col;   // always solid: a paler shade read as minority control
   }
   function projText(p){ return p.next === 'NOC' ? 'No overall control' : pInfo(p.next).name + ' majority'; }
   function projShort(p){ return (p.next === 'NOC' ? 'NOC' : abbrev(p.next)) + ' ' + Math.round(((p.pc || {})[p.next] || 0) * 100) + '%'; }
@@ -784,6 +785,10 @@
   // A directly elected mayor holds the executive whatever the chamber looks
   // like, so a mayoral council is filled solid like an outright majority.
   // Derived from the seats so this holds for older data too.
+  // Now mode, control colours: NOC_BLACK shows every council without a majority or a mayor as NOC (black)
+  // instead of in the paler colour of the party leading a minority or coalition administration
+  var NOC_BLACK = false;
+  function adminShown(c){ return !NOC_BLACK || pvOn() || solidFill(c); }
   function solidFill(c){
     var ct = c && c.control;
     if(!ct || !ct.parties.length) return false;
@@ -805,7 +810,7 @@
     }
     if(pvOn()){ var pj = projOf(c); return pj ? projColour(pj) : NOPROJ_FILL; }
     var ct = c.control;
-    if(!ct || ct.type === 'noc' || !ct.parties.length) return NOC_COLOUR;
+    if(!ct || ct.type === 'noc' || !ct.parties.length || !adminShown(c)) return NOC_COLOUR;
     var col = pInfo(ct.parties[0]).colour;
     return solidFill(c) ? col : lighten(col, 0.5);
   }
@@ -815,7 +820,7 @@
   // has to be coloured by the administration too.
   function controlSwatch(c){
     var ct = c.control;
-    if(!ct || ct.type === 'noc' || !ct.parties.length) return NOC_COLOUR;
+    if(!ct || ct.type === 'noc' || !ct.parties.length || !adminShown(c)) return NOC_COLOUR;
     var col = pInfo(ct.parties[0]).colour;
     return solidFill(c) ? col : lighten(col, 0.5);
   }
@@ -836,7 +841,7 @@
   // the tiles, legend and panel always agree with what you can see.
   function runsKey(c){
     var ct = c.control;
-    return (ct && ct.parties && ct.parties.length) ? ct.parties[0] : 'NOC';
+    return (ct && ct.parties && ct.parties.length && adminShown(c)) ? ct.parties[0] : 'NOC';
   }
   // The key the map is currently coloured by - control mode groups by who runs
   // the council, largest-party mode by who holds the most seats. Legend counts,
@@ -1219,8 +1224,9 @@
       var head = code === 'NOC' ? allRun - allMaj : (maj[code] || 0);
       var sub1 = code === 'NOC'
         ? 'of ' + fmt(EV ? nextRound().up.length : DATA.meta.councils) + ' councils' + (EV ? ' up' : '')
+        : NOC_BLACK ? (e[1] > (maj[code] || 0) ? '+' + fmt(e[1] - (maj[code] || 0)) + ' with an elected mayor' : 'outright majorities')
         : fmt(e[1]) + ' incl. minority-led';
-      var sub2 = code === 'NOC' ? fmt(e[1]) + ' with no administration'
+      var sub2 = code === 'NOC' ? (NOC_BLACK ? 'minority and coalition administrations included' : fmt(e[1]) + ' with no administration')
         : EV ? fmt(nextRound().seats[code] || 0) + ' seats up'
              : fmt((DATA.meta.partyTotals || {})[code] || 0) + ' councillors';
       if(pvOn()){
@@ -1361,8 +1367,7 @@
         '): each ward\u2019s last result is swung to the Nowcast, adjusted for recent council by-elections, with ' +
         'Restore Britain placed from the census. It covers the ' + fmt(Object.keys(PROJ.councils).length) +
         ' councils voting. Wales and Scotland start from their 2022 ward results, moved to the May 2026 Senedd and Holyrood results and on to the Senedd Nowcast (Wales) and the GB Nowcast\u2019s Scotland figures (Scotland), with recent by-elections blended in; Scottish seats are allocated by STV quotas. Chances come from ' + fmt(PROJ.meta.nsim) + ' simulations with national, ' +
-        'council and ward errors; ranges are the middle 80%. On the projection map, solid fill = projected control at least ' +
-        Math.round(PROJ_SURE * 100) + '% likely, paler = less likely, black = no overall control. Local and minor parties are shown by the party that holds (or was elected to) each ward; Ind = independents.');
+        'council and ward errors; ranges are the middle 80%. On the projection map, each council is filled with its projected control (black = no overall control); hover for the chances. Local and minor parties are shown by the party that holds (or was elected to) each ward; Ind = independents.');
     }
     $('foot').innerHTML = '<p>' + paras.join('</p><p>') + '</p>';
     if(EV && !nextRound().none){
@@ -1848,6 +1853,7 @@
     }
     if(geo && WARD && WARD.upYear){
       bar.append('button').attr('type', 'button').attr('class', 'wup' + (UPONLY ? ' on' : ''))
+        .style('display', pvOn() ? 'none' : null)   // the projection only shows seats up anyway
         .attr('aria-pressed', UPONLY ? 'true' : 'false')
         .attr('title', c.name + ' elects by ' + cycleWord((c.cycle || []).length).toLowerCase() +
               ': show only the councillors whose seats are up in May ' + WARD.upYear)
@@ -2830,8 +2836,7 @@
       (pvOn() && noProj() ? '<span class="lgd lgdx" title="Voting in ' + nextRound().date.slice(0, 4) +
         ' but not in the projection, which covers the English councils"><i style="background:' + NOPROJ_FILL +
         '"></i>Not projected <b>' + fmt(noProj()) + '</b></span>' : '') +
-      (pvOn() ? '<span class="lgd lgdx" title="Projected control less than ' + Math.round(PROJ_SURE * 100) +
-        '% likely"><i style="background:' + lighten('#6b7280', 0.5) + '"></i>Paler: under ' + Math.round(PROJ_SURE * 100) + '% likely</span>' : '');
+      '';
     $('legend').querySelectorAll('.lgd').forEach(function(el){
       el.addEventListener('click', function(){
         var k = el.getAttribute('data-k');
@@ -2893,6 +2898,7 @@
   // RFM and LDM.
   function shortControl(c){
     var ct = c.control;
+    if(ct && ct.parties && ct.parties.length && !adminShown(c)) return 'NOC';
     if(!ct || ct.type === 'noc' || !ct.parties.length) return (ct && ct.label === 'TBC') ? 'TBC' : 'NOC';
     var names = ct.parties.map(abbrev).join('/');
     if(ct.mayor || ct.type === 'mayoral') return names + ' mayor';
@@ -2950,6 +2956,10 @@
     document.querySelectorAll('[data-ts]').forEach(function(b){ b.classList.toggle('active', (b.getAttribute('data-ts') === 'proj') === tblProj()); });
   }
 
+  function nocswSync(){   // the NOC switch only applies to Now mode, coloured by control
+    $('nocsw').style.display = (!pvOn() && colourMode === 'control') ? 'inline-flex' : 'none';
+    document.querySelectorAll('[data-noc]').forEach(function(x){ x.classList.toggle('active', (x.getAttribute('data-noc') === '1') === NOC_BLACK); });
+  }
   function tablesVisible(on){
     tableOpen = on;
     var ni = DATA.councils.some(function(c){ return c.nation === 'Northern Ireland'; });
@@ -2995,7 +3005,7 @@
       b.addEventListener('click', function(){
         document.querySelectorAll('[data-colour]').forEach(function(x){ x.classList.remove('active'); });
         b.classList.add('active');
-        colourMode = b.getAttribute('data-colour');
+        colourMode = b.getAttribute('data-colour'); nocswSync();
         recolour(); buildTable();
         if(!pinnedGss) clearCard();
       });
@@ -3007,6 +3017,7 @@
         PV = on; focusParty = null;
         if(PV){ loadProjW(); }
         setPvButtons(); pvHeads();
+        d3.selectAll('.wup').style('display', pvOn() ? 'none' : null); nocswSync();
         buildTiles(); buildNatBar(); recolour(); buildTable();
         if(WARD && WARD.geo){
           if(newbOf(WARD.code)) enterWards(WARD.m, WARD.code, {prev: WARD.prev});   // swap to / from the new wards
@@ -3023,6 +3034,14 @@
       $('tabletog').classList.toggle('active', tableOpen);
     });
     $('csvbtn').addEventListener('click', downloadCsv);
+    document.querySelectorAll('[data-noc]').forEach(function(b){
+      b.addEventListener('click', function(){
+        NOC_BLACK = b.getAttribute('data-noc') === '1'; focusParty = null; nocswSync();
+        buildTiles(); buildNatBar(); recolour(); buildTable();
+        if(!pinnedGss) panelDefault(); else showCardFor(pinnedGss, '', null);
+      });
+    });
+    nocswSync();
     document.querySelectorAll('[data-ts]').forEach(function(b){
       b.addEventListener('click', function(){ TBL_PROJ = b.getAttribute('data-ts') === 'proj'; buildTable(); });
     });
