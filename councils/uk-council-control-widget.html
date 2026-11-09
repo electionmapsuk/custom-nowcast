@@ -383,6 +383,10 @@
   .ccard .r .bar .rg::before,.ccard .r .bar .rg::after{content:''; position:absolute; top:-4px; width:2px; height:10px; background:#15171a;}
   .ccard .r .bar .rg::before{left:0;} .ccard .r .bar .rg::after{right:0;}
   .ccard .r .bar .fill i .sn{position:relative; z-index:5; padding:2px 3px; line-height:1;}
+  .ccard .bd.pjr .r{grid-template-columns:34px 1fr 58px;}
+  .ccard .bd.pjr .r .n{justify-content:flex-start; padding-left:7px; gap:4px;}
+  .ccard .r .n .dl{font-size:10px; font-weight:800; font-variant-numeric:tabular-nums;}
+  .ccard .r .n .dl.up{color:#16a34a;} .ccard .r .n .dl.dn{color:#dc2626;}
   .ccard .pch{padding:9px 12px 10px; border-top:1px solid var(--line2);}
   .ccard .pj .ss{position:relative; margin-top:2px;}
   .ccard .pj .ss .sb{display:flex; height:18px; border-radius:4px; overflow:hidden; background:#eee;}
@@ -1165,7 +1169,7 @@
       x.classList.toggle('active', (x.getAttribute('data-pv') === '1') === PV);
     });
     if(PROJ) $('pvnote').textContent = PV ? 'Projected result in the ' + Object.keys(PROJ.councils).length +
-      ' English councils on today\u2019s Nowcast \u00b7 ' + (PROJ.meta.version || '') +
+      ' councils voting in England, Wales and Scotland, on today\u2019s Nowcasts \u00b7 ' + (PROJ.meta.version || '') +
       ', ' + (PROJ.meta.date || '') : 'Who runs each council now';
   }
   // section headings for the current view
@@ -1175,7 +1179,7 @@
     if(pvOn()){
       $('h-tiles').textContent = 'Councils voting, projected control after May';
       var pw = Object.keys(PROJ.national).reduce(function(a, p){ return a + PROJ.national[p].won; }, 0);
-      $('h-nat').textContent = 'Projected seats won in England \u00b7 ' + fmt(pw) + ' seats in ' +
+      $('h-nat').textContent = 'Projected seats won in Great Britain \u00b7 ' + fmt(pw) + ' seats in ' +
         fmt(Object.keys(PROJ.councils).length) + ' councils \u00b7 grey figures: likely range';
     } else {
       var when = new Date(E.date + 'T12:00:00').toLocaleDateString('en-GB',
@@ -1350,7 +1354,7 @@
         ', ' + esc(PROJ.meta.date || '') + ') on the current Nowcast (' + Object.keys(vi).map(function(p){ return abbrev(p) + ' ' + vi[p]; }).join(', ') +
         '): each ward\u2019s last result is swung to the Nowcast, adjusted for recent council by-elections, with ' +
         'Restore Britain placed from the census. It covers the ' + fmt(Object.keys(PROJ.councils).length) +
-        ' English councils; Scottish and Welsh councils are not projected. Chances come from ' + fmt(PROJ.meta.nsim) + ' simulations with national, ' +
+        ' councils voting. Wales and Scotland start from their 2022 ward results, moved to the May 2026 Senedd and Holyrood results and on to the Senedd Nowcast (Wales) and the GB Nowcast\u2019s Scotland figures (Scotland), with recent by-elections blended in; Scottish seats are allocated by STV quotas. Chances come from ' + fmt(PROJ.meta.nsim) + ' simulations with national, ' +
         'council and ward errors; ranges are the middle 80%. On the projection map, solid fill = projected control at least ' +
         Math.round(PROJ_SURE * 100) + '% likely, paler = less likely, black = no overall control. Ind includes local parties.');
     }
@@ -2216,6 +2220,14 @@
     var T = pj.total || c.total, maj = Math.floor(T / 2) + 1, comp = pj.comp || {}, won = pj.won || {}, rg = pj.rg || {};
     var order = Object.keys(comp).filter(function(p){ return comp[p]; })
       .sort(function(a, b){ return (comp[b] - comp[a]) || (DATA.spectrum.indexOf(a) - DATA.spectrum.indexOf(b)); });
+    // change on the council now (independents and local groups together, as in the projection); parties that lose
+    // every seat stay on the card at 0
+    var MAINP = {RFM:1, LAB:1, CON:1, LDM:1, GRN:1, RES:1, PLC:1, SNP:1}, cur = {};
+    Object.keys(c.seats || {}).forEach(function(p){ if(p === 'VAC' || !c.seats[p]) return; var k = MAINP[p] ? p : 'IND'; cur[k] = (cur[k] || 0) + c.seats[p]; });
+    comp = Object.assign({}, comp);
+    Object.keys(cur).sort(function(a, b){ return cur[b] - cur[a]; }).forEach(function(p){ if(!comp[p]){ comp[p] = 0; order.push(p); } });
+    var dl = function(p){ var d = (comp[p] || 0) - (cur[p] || 0);
+      return d ? '<span class="dl ' + (d > 0 ? 'up' : 'dn') + '" title="' + (d > 0 ? 'up ' : 'down ') + Math.abs(d) + ' on now">' + (d > 0 ? '+' : '\u2212') + Math.abs(d) + '</span>' : ''; };
     // likely range of seats after May: the seats not up plus the likely range won in May
     var range = function(p){ var r = rg[p], held = (comp[p] || 0) - (won[p] || 0); return r ? [held + r[0], held + r[1]] : null; };
     var hi = order.reduce(function(a, p){ var r = range(p); return Math.max(a, comp[p], r ? r[1] : 0); }, 1);
@@ -2234,7 +2246,7 @@
         '<div class="ab" style="background:' + pc.colour + '; color:' + txtOn(pc.colour) + '">' + abbrev(p) + '</div>' +
         '<div class="bar"><span class="fill" style="width:' + pct + '%">' + segs.join('') + '</span>' + rgEl +
         '<b class="maj" style="left:' + majPct + '%"></b></div>' +
-        '<div class="n">' + comp[p] + '</div></div>';
+        '<div class="n">' + comp[p] + dl(p) + '</div></div>';
     }).join('');
     var key = '<div class="cyckey">' + (partial ? '<span><i style="background:' + cycleShade('#6b7280', 0, 2) + '"></i>Not up in May</span>' +
         '<span><i style="background:' + cycleShade('#6b7280', 1, 2) + '"></i>Won May 2027</span>' : '') +
@@ -2254,7 +2266,7 @@
         '<div class="meta"><b>' + T + '</b> seats after May \u00b7 <b>' + maj + '</b> for a majority' + (T !== c.total ? ' (now ' + c.total + ')' : '') + '</div>' +
       '</div>' +
       '<div class="stack">' + stack + '</div>' +
-      '<div class="bd">' + rows + '</div>' + key +
+      '<div class="bd pjr">' + rows + '</div>' + key +
       '<div class="pch"><div class="pjl">Chance of each outcome</div>' + chanceBarHtml(pj) + '</div>' + foot;
   }
   function cardHtml(c, fallbackName){
