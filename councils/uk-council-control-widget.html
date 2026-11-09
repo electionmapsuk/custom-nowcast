@@ -1154,9 +1154,11 @@
       chip('repeating-linear-gradient(45deg,' + lighten(col, 0.3) + ' 0 2px,' + lighten(col, 0.86) + ' 2px 5px)', 'Largest party, short of a majority') +
       chip(lighten(col, 0.8), 'Needs a swing to win');
     var nm = pInfo(party).name;
+    // the worked example uses two parties other than the one picked
+    var ex = ['LAB', 'CON', 'RFM', 'LDM'].filter(function(p){ return p !== party; }).slice(0, 2).map(function(p){ return pInfo(p).name; });
     $('snnote').innerHTML = '<b>What the swing means.</b> A swing of +1 to ' + ab + ' adds one point to ' + nm +
       '\u2019s share in every ward and takes it from the other parties in proportion to their shares. A ward projected at ' +
-      ab + ' 30%, Labour 40%, Conservative 20% and others 10% becomes ' + ab + ' 31%, Labour 39.4%, Conservative 19.7% and others 9.9%. ' +
+      ab + ' 30%, ' + ex[0] + ' 40%, ' + ex[1] + ' 20% and others 10% becomes ' + ab + ' 31%, ' + ex[0] + ' 39.4%, ' + ex[1] + ' 19.7% and others 9.9%. ' +
       'A swing of \u22121 does the reverse: ' + ab + ' 29% and the others up in proportion. Seats then follow the model\u2019s rules. ' +
       'Each council is as long as its number of seats up; hover for the details and the chance of each outcome from the simulations, click to open it. ' +
       'Real swings vary from council to council, so the chance is the better guide to any one council. Councils needing more than 10 points are left out.';
