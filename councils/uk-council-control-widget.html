@@ -2002,7 +2002,8 @@
     var head = '<div class="hd"><div class="nm">' + esc(wardLabel(props.id, props.name)) + '</div>' +
       '<div class="ty">' + esc(c.name) + ' \u00b7 ' + (newbOf(c.gss) ? 'New ward from May 2027' : isDivisions(geo) ? 'Electoral division' : 'Ward') + ' \u00b7 2027 projection</div>';
     if(!e) return head + '<div class="meta" style="margin-top:7px">No seat up here in 2027</div></div>';
-    var sh = P7.map(function(p, i){ return [p, e.s[i] / 10]; }).filter(function(x){ return x[1] >= 0.5; })
+    // e.o: the local or minor party that holds the ward, so its independent/other vote is shown under that party
+    var sh = P7.map(function(p, i){ return [p === 'IND' && e.o ? e.o : p, e.s[i] / 10]; }).filter(function(x){ return x[1] >= 0.5; })
       .sort(function(a, b){ return b[1] - a[1]; });
     var nUp = Object.keys(e.w).reduce(function(a, p){ return a + e.w[p]; }, 0);
     var win = Object.keys(e.w).sort(function(a, b){ return e.w[b] - e.w[a]; });
@@ -2226,7 +2227,7 @@
     // change on the council now (independents and local groups together, as in the projection); parties that lose
     // every seat stay on the card at 0
     var MAINP = {RFM:1, LAB:1, CON:1, LDM:1, GRN:1, RES:1, PLC:1, SNP:1}, cur = {};
-    Object.keys(c.seats || {}).forEach(function(p){ if(p === 'VAC' || !c.seats[p]) return; var k = MAINP[p] ? p : 'IND'; cur[k] = (cur[k] || 0) + c.seats[p]; });
+    Object.keys(c.seats || {}).forEach(function(p){ if(p === 'VAC' || !c.seats[p]) return; var k = p; cur[k] = (cur[k] || 0) + c.seats[p]; });   // local and minor parties by name, as the projection now names them
     comp = Object.assign({}, comp);
     Object.keys(cur).sort(function(a, b){ return cur[b] - cur[a]; }).forEach(function(p){ if(!comp[p]){ comp[p] = 0; order.push(p); } });
     var dl = function(p){ var d = (comp[p] || 0) - (cur[p] || 0);
