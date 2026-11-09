@@ -64,6 +64,13 @@
     .toolbar .sugg{width:100%; max-width:none;}
     /* tier toggle takes a line to itself so the colour buttons start the next */
     .toolbar .tiergroup{flex:1 0 100%; margin-right:0;}
+    /* each pair of map buttons becomes a full-width segmented switch on its own line; search and reset share the last */
+    .maptools .seg{flex:1 0 100%; gap:0 !important; padding:3px; background:#fff; border:1px solid var(--line); border-radius:10px;}
+    .maptools .seg > span{display:none;}
+    .maptools .seg .mmb{flex:1 1 0; border:0; border-radius:7px; background:transparent; padding:9px 6px; font-size:.8rem; text-align:center;}
+    .maptools .seg .mmb.active{background:var(--accent); color:#fff;}
+    .maptools .search{flex:1 1 0; min-width:0; order:5;}
+    .maptools #reset{order:6; flex:none; padding:9px 12px;}
   }
   .mmb{padding:7px 13px; border-radius:7px; border:1px solid var(--line); background:#fff; font-weight:700;
     font-size:.78rem; color:var(--muted); cursor:pointer; font-family:inherit; line-height:1.2;}
@@ -72,7 +79,7 @@
   .spacer{flex:1;}
   .search{position:relative;}
   .search input{border:1px solid var(--line); border-radius:8px; padding:7px 12px; font-family:inherit;
-    font-size:.8rem; font-weight:600; line-height:1.2; width:190px; color:var(--ink); background:#fff;}
+    font-size:.8rem; font-weight:600; line-height:1.2; width:218px; color:var(--ink); background:#fff;}
   .search input::placeholder{color:var(--faint); font-weight:500;}
   .search input:focus{outline:none; border-color:var(--accent); box-shadow:0 0 0 3px rgba(0,77,77,.08);}
   .sugg{position:absolute; z-index:70; top:calc(100% + 4px); right:0; left:auto;
@@ -497,14 +504,14 @@
           <button type="button" class="tsl" data-maps="upper" title="County councils and unitaries">Upper tier</button>
         </span>
       </span>
-      <span id="pvmap" style="display:none; gap:8px; align-items:center;">
+      <span id="pvmap" class="seg" style="display:none; gap:8px; align-items:center;">
         <button type="button" class="mmb active" data-pv="0">Now</button>
         <button type="button" class="mmb" data-pv="1">2027 projection</button>
         <span style="width:1px; height:22px; background:var(--line); margin:0 2px;"></span>
       </span>
-      <button class="mmb active" data-colour="control">Control</button>
-      <button class="mmb" data-colour="largest">Largest party</button>
-      <span id="nocsw" style="display:inline-flex; gap:8px; align-items:center;"><span style="width:1px; height:22px; background:var(--line); margin:0 2px;"></span><button type="button" class="mmb active" data-noc="0" title="Minority and coalition administrations in a paler shade of the lead party">Administrations</button><button type="button" class="mmb" data-noc="1" title="Every council without a majority (or an elected mayor) in black">NOC in black</button></span>
+      <span class="seg" id="colsw" style="display:inline-flex; gap:8px; align-items:center;"><button class="mmb active" data-colour="control">Control</button>
+      <button class="mmb" data-colour="largest">Largest party</button></span>
+      <span id="nocsw" class="seg" style="display:inline-flex; gap:8px; align-items:center;"><span style="width:1px; height:22px; background:var(--line); margin:0 2px;"></span><button type="button" class="mmb active" data-noc="0" title="Minority and coalition administrations in a paler shade of the lead party">Administrations</button><button type="button" class="mmb" data-noc="1" title="Every council without a majority (or an elected mayor) in black">NOC in black</button></span>
       <button class="mmb ghost" id="reset">Reset view</button>
       <span class="spacer"></span>
       <div class="search">
