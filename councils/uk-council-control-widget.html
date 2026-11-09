@@ -383,10 +383,13 @@
   .ccard .r .bar .rg::before,.ccard .r .bar .rg::after{content:''; position:absolute; top:-4px; width:2px; height:10px; background:#15171a;}
   .ccard .r .bar .rg::before{left:0;} .ccard .r .bar .rg::after{right:0;}
   .ccard .r .bar .fill i .sn{position:relative; z-index:5; padding:2px 3px; line-height:1;}
-  .ccard .bd.pjr .r{grid-template-columns:34px 1fr 58px;}
-  .ccard .bd.pjr .r .n{justify-content:flex-start; padding-left:7px; gap:4px;}
-  .ccard .r .n .dl{font-size:10px; font-weight:800; font-variant-numeric:tabular-nums;}
-  .ccard .r .n .dl.up{color:#16a34a;} .ccard .r .n .dl.dn{color:#dc2626;}
+  .ccard .bd.pjr .r{grid-template-columns:34px 1fr 64px;}
+  .ccard .bd.pjr .r .n{justify-content:center; gap:4px;}
+  .ccard .r .n .nb,.ccard .r .n .dl{width:30px; height:var(--barh); display:flex; align-items:center; justify-content:center;
+    border-radius:4px; font-weight:800; line-height:1; font-variant-numeric:tabular-nums; flex:none;}
+  .ccard .r .n .nb{background:#eee; color:var(--ink); font-size:12px;}
+  .ccard .r .n .dl{font-size:10px; background:#f1f1ee; color:var(--faint);}
+  .ccard .r .n .dl.up{background:#16a34a; color:#fff;} .ccard .r .n .dl.dn{background:#dc2626; color:#fff;}
   .ccard .pch{padding:9px 12px 10px; border-top:1px solid var(--line2);}
   .ccard .pj .ss{position:relative; margin-top:2px;}
   .ccard .pj .ss .sb{display:flex; height:18px; border-radius:4px; overflow:hidden; background:#eee;}
@@ -931,7 +934,7 @@
     var have = {};
     Object.keys(PROJ.councils).forEach(function(g){ var sw = PROJ.councils[g].sw || {};
       Object.keys(sw).forEach(function(p){ if(sw[p][0] <= 10) have[p] = (have[p] || 0) + 1; }); });
-    return ['RFM', 'CON', 'LAB', 'LDM', 'GRN', 'RES'].filter(function(p){ return have[p]; });
+    return ['RFM', 'CON', 'LAB', 'LDM', 'GRN', 'SNP', 'PLC', 'RES'].filter(function(p){ return have[p]; });
   }
   function snRows(party){
     return Object.keys(PROJ.councils).map(function(g){
@@ -2227,7 +2230,8 @@
     comp = Object.assign({}, comp);
     Object.keys(cur).sort(function(a, b){ return cur[b] - cur[a]; }).forEach(function(p){ if(!comp[p]){ comp[p] = 0; order.push(p); } });
     var dl = function(p){ var d = (comp[p] || 0) - (cur[p] || 0);
-      return d ? '<span class="dl ' + (d > 0 ? 'up' : 'dn') + '" title="' + (d > 0 ? 'up ' : 'down ') + Math.abs(d) + ' on now">' + (d > 0 ? '+' : '\u2212') + Math.abs(d) + '</span>' : ''; };
+      return d ? '<span class="dl ' + (d > 0 ? 'up' : 'dn') + '" title="' + (d > 0 ? 'up ' : 'down ') + Math.abs(d) + ' on now">' + (d > 0 ? '+' : '\u2212') + Math.abs(d) + '</span>'
+               : '<span class="dl" title="no change on now">\u2013</span>'; };
     // likely range of seats after May: the seats not up plus the likely range won in May
     var range = function(p){ var r = rg[p], held = (comp[p] || 0) - (won[p] || 0); return r ? [held + r[0], held + r[1]] : null; };
     var hi = order.reduce(function(a, p){ var r = range(p); return Math.max(a, comp[p], r ? r[1] : 0); }, 1);
@@ -2246,7 +2250,7 @@
         '<div class="ab" style="background:' + pc.colour + '; color:' + txtOn(pc.colour) + '">' + abbrev(p) + '</div>' +
         '<div class="bar"><span class="fill" style="width:' + pct + '%">' + segs.join('') + '</span>' + rgEl +
         '<b class="maj" style="left:' + majPct + '%"></b></div>' +
-        '<div class="n">' + comp[p] + dl(p) + '</div></div>';
+        '<div class="n"><span class="nb">' + comp[p] + '</span>' + dl(p) + '</div></div>';
     }).join('');
     var key = '<div class="cyckey">' + (partial ? '<span><i style="background:' + cycleShade('#6b7280', 0, 2) + '"></i>Not up in May</span>' +
         '<span><i style="background:' + cycleShade('#6b7280', 1, 2) + '"></i>Won May 2027</span>' : '') +
