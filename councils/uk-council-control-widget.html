@@ -543,6 +543,7 @@
     <div class="toolbar" style="margin-top:26px;">
       <button class="mmb" id="tabletog">Show full table</button>
       <button class="mmb" id="csvbtn">Download CSV</button>
+      <span id="tblseats" style="display:none; gap:6px;"><button type="button" class="mmb" data-ts="now">Current seats</button><button type="button" class="mmb" data-ts="proj">Projected seats</button></span>
       <span class="efilt" id="efilt" style="display:none;"></span>
       <span class="spacer"></span>
       <span style="font-size:.74rem; color:var(--faint); font-weight:600;" id="counts"></span>
@@ -649,6 +650,10 @@
   }
   function projWards(code){ return (pvOn() && PROJW && PROJW.councils[code]) || null; }
   function projOf(c){ return (PROJ && c && c.gss && PROJ.councils[c.gss]) || null; }
+  var TBL_PROJ = null;
+  function tblProj(){ return EV && !!PROJ && (TBL_PROJ === null ? pvOn() : TBL_PROJ); }
+  function seatsOf(c){ var pj = tblProj() && projOf(c); return pj ? pj.comp : c.seats; }
+  function totalOf(c){ var pj = tblProj() && projOf(c); return pj ? (pj.total || c.total) : c.total; }
   function pvOn(){ return EV && PV && !!PROJ; }
   function projKey(c){ var p = projOf(c); return p ? p.next : 'NOC'; }
   function projSure(p){ return ((p.pc || {})[p.next] || 0) >= PROJ_SURE; }
@@ -1154,12 +1159,8 @@
       chip('repeating-linear-gradient(45deg,' + lighten(col, 0.3) + ' 0 2px,' + lighten(col, 0.86) + ' 2px 5px)', 'Largest party, short of a majority') +
       chip(lighten(col, 0.8), 'Needs a swing to win');
     var nm = pInfo(party).name;
-    // the worked example uses two parties other than the one picked
-    var ex = ['LAB', 'CON', 'RFM', 'LDM'].filter(function(p){ return p !== party; }).slice(0, 2).map(function(p){ return pInfo(p).name; });
     $('snnote').innerHTML = '<b>What the swing means.</b> A swing of +1 to ' + ab + ' adds one point to ' + nm +
-      '\u2019s share in every ward and takes it from the other parties in proportion to their shares. A ward projected at ' +
-      ab + ' 30%, ' + ex[0] + ' 40%, ' + ex[1] + ' 20% and others 10% becomes ' + ab + ' 31%, ' + ex[0] + ' 39.4%, ' + ex[1] + ' 19.7% and others 9.9%. ' +
-      'A swing of \u22121 does the reverse: ' + ab + ' 29% and the others up in proportion. Seats then follow the model\u2019s rules. ' +
+      '\u2019s share in every ward and takes it from the other parties in proportion to their shares. ' +
       'Each council is as long as its number of seats up; hover for the details and the chance of each outcome from the simulations, click to open it. ' +
       'Real swings vary from council to council, so the chance is the better guide to any one council. Councils needing more than 10 points are left out.';
   }
@@ -1361,7 +1362,7 @@
         'Restore Britain placed from the census. It covers the ' + fmt(Object.keys(PROJ.councils).length) +
         ' councils voting. Wales and Scotland start from their 2022 ward results, moved to the May 2026 Senedd and Holyrood results and on to the Senedd Nowcast (Wales) and the GB Nowcast\u2019s Scotland figures (Scotland), with recent by-elections blended in; Scottish seats are allocated by STV quotas. Chances come from ' + fmt(PROJ.meta.nsim) + ' simulations with national, ' +
         'council and ward errors; ranges are the middle 80%. On the projection map, solid fill = projected control at least ' +
-        Math.round(PROJ_SURE * 100) + '% likely, paler = less likely, black = no overall control. Ind includes local parties.');
+        Math.round(PROJ_SURE * 100) + '% likely, paler = less likely, black = no overall control. Local and minor parties are shown by the party that holds (or was elected to) each ward; Ind = independents.');
     }
     $('foot').innerHTML = '<p>' + paras.join('</p><p>') + '</p>';
     if(EV && !nextRound().none){
@@ -2493,6 +2494,7 @@
     var when = new Date(E.date + 'T12:00:00').toLocaleDateString('en-GB',
       {weekday: 'long', day: 'numeric', month: 'long', year: 'numeric'});
     $('title').textContent = 'The ' + yr + ' local elections';
+    $('title').style.display = 'none'; $('title').parentNode.style.justifyContent = 'flex-end';
     document.title = 'The ' + yr + ' local elections';
     $('h-tiles').textContent = 'Councils voting, by who runs them now';
     $('h-nat').textContent = 'Seats being defended \u00b7 ' + fmt(E.total) + ' seats in ' +
@@ -2857,12 +2859,12 @@
       if(sortKey === 'name'){ x=a.name; y=b.name; return dir * (x<y?-1:x>y?1:0); }
       if(sortKey === 'type'){ x=a.typeName||''; y=b.typeName||''; return dir * (x<y?-1:x>y?1:0); }
       if(sortKey === 'control'){ x=controlText(a); y=controlText(b); return dir * (x<y?-1:x>y?1:0); }
-      if(sortKey === 'total'){ return dir * (a.total-b.total); }
+      if(sortKey === 'total'){ return dir * (totalOf(a)-totalOf(b)); }
       if(sortKey === 'up'){ return dir * ((a._up || 0) - (b._up || 0)); }
       if(sortKey === 'proj'){ x = projOf(a) ? projText(projOf(a)) : ''; y = projOf(b) ? projText(projOf(b)) : ''; return dir * (x<y?-1:x>y?1:0); }
       if(sortKey === 'chance'){ var ca = projOf(a), cb = projOf(b);
         return dir * (((ca && ca.pc[ca.next]) || 0) - ((cb && cb.pc[cb.next]) || 0)); }
-      return dir * ((a.seats[sortKey]||0) - (b.seats[sortKey]||0));
+      return dir * ((seatsOf(a)[sortKey]||0) - (seatsOf(b)[sortKey]||0));
     });
     return list;
   }
@@ -2881,7 +2883,7 @@
   function partyCols(list){
     var have = {};
     list.forEach(function(c){
-      for(var p in c.seats){ if(c.seats[p]) have[p] = 1; }
+      var st = seatsOf(c); for(var p in st){ if(st[p]) have[p] = 1; }
     });
     return tableOrder().filter(function(p){ return have[p]; });
   }
@@ -2905,7 +2907,7 @@
       (EV ? '<th data-k="up" title="Seats being contested">Seats up</th>' : '') +
       (EV && PROJ ? '<th data-k="proj" title="Projected control after May 2027">Projected</th>' +
                     '<th data-k="chance" title="Chance of the projected control outcome">Chance</th>' : '') +
-      cols.map(function(p){ return '<th data-k="'+p+'" title="'+pInfo(p).name+'">'+abbrev(p)+'</th>'; }).join('') +
+      cols.map(function(p){ return '<th data-k="'+p+'" title="'+pInfo(p).name+(tblProj() ? ', seats after May (projection)' : ', seats now')+'">'+abbrev(p)+'</th>'; }).join('') +
       '<th data-k="total">Total</th></tr></thead>';
     var body = '<tbody>' + list.map(function(c){
       var col = controlSwatch(c);   // this is the Control column, not the map
@@ -2920,8 +2922,9 @@
             return '<td class="ctrl" style="background:' + pc + '; color:' + txtOn(pc) + '" title="' + esc(projText(pj)) + '">' +
               (pj.next === 'NOC' ? 'NOC' : abbrev(pj.next)) + '</td><td class="num" title="' + esc(chanceHtml(pj, 3).replace(/<[^>]+>/g, '')) + '">' +
               Math.round((pj.pc[pj.next] || 0) * 100) + '%</td>'; })() : '') +
-        cols.map(function(p){ return '<td class="num">'+(c.seats[p]||'')+'</td>'; }).join('') +
-        '<td class="num" style="color:var(--ink); font-weight:700">'+c.total+'</td></tr>';
+        (function(){ var st = seatsOf(c), dim = tblProj() && !projOf(c) ? ' style="color:var(--faint)"' : '';
+          return cols.map(function(p){ return '<td class="num"'+dim+'>'+(st[p]||'')+'</td>'; }).join(''); })() +
+        '<td class="num" style="color:var(--ink); font-weight:700">'+totalOf(c)+'</td></tr>';
     }).join('') + '</tbody>';
     el.innerHTML = head + body;
     el.querySelectorAll('th').forEach(function(th){
@@ -2943,6 +2946,8 @@
     renderTable($('tbl'), gb, partyCols(gb));
     renderTable($('tbl-ni'), ni, partyCols(ni));
     tablesVisible(tableOpen);
+    $('tblseats').style.display = (EV && PROJ) ? 'inline-flex' : 'none';
+    document.querySelectorAll('[data-ts]').forEach(function(b){ b.classList.toggle('active', (b.getAttribute('data-ts') === 'proj') === tblProj()); });
   }
 
   function tablesVisible(on){
@@ -2959,14 +2964,14 @@
     var head = ['Council','Type','Nation','Region','GSS','Control','ControlType']
       .concat(EV ? ['Seats up'] : [])
       .concat(EV && PROJ ? ['Projected control 2027', 'Chance of projected control'] : [])
-      .concat(cols.map(function(p){ return pInfo(p).name + (EV ? ' seats up' : ''); })).concat(['Total']);
+      .concat(cols.map(function(p){ return pInfo(p).name + (tblProj() ? ' seats after May 2027 (projection)' : EV ? ' seats now' : ''); })).concat(['Total']);
     var lines = [head.join(',')];
     rows.forEach(function(c){
       var row = ['"'+c.name.replace(/"/g,'""')+'"', '"'+(c.typeName||'')+'"', c.nation, '"'+(c.region||'')+'"',
                  c.gss, '"'+c.control.label+'"', c.control.type]
         .concat(EV ? [c._up] : [])
         .concat(EV && PROJ ? (projOf(c) ? ['"' + projText(projOf(c)) + '"', (projOf(c).pc[projOf(c).next] || 0).toFixed(2)] : ['', '']) : [])
-        .concat(cols.map(function(p){ return c.seats[p]||0; })).concat([c.total]);
+        .concat(cols.map(function(p){ return seatsOf(c)[p]||0; })).concat([totalOf(c)]);
       lines.push(row.join(','));
     });
     var blob = new Blob([lines.join('\n')], {type:'text/csv;charset=utf-8'});
@@ -3018,6 +3023,9 @@
       $('tabletog').classList.toggle('active', tableOpen);
     });
     $('csvbtn').addEventListener('click', downloadCsv);
+    document.querySelectorAll('[data-ts]').forEach(function(b){
+      b.addEventListener('click', function(){ TBL_PROJ = b.getAttribute('data-ts') === 'proj'; buildTable(); });
+    });
 
     // search
     var q = $('q'), sg = $('sugg'), selIdx = -1;
