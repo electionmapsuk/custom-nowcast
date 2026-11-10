@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-09T16:37:29+00:00",
+ "generated": "2026-11-10T15:02:44+00:00",
  "year": 2026,
  "csvRows": 19273,
  "councilsParsed": 384,
@@ -22,13 +22,13 @@
   "Northern Ireland": 11,
   "Wales": 22
  },
- "councillors": 18695,
+ "councillors": 18693,
  "partyTotals": {
-  "LAB": 4553,
-  "CON": 3733,
+  "LAB": 4552,
+  "CON": 3734,
   "LDM": 3156,
   "RFM": 2287,
-  "IND": 1996,
+  "IND": 1994,
   "GRN": 1316,
   "LOC": 474,
   "SNP": 413,
@@ -37,7 +37,7 @@
   "DUP": 118,
   "ALL": 65,
   "UUP": 51,
-  "VAC": 44,
+  "VAC": 46,
   "RES": 38,
   "SDLP": 34,
   "ASP": 32,
