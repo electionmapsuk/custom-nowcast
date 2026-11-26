@@ -332,12 +332,12 @@
   .pollster-name{font-weight:800; font-size:.85rem; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.15;}
   .poll-date{font-size:.68rem; color:var(--muted); font-weight:500; line-height:1.2;}
   .bubble-results{display:flex; flex-wrap:nowrap; align-items:center; padding:3px 12px; border-left:1px solid var(--line); min-height:32px;}
-  .result-item{display:flex; align-items:baseline; gap:4px; font-size:.8rem; white-space:nowrap; flex:0 0 calc(100%/6); justify-content:center;}
+  .result-item{display:flex; align-items:baseline; gap:4px; font-size:.8rem; white-space:nowrap; flex:0 0 calc(100%/var(--ncol,6)); justify-content:center; min-width:0;}
   .mini-party{font-weight:800; text-transform:uppercase; font-size:.78rem;}
   .mini-val{font-weight:600; color:var(--muted);}
   .bubble-lead{display:flex; align-items:center; justify-content:center; padding:0 11px; border-left:1px solid var(--line); height:100%; min-height:32px;}
   .lead-badge{padding:4px 8px; font-size:.7rem; font-weight:800; text-transform:uppercase; border-radius:6px; white-space:nowrap; min-width:78px; text-align:center;}
-  @media(max-width:768px){
+  @media(max-width:900px){
     .poll-bubble{grid-template-columns:1fr auto; grid-template-areas:"info lead" "results results"; padding:8px 12px 8px 0;}
     .bubble-info{grid-area:info; padding:0 8px 6px 12px; border-bottom:1px solid var(--line2);}
     .bubble-lead{grid-area:lead; border-left:none; border-bottom:1px solid var(--line2); padding:0 12px 6px 8px; height:auto; justify-content:flex-end;}
@@ -2368,6 +2368,9 @@ document.addEventListener('DOMContentLoaded', function(){
 (function(){
   var SAMPLE_DATA = false;
   var POLLS = [
+    { pollster:'Ipsos', start:'2026-11-12', end:'2026-11-18', weight:null,
+      C:{ SNP:40, LAB:18, RFM:12, GRN:6,  CON:15, LDM:7  },
+      L:{ SNP:28, LAB:16, RFM:12, GRN:19, CON:13, LDM:9  } },
     { pollster:'Norstat', start:'2026-10-20', end:'2026-10-23', weight:null,
       C:{ SNP:34, LAB:18, RFM:13, GRN:7,  CON:12, LDM:9,  RES:5 },
       L:{ SNP:28, LAB:17, RFM:13, GRN:15, CON:13, LDM:9,  RES:5 } },
@@ -2600,6 +2603,11 @@ document.addEventListener('DOMContentLoaded', function(){
       .sort(function(a,b){ return (b.startDate||b.date) - (a.startDate||a.date); });
     var c = $('summary-grid');
     if (!latest.length) { c.innerHTML = '<p style="text-align:center;color:var(--muted);font-size:.82rem;margin:10px 0;">No recent polls.</p>'; return; }
+    // one column per party shown, so a poll that also asks about Restore (7 parties) fits the row
+    // instead of spilling under the lead badge; all rows share the widest count so columns line up
+    var ncol = Math.max.apply(null, latest.map(function(p){ var v=p[currentVote];
+      return PARTIES.filter(function(x){ return v[x.key] !== null && v[x.key] !== undefined; }).length; }));
+    c.style.setProperty('--ncol', Math.max(ncol, 1));
     c.innerHTML = latest.map(function(p){
       var vals = p[currentVote];
       var res = PARTIES.map(function(x){ return { key:x.key, val:vals[x.key], color:x.color }; })
